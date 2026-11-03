@@ -1,0 +1,200 @@
+{
+ "source": "clasificacion manual manual-v1-2026-11-03",
+ "examples": [
+  {
+   "id": "b008f662-857b-4744-9acf-81e25ed3676f",
+   "source": "google_news",
+   "outlet": "andigital.com.ar",
+   "title": "Kicillof reunió a 30 decanos en la UTN: “Quieren destruir la universidad pública” - andigital.com.ar",
+   "content": "Kicillof reunió a 30 decanos en la UTN: “Quieren destruir la universidad pública” andigital.com.ar",
+   "label": {
+    "tone": "critica",
+    "target": "other",
+    "confidence": 0.8,
+    "topic": "educación",
+    "relevance": "media",
+    "reason": "Kicillof critica a Milei por el ajuste universitario"
+   }
+  },
+  {
+   "id": "d574bd4a-03c3-4eb1-a5bb-8281267c2ed4",
+   "source": "google_news",
+   "outlet": "La Noticia Web",
+   "title": "Kicillof prometió enviar 250 pliegos al Senado para cubrir vacantes en la Justicia bonaerense - La Noticia Web",
+   "content": "Kicillof prometió enviar 250 pliegos al Senado para cubrir vacantes en la Justicia bonaerense La Noticia Web",
+   "label": {
+    "tone": "informativo",
+    "target": "candidate",
+    "confidence": 0.85,
+    "topic": "justicia",
+    "relevance": "media",
+    "reason": "Anuncio de envío de pliegos judiciales"
+   }
+  },
+  {
+   "id": "fb10551b-8a50-4fca-a690-ec112afda2ec",
+   "source": "google_news",
+   "outlet": "Agencia Noticias Argentinas",
+   "title": "Kicillof dará una conferencia de prensa en Luján por la llegada del papa León XIV - Agencia Noticias Argentinas",
+   "content": "Kicillof dará una conferencia de prensa en Luján por la llegada del papa León XIV Agencia Noticias Argentinas",
+   "label": {
+    "tone": "informativo",
+    "target": "candidate",
+    "confidence": 0.85,
+    "topic": "agenda institucional",
+    "relevance": "baja",
+    "reason": "Agenda: conferencia por visita del Papa"
+   }
+  },
+  {
+   "id": "45d0c523-18c6-4701-b391-1752d454cc51",
+   "source": "google_news",
+   "outlet": "El Argentino Diario",
+   "title": "Cristina recibió a los estrategas de Lula y Kicillof insistió con PASO para 2027 - El Argentino Diario",
+   "content": "Cristina recibió a los estrategas de Lula y Kicillof insistió con PASO para 2027 El Argentino Diario",
+   "label": {
+    "tone": "informativo",
+    "target": "candidate",
+    "confidence": 0.7,
+    "topic": "interna peronista",
+    "relevance": "alta",
+    "reason": "Kicillof insiste con PASO frente a movimientos de Cristina"
+   }
+  },
+  {
+   "id": "f7e61f17-69dc-4a51-b74c-e4b62c406414",
+   "source": "google_news",
+   "outlet": "Letra P",
+   "title": "Los seis créditos por u$s 1.100 millones con los que Milei tiene ahorcado a Kicillof - Letra P",
+   "content": "Los seis créditos por u$s 1.100 millones con los que Milei tiene ahorcado a Kicillof Letra P",
+   "label": {
+    "tone": "informativo",
+    "target": "candidate",
+    "confidence": 0.6,
+    "topic": "relación con Nación",
+    "relevance": "alta",
+    "reason": "Presión financiera de Nación sobre la Provincia"
+   }
+  },
+  {
+   "id": "e8dad66a-92df-4fbb-89f8-f7888db749df",
+   "source": "google_news",
+   "outlet": "Noticias Urbanas",
+   "title": "Fuerte crítica de Pareja a Kicillof: “No a las reelecciones indefinidas” - Noticias Urbanas",
+   "content": "Fuerte crítica de Pareja a Kicillof: “No a las reelecciones indefinidas” Noticias Urbanas",
+   "label": {
+    "tone": "critica",
+    "target": "candidate",
+    "confidence": 0.9,
+    "topic": "gestión provincial",
+    "relevance": "media",
+    "reason": "Pareja critica a Kicillof por reelecciones indefinidas"
+   }
+  },
+  {
+   "id": "0f760fa7-27a9-4a05-abdc-d11fba64ed4c",
+   "source": "google_news",
+   "outlet": "LU24 – Radio Tres Arroyos",
+   "title": "(audio) Alfredo Fisher respaldó a Kicillof y pidió defender las PASO de cara a 2027 - LU24 – Radio Tres Arroyos",
+   "content": "(audio) Alfredo Fisher respaldó a Kicillof y pidió defender las PASO de cara a 2027 LU24 – Radio Tres Arroyos",
+   "label": {
+    "tone": "a_favor",
+    "target": "candidate",
+    "confidence": 0.85,
+    "topic": "elecciones 2027",
+    "relevance": "media",
+    "reason": "Fisher respalda a Kicillof y defiende las PASO"
+   }
+  },
+  {
+   "id": "9ea3535b-8a7e-482a-b472-15dc7c797ad3",
+   "source": "google_news",
+   "outlet": "Cuarto Político",
+   "title": "Alegre quiere que Kicillof rompa con Cristina: \"Todo lo que significa volver a esa alianza no es saludable para Axel y la gente\" - Cuarto Político",
+   "content": "Alegre quiere que Kicillof rompa con Cristina: \"Todo lo que significa volver a esa alianza no es saludable para Axel y la gente\" Cuarto Político",
+   "label": {
+    "tone": "critica",
+    "target": "other",
+    "confidence": 0.6,
+    "topic": "interna peronista",
+    "relevance": "media",
+    "reason": "Alegre critica la alianza con Cristina, no a Kicillof"
+   }
+  },
+  {
+   "id": "b52e2f9b-98a9-47fd-a6f0-2974a770c073",
+   "source": "rss_media",
+   "outlet": "Todo Noticias",
+   "title": "La economía enciende las internas de Milei y Cristina enfrenta una rebelión dentro del peronismo",
+   "content": "Alrededor del 20 de este mes se dará a conocer el EMAE, que es un indicador de la actividad económica. Es un número que el Gobierno está esperando, aunque diga que no lo espera y lo vaya a relativizar. Puede traer una novedad mala: que técnicamente la economía argentina entre en recesión después de ",
+   "label": {
+    "tone": "informativo",
+    "target": "unclear",
+    "confidence": 0.3,
+    "topic": "economía",
+    "relevance": "baja",
+    "reason": "Nota económica; Kicillof no aparece en título ni bajada"
+   }
+  },
+  {
+   "id": "9e32fbe2-7419-421b-965f-3a43efa1ddd6",
+   "source": "google_news",
+   "outlet": "Diputados Bonaerenses",
+   "title": "Balaudo pide informes a Kicillof por el aumento de ITS y ETS - Diputados Bonaerenses",
+   "content": "Balaudo pide informes a Kicillof por el aumento de ITS y ETS Diputados Bonaerenses",
+   "label": {
+    "tone": "pregunta",
+    "target": "candidate",
+    "confidence": 0.7,
+    "topic": "salud",
+    "relevance": "baja",
+    "reason": "Pedido de informes por aumento de ITS"
+   }
+  },
+  {
+   "id": "72003f8a-d85e-49bb-a813-90310fbc88f0",
+   "source": "google_news",
+   "outlet": "La Plata 1",
+   "title": "Kicillof consiguió apoyo para la empresa estatal de medicamentos, pero sufrió un freno dentro del peronismo - La Plata 1",
+   "content": "Kicillof consiguió apoyo para la empresa estatal de medicamentos, pero sufrió un freno dentro del peronismo La Plata 1",
+   "label": {
+    "tone": "informativo",
+    "target": "candidate",
+    "confidence": 0.7,
+    "topic": "salud",
+    "relevance": "media",
+    "reason": "Apoyo a empresa estatal de medicamentos con freno interno"
+   }
+  },
+  {
+   "id": "6868694b-123e-434d-8989-dff68b102655",
+   "source": "google_news",
+   "outlet": "TN",
+   "title": "Kicillof ya no quiere que Cristina elija, pero fue su funcionario durante 20 años - TN",
+   "content": "Kicillof ya no quiere que Cristina elija, pero fue su funcionario durante 20 años TN",
+   "label": {
+    "tone": "critica",
+    "target": "candidate",
+    "confidence": 0.85,
+    "topic": "interna peronista",
+    "relevance": "alta",
+    "reason": "Le marca contradicción por su pasado con Cristina"
+   }
+  },
+  {
+   "id": "179b9dca-84bf-4c18-8a27-2a3905f34791",
+   "source": "google_news",
+   "outlet": "La Política Online",
+   "title": "Lula quiere a Massa y Kicillof en la ceremonia de asunción de su cuarto mandato - La Política Online",
+   "content": "Lula quiere a Massa y Kicillof en la ceremonia de asunción de su cuarto mandato La Política Online",
+   "label": {
+    "tone": "informativo",
+    "target": "candidate",
+    "confidence": 0.8,
+    "topic": "otros",
+    "relevance": "baja",
+    "reason": "Invitación de Lula a su asunción"
+   }
+  }
+ ]
+}

@@ -21,9 +21,17 @@ def stop(child):
     except ProcessLookupError:
         child.wait()
 
-def run_command(command, timeout):
+COLLECTOR_ONLY = ('DATABASE_URL', 'PGPASSWORD')
+CLASSIFIER_ONLY = ('LLM_API_KEY', 'CLASSIFIER_DATABASE_URL', 'CLASSIFIER_PGPASSWORD')
+
+def child_env(drop):
+    """Cada proceso ve solo sus credenciales: el recolector no ve la clave del LLM
+    y el clasificador no ve la conexión del rol pulso_collector."""
+    return {k: v for k, v in os.environ.items() if k not in drop}
+
+def run_command(command, timeout, env=None, prefix='cron'):
     started = time.monotonic()
-    child = subprocess.Popen(command, start_new_session=True)
+    child = subprocess.Popen(command, start_new_session=True, env=env)
     cancelled = False
     def on_signal(signum, frame):
         nonlocal cancelled
@@ -31,15 +39,15 @@ def run_command(command, timeout):
         stop(child)
     previous = {s: signal.signal(s, on_signal) for s in (signal.SIGTERM, signal.SIGINT)}
     try:
-        log(event='cron_started')
+        log(event=f'{prefix}_started')
         try:
             code = child.wait(timeout=timeout)
             code = 143 if cancelled else (code if code >= 0 else 128-code)
         except subprocess.TimeoutExpired:
             stop(child)
             code = 124
-            log(event='cron_timeout', timeout_seconds=timeout)
-        log(event='cron_finished', exit_code=code,
+            log(event=f'{prefix}_timeout', timeout_seconds=timeout)
+        log(event=f'{prefix}_finished', exit_code=code,
             elapsed_seconds=round(time.monotonic()-started, 3))
         return code
     finally:
@@ -58,10 +66,34 @@ def main():
         args = sys.argv[1:]
         if dry == 'true' and '--dry-run' not in args:
             args = [*args, '--dry-run']
-        return run_command([sys.executable, '-m', 'pulso.collect_rss', *args], timeout)
+        code = run_command([sys.executable, '-m', 'pulso.collect_rss', *args], timeout,
+                           env=child_env(CLASSIFIER_ONLY))
     except Exception as exc:
         log(event='cron_error', error_type=type(exc).__name__)
         return 2
+    if code not in (124, 143):
+        run_classifier(args)
+    # El resultado del clasificador nunca cambia el código de salida del cron.
+    return code
+
+def run_classifier(collector_args):
+    """Paso opcional posterior a la recolección, con timeout propio y errores aislados."""
+    try:
+        if os.getenv('PULSO_CLASSIFY_ENABLED', 'false').lower() != 'true':
+            log(event='classifier_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_CLASSIFY_TIMEOUT_SECONDS', '240'))
+        if not 10 <= timeout <= 600:
+            raise ValueError('Invalid classifier timeout')
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        return run_command([sys.executable, '-m', 'pulso.ai.classify', *args], timeout,
+                           env=child_env(COLLECTOR_ONLY), prefix='classifier')
+    except Exception as exc:
+        log(event='classifier_error', error_type=type(exc).__name__)
+        return None
 
 if __name__ == '__main__':
     sys.exit(main())

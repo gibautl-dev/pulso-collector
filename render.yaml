@@ -23,3 +23,18 @@ services:
       # Primera validación sin escritura. Cambiar a false después de revisar logs.
       - key: PULSO_DRY_RUN
         value: "true"
+      # Clasificador IA: apagado hasta tener clave y rol pulso_classifier.
+      - key: PULSO_CLASSIFY_ENABLED
+        value: "false"
+      - key: PULSO_CLASSIFY_DRY_RUN
+        value: "true"
+      - key: PULSO_CLASSIFY_MAX_PER_RUN
+        value: "30"
+      - key: LLM_MODEL
+        value: gpt-6-luna
+      - key: LLM_API_KEY
+        sync: false
+      - key: CLASSIFIER_DATABASE_URL
+        sync: false
+      - key: CLASSIFIER_PGPASSWORD
+        sync: false

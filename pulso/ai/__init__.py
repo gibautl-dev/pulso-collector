@@ -1,1 +1,1 @@
-"""Clasificación y resúmenes: se implementan en los siguientes pasos."""
+"""Clasificación con IA (pulso.ai.classify). Resúmenes: pendientes."""
