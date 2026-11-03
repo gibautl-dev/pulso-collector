@@ -13,12 +13,17 @@ from .sources.google_alerts import GoogleAlertsSource
 
 def log(**values): print(json.dumps(values,ensure_ascii=False,default=str),flush=True)
 
+def run_exit_code(results):
+    """0 si todo OK o falla parcial (cada fuente con al menos un feed OK); 1 si alguna fuente falla entera."""
+    failed = [r for r in results if r.errors and r.feeds_ok == 0]
+    return 1 if failed else 0
+
 async def collect(args):
     settings = Settings.from_env()
     db = Database(settings.database_url)
     candidate = None
     locked = False
-    failures = 0
+    results = []
     try:
         candidate = db.candidate(args.candidate)
         locked = db.lock(candidate.id)
@@ -40,14 +45,19 @@ async def collect(args):
                 result = await adapter.fetch(candidate,since,effective)
             except Exception as exc:
                 result = FetchResult(errors=[type(exc).__name__],cursor=config.cursor)
-            failures += bool(result.errors)
+            results.append(result)
             if args.dry_run:
                 log(source=config.source,status='dry_run',items_found=len(result.mentions),
                     feeds_ok=result.feeds_ok,errors=result.errors,skipped_entries=result.skipped_entries)
             else:
                 summary = db.save_result(candidate.id,config,result,started,since)
                 log(source=config.source,**summary)
-        return 1 if failures else 0
+        code = run_exit_code(results)
+        partial = [r for r in results if r.errors]
+        if code == 0 and partial:
+            log(level='warning',status='partial_failure',
+                sources_with_errors=len(partial),errors=[e for r in partial for e in r.errors])
+        return code
     finally:
         if locked: db.unlock(candidate.id)
         db.close()
