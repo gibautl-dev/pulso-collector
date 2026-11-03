@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pulso-collector"
+version = "0.2.0"
+description = "Recolector de escucha pública de Pulso"
+requires-python = ">=3.12"
+dependencies = [
+  "httpx>=0.27,<1", "feedparser>=6.0,<7", "tenacity>=9,<10",
+  "pydantic>=2.9,<3", "psycopg[binary]>=3.2,<4", "python-dotenv>=1.0,<2"
+]
+
+[tool.setuptools.packages.find]
+include = ["pulso*"]

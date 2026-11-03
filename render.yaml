@@ -1,0 +1,25 @@
+services:
+  - type: cron
+    name: pulso-rss
+    runtime: docker
+    schedule: "*/20 * * * *"
+    dockerfilePath: ./Dockerfile
+    autoDeployTrigger: "off"
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PGPASSWORD
+        sync: false
+      - key: PULSO_CANDIDATE
+        sync: false
+      - key: PULSO_URL_SECURITY_MODE
+        value: strict
+      - key: PULSO_URL_ALLOWED_HOSTS
+        value: ""
+      - key: PULSO_HTTP_TRUST_ENV
+        value: "false"
+      - key: PULSO_RUN_TIMEOUT_SECONDS
+        value: "900"
+      # Primera validación sin escritura. Cambiar a false después de revisar logs.
+      - key: PULSO_DRY_RUN
+        value: "true"
