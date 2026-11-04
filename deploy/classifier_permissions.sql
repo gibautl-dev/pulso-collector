@@ -15,9 +15,8 @@ begin
   end if;
 end;
 $$;
--- Reafirmar atributos si el rol ya existía.
-alter role pulso_classifier login nosuperuser nocreatedb nocreaterole
-  noinherit noreplication nobypassrls;
+-- Atributos fijados en CREATE ROLE. En Supabase el admin no es superusuario y no
+-- puede ejecutar ALTER ROLE ... NOSUPERUSER/NOREPLICATION; verificar con pg_roles.
 alter role pulso_classifier set statement_timeout = '30s';
 alter role pulso_classifier set lock_timeout = '5s';
 
