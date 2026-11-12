@@ -4,7 +4,7 @@ from uuid import UUID
 import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
-from .models import Candidate, SourceConfig, FetchResult
+from .models import Candidate, SourceConfig, FetchResult, result_status
 from .urls import normalize_url, url_hash
 
 class Database:
@@ -17,7 +17,7 @@ class Database:
         if not row: raise ValueError('Candidato inexistente')
         return Candidate.model_validate(row)
     def sources(self,candidate_id):
-        rows = self.connection.execute('''select candidate_id,source,enabled,interval_seconds,settings,cursor
+        rows = self.connection.execute('''select candidate_id,source,enabled,interval_seconds,settings,cursor,next_run_at
             from public.candidate_sources where candidate_id=%s order by source''',(candidate_id,)).fetchall()
         return [SourceConfig.model_validate(r) for r in rows]
     def lock(self,candidate_id):
@@ -28,7 +28,7 @@ class Database:
 
     def save_result(self,candidate_id,config,result: FetchResult,started_at,since):
         now = datetime.now(timezone.utc)
-        status = 'ok' if not result.errors else ('partial' if result.feeds_ok else 'error')
+        status = result_status(result)
         count = 0
         with self.connection.transaction():
             for mention in result.mentions:

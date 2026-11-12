@@ -1,0 +1,31 @@
+{
+  "kind": "youtube#videoListResponse",
+  "items": [
+    {
+      "id": "vidNew",
+      "snippet": {
+        "channelId": "UCnews",
+        "channelTitle": "Canal Noticias",
+        "defaultAudioLanguage": "es"
+      },
+      "statistics": {
+        "viewCount": "1500",
+        "likeCount": "80",
+        "commentCount": "12"
+      }
+    },
+    {
+      "id": "vidOldViews",
+      "snippet": {
+        "channelId": "UCown",
+        "channelTitle": "Canal Oficial",
+        "defaultLanguage": "es-419"
+      },
+      "statistics": {
+        "viewCount": "90000",
+        "likeCount": "4000",
+        "commentCount": "320"
+      }
+    }
+  ]
+}

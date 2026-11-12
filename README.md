@@ -1,7 +1,8 @@
 # Pulso — recolector, pasos 1 a 3
 
-Python 3.12+, PostgreSQL de Supabase y adaptadores RSS, Google News y Google
-Alerts. Las demás fuentes y la IA siguen apagadas y sin implementar.
+Python 3.12+, PostgreSQL de Supabase y adaptadores RSS, Google News, Google
+Alerts y YouTube (este último apagado hasta configurar la API key y habilitar
+la fila). Las demás fuentes siguen sin implementar.
 No incluye front, cron, clasificación, agrupación, vistas ni backfill multifuente.
 
 ## Probar contra Supabase real
@@ -33,7 +34,10 @@ No pegar secretos en chats, frontend, commits o logs.
 5. Google Alerts es opcional: crear alertas manualmente, seleccionar RSS, pegar
    las URLs en `candidates.alert_feeds` y habilitar `google_alerts` con las
    consultas comentadas al final de `setup_candidate.sql`.
-6. Ejecutar desde la carpeta raíz del proyecto:
+6. YouTube queda implementado pero apagado. Cuando haya `YOUTUBE_API_KEY` en el
+   servidor, aplicar `deploy/youtube_enable.sql` (no se corre solo) y redesplegar
+   el cron. Respeta un intervalo mínimo de 1 hora. Ver “Activar YouTube”.
+7. Ejecutar desde la carpeta raíz del proyecto:
 
 ```bash
 # Consulta real de Google News; no escribe menciones, cursores ni ejecuciones.
@@ -67,6 +71,28 @@ where c.slug='candidato-demo' order by r.started_at desc limit 20;
 Repetir con `--refresh` sobre feeds sin cambios debe dar `items_new=0`. Si entran
 noticias entre corridas, pueden aparecer nuevos legítimos.
 
+
+## Activar YouTube
+
+El adaptador usa YouTube Data API v3 (`search.list`, `videos.list` y, si
+`collect_comments` está en true, `commentThreads.list` de los videos nuevos con
+más vistas). No hace falta cambiar el schema ni los roles: la cuota se guarda
+en `candidate_sources.cursor`. Pasos, en este orden:
+
+1. Crear una API key de YouTube Data API v3 y cargarla como `YOUTUBE_API_KEY`
+   en el entorno del cron. Nunca commitear la clave.
+2. Desplegar una imagen que incluya el adaptador de YouTube.
+3. Ejecutar `deploy/youtube_enable.sql` en el SQL Editor (ajusta el slug si
+   hace falta). Eso prende la fila, deja el intervalo en al menos 3600 s y
+   carga techos seguros de cuota.
+
+Tope por defecto: 20 búsquedas por día por candidato y 3000 unidades (de un
+máximo gratuito de 10.000). Cada `search.list` cuesta 100; `videos.list` y
+`commentThreads.list` cuestan 1. Con una corrida por hora, el uso típico es
+unas 2120 unidades/día (20×100 de búsquedas, ~20 de `videos.list` y hasta
+100 de comentarios). Ante `quotaExceeded` hay backoff hasta el reset de
+cuota (medianoche en hora del Pacífico).
+
 ## Verificación
 
 ```bash
@@ -89,6 +115,7 @@ la generación del código. Las pruebas locales usan feeds de ejemplo simulados.
 - `sources/base.py`: interfaz async común.
 - `sources/rss_media.py`: RSS de medios y Google News, caché HTTP y reintentos.
 - `sources/google_alerts.py`: RSS configurado de Google Alerts.
+- `sources/youtube.py`: YouTube Data API v3, con tope de cuota en el cursor.
 - `collect_rss.py`: comando manual para probar pasos 2–3.
 
 ## Límites y decisiones

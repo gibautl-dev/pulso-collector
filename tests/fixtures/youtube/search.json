@@ -1,0 +1,28 @@
+{
+  "kind": "youtube#searchListResponse",
+  "pageInfo": {"totalResults": 2, "resultsPerPage": 2},
+  "items": [
+    {
+      "kind": "youtube#searchResult",
+      "id": {"kind": "youtube#video", "videoId": "vidNew"},
+      "snippet": {
+        "publishedAt": "2026-11-12T15:00:00Z",
+        "channelId": "UCnews",
+        "title": "Kicillof en Luján con el Papa",
+        "description": "El gobernador Axel Kicillof participó del acto.",
+        "channelTitle": "Canal Noticias"
+      }
+    },
+    {
+      "kind": "youtube#searchResult",
+      "id": {"kind": "youtube#video", "videoId": "vidOldViews"},
+      "snippet": {
+        "publishedAt": "2026-11-12T10:00:00Z",
+        "channelId": "UCown",
+        "title": "Conferencia de Axel Kicillof",
+        "description": "Declaraciones del gobernador.",
+        "channelTitle": "Canal Oficial"
+      }
+    }
+  ]
+}

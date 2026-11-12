@@ -13,6 +13,7 @@ class Settings:
     url_security_mode: str = "strict"  # strict, allowlist, off
     url_allowed_hosts: tuple[str, ...] = ()
     http_trust_env: bool = False
+    youtube_api_key: str | None = field(default=None, repr=False)
 
     def __post_init__(self):
         if self.url_security_mode not in {"strict", "allowlist", "off"}:
@@ -30,7 +31,9 @@ class Settings:
         trust = os.getenv("PULSO_HTTP_TRUST_ENV", "false").lower()
         if trust not in {"true", "false"}:
             raise ValueError("PULSO_HTTP_TRUST_ENV debe ser true o false")
+        key = os.getenv("YOUTUBE_API_KEY") or None
         return cls(database_url=value,
             url_security_mode=os.getenv("PULSO_URL_SECURITY_MODE", "strict"),
             url_allowed_hosts=tuple(h.strip().lower() for h in os.getenv("PULSO_URL_ALLOWED_HOSTS", "").split(",") if h.strip()),
-            http_trust_env=trust == "true")
+            http_trust_env=trust == "true",
+            youtube_api_key=key)

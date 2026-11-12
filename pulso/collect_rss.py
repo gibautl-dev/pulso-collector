@@ -7,16 +7,33 @@ import sys
 from datetime import datetime, timezone, timedelta
 from .config import Settings
 from .db import Database
-from .models import SourceName, FetchResult
+from .models import SourceName, SourceConfig, FetchResult
 from .sources.rss_media import RSSSource
 from .sources.google_alerts import GoogleAlertsSource
+from .sources.youtube import YouTubeSource
 
 def log(**values): print(json.dumps(values,ensure_ascii=False,default=str),flush=True)
 
 def run_exit_code(results):
-    """0 si todo OK o falla parcial (cada fuente con al menos un feed OK); 1 si alguna fuente falla entera."""
-    failed = [r for r in results if r.errors and r.feeds_ok == 0]
+    """0 si todo OK o falla parcial (cada fuente con al menos un feed OK); 1 si alguna fuente falla entera.
+    Una falla blanda (YouTube) no cambia el código de salida."""
+    failed = [r for r in results if r.errors and r.feeds_ok == 0 and not r.soft_failure]
     return 1 if failed else 0
+
+def due_for_run(config: SourceConfig, now, refresh=False):
+    """YouTube respeta interval_seconds / next_run_at aunque el cron sea más frecuente.
+    RSS y Google News no se filtran acá: next_run_at se calcula al cerrar la corrida
+    y un cron cada 20 minutos podría quedar unos segundos corto."""
+    if refresh or config.source != SourceName.YOUTUBE:
+        return True
+    return config.next_run_at is None or now >= config.next_run_at
+
+def adapter_for(source, settings):
+    if source == SourceName.ALERTS:
+        return GoogleAlertsSource(settings)
+    if source == SourceName.YOUTUBE:
+        return YouTubeSource(settings)
+    return RSSSource(source, settings)
 
 async def collect(args):
     settings = Settings.from_env()
@@ -36,11 +53,13 @@ async def collect(args):
             if not config.enabled:
                 log(source=config.source,status='skipped',reason='disabled'); continue
             started = datetime.now(timezone.utc)
+            if not due_for_run(config, started, args.refresh):
+                log(source=config.source,status='skipped',reason='interval'); continue
             since = started - timedelta(days=args.days)
             # Siempre se relee la ventana: no avanzar por la última fecha publicada,
             # ya que feeds pueden agregar noticias antiguas fuera de orden.
             effective = config.model_copy(update={'cursor':{}}) if args.refresh else config
-            adapter = GoogleAlertsSource(settings) if config.source == 'google_alerts' else RSSSource(SourceName(config.source),settings)
+            adapter = adapter_for(SourceName(config.source),settings)
             try:
                 result = await adapter.fetch(candidate,since,effective)
             except Exception as exc:

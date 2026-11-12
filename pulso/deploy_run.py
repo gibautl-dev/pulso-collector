@@ -21,7 +21,7 @@ def stop(child):
     except ProcessLookupError:
         child.wait()
 
-COLLECTOR_ONLY = ('DATABASE_URL', 'PGPASSWORD')
+COLLECTOR_ONLY = ('DATABASE_URL', 'PGPASSWORD', 'YOUTUBE_API_KEY')
 CLASSIFIER_ONLY = ('LLM_API_KEY', 'CLASSIFIER_DATABASE_URL', 'CLASSIFIER_PGPASSWORD')
 
 def child_env(drop):

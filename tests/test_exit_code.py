@@ -19,3 +19,6 @@ class ExitCodeTests(unittest.TestCase):
         self.assertEqual(run_exit_code([FetchResult(errors=['a']),FetchResult(errors=['b'])]),1)
     def test_no_sources(self):
         self.assertEqual(run_exit_code([]),0)
+    def test_soft_failure_does_not_fail(self):
+        self.assertEqual(run_exit_code([FetchResult(feeds_ok=1,feeds_total=1),
+                                        FetchResult(errors=['quotaExceeded'],soft_failure=True)]),0)

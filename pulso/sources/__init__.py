@@ -1,1 +1,1 @@
-"""Adaptadores RSS habilitados por configuración explícita."""
+"""Adaptadores de fuentes habilitados por configuración explícita."""

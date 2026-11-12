@@ -7,6 +7,7 @@ class SourceName(StrEnum):
     RSS = "rss_media"
     NEWS = "google_news"
     ALERTS = "google_alerts"
+    YOUTUBE = "youtube"
 
 class Candidate(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -26,6 +27,7 @@ class SourceConfig(BaseModel):
     interval_seconds: int = Field(ge=60)
     settings: dict = Field(default_factory=dict)
     cursor: dict = Field(default_factory=dict)
+    next_run_at: AwareDatetime | None = None
 
     @field_validator("settings")
     @classmethod
@@ -75,3 +77,13 @@ class FetchResult(BaseModel):
     feeds_ok: int = 0
     feeds_total: int = 0
     skipped_entries: int = 0
+    # YouTube no debe convertir el cron en error duro si RSS/News anduvieron.
+    soft_failure: bool = False
+
+
+def result_status(result: FetchResult) -> str:
+    if not result.errors:
+        return "ok"
+    if result.feeds_ok or result.soft_failure:
+        return "partial"
+    return "error"

@@ -1,0 +1,39 @@
+{
+  "kind": "youtube#commentThreadListResponse",
+  "items": [
+    {
+      "id": "thread1",
+      "snippet": {
+        "videoId": "vidOldViews",
+        "totalReplyCount": 2,
+        "topLevelComment": {
+          "id": "commentHit",
+          "snippet": {
+            "authorDisplayName": "@vecino",
+            "authorChannelId": {"value": "UCuser"},
+            "textDisplay": "Kicillof tiene que explicar el presupuesto",
+            "publishedAt": "2026-11-12T12:00:00Z",
+            "likeCount": 15
+          }
+        }
+      }
+    },
+    {
+      "id": "thread2",
+      "snippet": {
+        "videoId": "vidOldViews",
+        "totalReplyCount": 0,
+        "topLevelComment": {
+          "id": "commentMiss",
+          "snippet": {
+            "authorDisplayName": "@otro",
+            "authorChannelId": {"value": "UCother"},
+            "textDisplay": "Muy buen video, nada que ver con política",
+            "publishedAt": "2026-11-12T12:05:00Z",
+            "likeCount": 1
+          }
+        }
+      }
+    }
+  ]
+}
