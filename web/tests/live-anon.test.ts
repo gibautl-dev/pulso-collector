@@ -16,6 +16,7 @@ const live = process.env.PULSO_LIVE_TEST === "1" && url && key;
 const CID = "2c4f83ed-f2bd-4afe-89a3-fa6263cc5b7e";
 
 describe.skipIf(!live)("Supabase real, sin sesión", () => {
+  if (!live) return;
   const db = createClient(url!, key!, { auth: { persistSession: false } });
   const repo = SupabaseRepo.fromClient(db);
 
