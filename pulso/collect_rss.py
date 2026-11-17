@@ -11,20 +11,23 @@ from .models import SourceName, SourceConfig, FetchResult
 from .sources.rss_media import RSSSource
 from .sources.google_alerts import GoogleAlertsSource
 from .sources.youtube import YouTubeSource
+from .sources.x import XSource
 
 def log(**values): print(json.dumps(values,ensure_ascii=False,default=str),flush=True)
 
 def run_exit_code(results):
     """0 si todo OK o falla parcial (cada fuente con al menos un feed OK); 1 si alguna fuente falla entera.
-    Una falla blanda (YouTube) no cambia el código de salida."""
+    Una falla blanda (YouTube o X) no cambia el código de salida."""
     failed = [r for r in results if r.errors and r.feeds_ok == 0 and not r.soft_failure]
     return 1 if failed else 0
 
+INTERVAL_SOURCES = {SourceName.YOUTUBE, SourceName.X}
+
 def due_for_run(config: SourceConfig, now, refresh=False):
-    """YouTube respeta interval_seconds / next_run_at aunque el cron sea más frecuente.
+    """YouTube y X respetan interval_seconds / next_run_at aunque el cron sea más frecuente.
     RSS y Google News no se filtran acá: next_run_at se calcula al cerrar la corrida
     y un cron cada 20 minutos podría quedar unos segundos corto."""
-    if refresh or config.source != SourceName.YOUTUBE:
+    if refresh or config.source not in INTERVAL_SOURCES:
         return True
     return config.next_run_at is None or now >= config.next_run_at
 
@@ -33,6 +36,8 @@ def adapter_for(source, settings):
         return GoogleAlertsSource(settings)
     if source == SourceName.YOUTUBE:
         return YouTubeSource(settings)
+    if source == SourceName.X:
+        return XSource(settings)
     return RSSSource(source, settings)
 
 async def collect(args):

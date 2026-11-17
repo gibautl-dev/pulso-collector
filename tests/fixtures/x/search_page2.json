@@ -1,0 +1,62 @@
+{
+  "data": [
+    {
+      "id": "1999999999999999998",
+      "text": "Respuesta a Kicillof sobre el anuncio.",
+      "author_id": "1003",
+      "created_at": "2026-11-12T13:30:00.000Z",
+      "lang": "es",
+      "conversation_id": "2000000000000000000",
+      "in_reply_to_user_id": "1001",
+      "referenced_tweets": [
+        {
+          "type": "replied_to",
+          "id": "2000000000000000000"
+        }
+      ],
+      "public_metrics": {
+        "like_count": 2,
+        "retweet_count": 0,
+        "reply_count": 0,
+        "quote_count": 0,
+        "impression_count": 80
+      }
+    },
+    {
+      "id": "1999999999999999997",
+      "text": "Otro post que no debería guardarse si el tope es 3.",
+      "author_id": "1003",
+      "created_at": "2026-11-12T13:00:00.000Z",
+      "lang": "es",
+      "public_metrics": {
+        "like_count": 1,
+        "retweet_count": 0,
+        "reply_count": 0,
+        "quote_count": 0
+      }
+    }
+  ],
+  "includes": {
+    "users": [
+      {
+        "id": "1003",
+        "name": "Referente",
+        "username": "referenteok",
+        "created_at": "2018-06-01T00:00:00.000Z",
+        "verified": false,
+        "verified_type": "none",
+        "public_metrics": {
+          "followers_count": 800,
+          "following_count": 400,
+          "tweet_count": 3000,
+          "listed_count": 2
+        }
+      }
+    ]
+  },
+  "meta": {
+    "newest_id": "1999999999999999998",
+    "oldest_id": "1999999999999999997",
+    "result_count": 2
+  }
+}

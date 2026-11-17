@@ -8,6 +8,7 @@ class SourceName(StrEnum):
     NEWS = "google_news"
     ALERTS = "google_alerts"
     YOUTUBE = "youtube"
+    X = "x"
 
 class Candidate(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -19,6 +20,7 @@ class Candidate(BaseModel):
     alert_feeds: list[str] = Field(default_factory=list)
     own_accounts: dict = Field(default_factory=dict)
     reference_accounts: dict = Field(default_factory=dict)
+    x_daily_cap: int = Field(default=300, ge=0)
 
 class SourceConfig(BaseModel):
     candidate_id: UUID
@@ -77,7 +79,7 @@ class FetchResult(BaseModel):
     feeds_ok: int = 0
     feeds_total: int = 0
     skipped_entries: int = 0
-    # YouTube no debe convertir el cron en error duro si RSS/News anduvieron.
+    # YouTube y X no deben convertir el cron en error duro si RSS/News anduvieron.
     soft_failure: bool = False
 
 

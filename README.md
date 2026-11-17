@@ -1,8 +1,8 @@
 # Pulso — recolector, pasos 1 a 3
 
 Python 3.12+, PostgreSQL de Supabase y adaptadores RSS, Google News, Google
-Alerts y YouTube (este último apagado hasta configurar la API key y habilitar
-la fila). Las demás fuentes siguen sin implementar.
+Alerts, YouTube y X (estos dos últimos apagados hasta configurar la clave o el
+token y habilitar la fila). Las demás fuentes siguen sin implementar.
 No incluye front, cron, clasificación, agrupación, vistas ni backfill multifuente.
 
 ## Probar contra Supabase real
@@ -37,7 +37,10 @@ No pegar secretos en chats, frontend, commits o logs.
 6. YouTube queda implementado pero apagado. Cuando haya `YOUTUBE_API_KEY` en el
    servidor, aplicar `deploy/youtube_enable.sql` (no se corre solo) y redesplegar
    el cron. Respeta un intervalo mínimo de 1 hora. Ver “Activar YouTube”.
-7. Ejecutar desde la carpeta raíz del proyecto:
+7. X queda implementado pero apagado. Cuando haya `X_BEARER_TOKEN` en el
+   servidor, aplicar `deploy/x_enable.sql` (no se corre solo) y redesplegar
+   el cron. Respeta un intervalo de 1 hora. Ver “Activar X”.
+8. Ejecutar desde la carpeta raíz del proyecto:
 
 ```bash
 # Consulta real de Google News; no escribe menciones, cursores ni ejecuciones.
@@ -93,6 +96,26 @@ unas 2120 unidades/día (20×100 de búsquedas, ~20 de `videos.list` y hasta
 100 de comentarios). Ante `quotaExceeded` hay backoff hasta el reset de
 cuota (medianoche en hora del Pacífico).
 
+## Activar X
+
+El adaptador usa X API v2 `GET /2/tweets/search/recent` con un bearer token.
+No hace falta cambiar el schema ni los roles: `source_catalog` ya tiene la
+fila `x`, y la cuota se guarda en `candidate_sources.cursor`. Pasos, en este
+orden:
+
+1. Crear una app en la [consola de X](https://console.x.com), cargar créditos
+   de pago por uso y guardar el bearer token como `X_BEARER_TOKEN` en el
+   entorno del cron. Nunca commitear el token.
+2. Desplegar una imagen que incluya el adaptador de X.
+3. Ejecutar `deploy/x_enable.sql` en el SQL Editor (ajusta el slug si hace
+   falta). Eso prende la fila, deja el intervalo en al menos 3600 s y carga
+   techos de 300 posts por día, 10 pedidos por día y 25 posts por corrida.
+
+El precio oficial de lectura es USD 0.005 por post y USD 0.010 por usuario
+incluido en la expansión `author_id` ([pricing](https://docs.x.com/x-api/getting-started/pricing)).
+Las lecturas se deduplican dentro del día UTC. Ante un 429 o un token
+faltante la corrida queda `partial` y no cambia el código de salida del cron.
+
 ## Verificación
 
 ```bash
@@ -116,6 +139,7 @@ la generación del código. Las pruebas locales usan feeds de ejemplo simulados.
 - `sources/rss_media.py`: RSS de medios y Google News, caché HTTP y reintentos.
 - `sources/google_alerts.py`: RSS configurado de Google Alerts.
 - `sources/youtube.py`: YouTube Data API v3, con tope de cuota en el cursor.
+- `sources/x.py`: X API v2 recent search, con tope diario en el cursor.
 - `collect_rss.py`: comando manual para probar pasos 2–3.
 
 ## Límites y decisiones

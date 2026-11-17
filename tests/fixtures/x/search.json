@@ -1,0 +1,73 @@
+{
+  "data": [
+    {
+      "id": "2000000000000000002",
+      "text": "El gobernador Axel Kicillof encabezó un acto en La Plata.",
+      "author_id": "1002",
+      "created_at": "2026-11-12T15:00:00.000Z",
+      "lang": "es",
+      "conversation_id": "2000000000000000002",
+      "public_metrics": {
+        "like_count": 40,
+        "retweet_count": 12,
+        "reply_count": 5,
+        "quote_count": 2,
+        "impression_count": 9000,
+        "bookmark_count": 3
+      }
+    },
+    {
+      "id": "2000000000000000001",
+      "text": "Recorrimos obras en la provincia.",
+      "author_id": "1001",
+      "created_at": "2026-11-12T14:00:00.000Z",
+      "lang": "es",
+      "conversation_id": "2000000000000000001",
+      "public_metrics": {
+        "like_count": 10,
+        "retweet_count": 4,
+        "reply_count": 1,
+        "quote_count": 0,
+        "impression_count": 1500
+      }
+    }
+  ],
+  "includes": {
+    "users": [
+      {
+        "id": "1002",
+        "name": "Medio Ejemplo",
+        "username": "medioejemplo",
+        "created_at": "2012-03-01T00:00:00.000Z",
+        "verified": true,
+        "verified_type": "blue",
+        "public_metrics": {
+          "followers_count": 50000,
+          "following_count": 200,
+          "tweet_count": 80000,
+          "listed_count": 40
+        }
+      },
+      {
+        "id": "1001",
+        "name": "Axel Kicillof",
+        "username": "Kicillofok",
+        "created_at": "2010-01-15T00:00:00.000Z",
+        "verified": true,
+        "verified_type": "government",
+        "public_metrics": {
+          "followers_count": 2000000,
+          "following_count": 100,
+          "tweet_count": 12000,
+          "listed_count": 800
+        }
+      }
+    ]
+  },
+  "meta": {
+    "newest_id": "2000000000000000002",
+    "oldest_id": "2000000000000000001",
+    "result_count": 2,
+    "next_token": "next-page-token"
+  }
+}
