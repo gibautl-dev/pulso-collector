@@ -8,7 +8,11 @@ class Settings:
     database_url: str = field(repr=False)
     timeout_seconds: float = 20
     max_feed_bytes: int = 5_000_000
-    user_agent: str = "PulsoCollector/0.2 (+RSS monitoring)"
+    # UA de navegador: Cloudflare 403 a cualquier cadena que incluya "PulsoCollector".
+    user_agent: str = (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    )
 
     url_security_mode: str = "strict"  # strict, allowlist, off
     url_allowed_hosts: tuple[str, ...] = ()
@@ -32,8 +36,10 @@ class Settings:
         if trust not in {"true", "false"}:
             raise ValueError("PULSO_HTTP_TRUST_ENV debe ser true o false")
         key = os.getenv("YOUTUBE_API_KEY") or None
+        user_agent = os.getenv("PULSO_USER_AGENT") or None
         return cls(database_url=value,
             url_security_mode=os.getenv("PULSO_URL_SECURITY_MODE", "strict"),
             url_allowed_hosts=tuple(h.strip().lower() for h in os.getenv("PULSO_URL_ALLOWED_HOSTS", "").split(",") if h.strip()),
             http_trust_env=trust == "true",
-            youtube_api_key=key)
+            youtube_api_key=key,
+            **({"user_agent": user_agent} if user_agent else {}))

@@ -1,5 +1,7 @@
 import asyncio
 import calendar
+import json
+import random
 import re
 import unicodedata
 from datetime import datetime, timezone
@@ -9,7 +11,7 @@ from html.parser import HTMLParser
 from urllib.parse import urlencode, urljoin, urlsplit
 import feedparser
 import httpx
-from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_combine, wait_exponential, wait_random
 from .base import Source
 from ..config import Settings
 from ..models import Candidate, FetchResult, Mention, SourceConfig, SourceName
@@ -42,12 +44,96 @@ def account_relation(link, config):
                 return relation
     return "third_party"
 
-class Retryable(Exception): pass
+DEFAULT_ACCEPT = (
+    "application/rss+xml, application/atom+xml, application/xml;q=0.9, "
+    "text/xml;q=0.8, */*;q=0.5"
+)
+DEFAULT_ACCEPT_LANGUAGE = "es-AR,es;q=0.9,en;q=0.8"
+ALERT_HOSTS = {"google.com", "www.google.com", "google.com.ar", "www.google.com.ar"}
+
+
+class Retryable(Exception):
+    def __init__(self, reason, status=None, url=None):
+        self.reason = reason
+        self.status = status
+        self.url = url
+        super().__init__(reason)
+
+
+def client_headers(settings, user_agent=None):
+    return {
+        "User-Agent": user_agent or settings.user_agent,
+        "Accept": DEFAULT_ACCEPT,
+        "Accept-Language": DEFAULT_ACCEPT_LANGUAGE,
+    }
+
+
+def feed_user_agent(settings, config, url):
+    overrides = (config.settings or {}).get("feed_user_agents") or {}
+    if isinstance(overrides, dict):
+        value = overrides.get(url)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return settings.user_agent
+
+
+def safe_request_target(url):
+    """Host + path, sin query ni credenciales. En Google Alerts se omite el path con tokens."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return ""
+    host = (parts.hostname or "").lower()
+    path = parts.path or ""
+    if host in ALERT_HOSTS and "/alerts/feeds/" in path:
+        return f"{host}/alerts/feeds"
+    return f"{host}{path}"
+
+
+def retry_after_seconds(response, default=2.0, cap=20.0):
+    raw = response.headers.get("retry-after", "")
+    delay = default
+    if raw.strip():
+        try:
+            delay = float(raw)
+        except ValueError:
+            try:
+                delay = (parsedate_to_datetime(raw) - datetime.now(timezone.utc)).total_seconds()
+            except (ValueError, TypeError):
+                delay = default
+    delay = max(0.0, min(cap, delay))
+    return min(cap, delay + random.uniform(0, 0.5))
+
+
+def format_feed_error(index, exc, url):
+    target = safe_request_target(getattr(exc, "url", None) or url)
+    status = getattr(exc, "status", None)
+    if status is None and isinstance(exc, httpx.HTTPStatusError):
+        status = exc.response.status_code
+        target = safe_request_target(str(exc.request.url) if exc.request is not None else url)
+    typ = type(exc).__name__
+    reason = getattr(exc, "reason", None)
+    if typ == "Retryable" and reason in {"rate_limited", "upstream_5xx"}:
+        extra = reason
+    else:
+        extra = None
+    parts = [f"feed_{index}: {typ}"]
+    if status is not None:
+        parts.append(str(status))
+    if extra:
+        parts.append(extra)
+    if target:
+        parts.append(target)
+    return " ".join(parts)
+
 
 async def request_feed(client, url, settings, headers, *, return_final=False, data=None):
     # No se siguen redirects sin validar cada destino; máximo cinco saltos.
-    async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=2,max=8),
-            retry=retry_if_exception_type((httpx.TimeoutException,httpx.NetworkError,Retryable)), reraise=True):
+    async for attempt in AsyncRetrying(
+            stop=stop_after_attempt(3),
+            wait=wait_combine(wait_exponential(multiplier=2, max=8), wait_random(0, 1)),
+            retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError, Retryable)),
+            reraise=True):
         with attempt:
             current = url
             for _ in range(6):
@@ -57,17 +143,10 @@ async def request_feed(client, url, settings, headers, *, return_final=False, da
                         current = urljoin(current,response.headers["location"])
                         continue
                     if response.status_code == 429:
-                        raw = response.headers.get("retry-after", "")
-                        try:
-                            delay = float(raw)
-                        except ValueError:
-                            try: delay = (parsedate_to_datetime(raw)-datetime.now(timezone.utc)).total_seconds()
-                            except (ValueError,TypeError): delay = 61
-                        if not 0 <= delay <= 60:
-                            raise ValueError("rate_limited")
-                        await asyncio.sleep(delay)
-                        raise Retryable("rate_limited")
-                    if response.status_code >= 500: raise Retryable("upstream_5xx")
+                        await asyncio.sleep(retry_after_seconds(response))
+                        raise Retryable("rate_limited", status=429, url=current)
+                    if response.status_code >= 500:
+                        raise Retryable("upstream_5xx", status=response.status_code, url=current)
                     if response.status_code == 304: return None, dict(response.headers)
                     response.raise_for_status()
                     chunks = []; size = 0
@@ -98,14 +177,17 @@ class RSSSource(Source):
             result.errors.append("no_feeds_configured")
             return result
         async with httpx.AsyncClient(timeout=self.settings.timeout_seconds,follow_redirects=False,
-                trust_env=self.settings.http_trust_env,headers={"User-Agent":self.settings.user_agent}) as client:
+                trust_env=self.settings.http_trust_env,headers=client_headers(self.settings)) as client:
             for index,url in enumerate(feeds):
-                # Errores solo con índice: Google Alerts puede incluir tokens en su URL.
+                # Errores sin query ni tokens de Alerts: solo índice, status y host/path.
                 try:
                     old = states.get(url,{})
                     headers = {}
                     if old.get("etag"): headers["If-None-Match"] = old["etag"]
                     if old.get("modified"): headers["If-Modified-Since"] = old["modified"]
+                    ua = feed_user_agent(self.settings, config, url)
+                    if ua != self.settings.user_agent:
+                        headers["User-Agent"] = ua
                     data, response_headers = await request_feed(client,url,self.settings,headers)
                     if data is not None:
                         parsed = feedparser.parse(data)
@@ -150,6 +232,11 @@ class RSSSource(Source):
                             states.pop(url,None)
                     result.feeds_ok += 1
                 except Exception as exc:
-                    result.errors.append(f"feed_{index}: {type(exc).__name__}")
+                    message = format_feed_error(index, exc, url)
+                    result.errors.append(message)
+                    print(json.dumps({"event":"feed_error","source":self.name.value,
+                                      "error":message}, ensure_ascii=False), flush=True)
+                    if self.name == SourceName.NEWS:
+                        result.soft_failure = True
         result.cursor = {"feeds":states}
         return result
