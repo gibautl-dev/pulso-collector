@@ -8,11 +8,7 @@ class Settings:
     database_url: str = field(repr=False)
     timeout_seconds: float = 20
     max_feed_bytes: int = 5_000_000
-    # UA de navegador: Cloudflare 403 a cualquier cadena que incluya "PulsoCollector".
-    user_agent: str = (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/131.0.0.0 Safari/537.36"
-    )
+    user_agent: str = "PulsoCollector/0.3 (+https://pulso-web-re4x.onrender.com)"
 
     url_security_mode: str = "strict"  # strict, allowlist, off
     url_allowed_hosts: tuple[str, ...] = ()

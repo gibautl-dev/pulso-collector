@@ -110,7 +110,10 @@ class ErrorFormatTests(unittest.TestCase):
         headers = client_headers(settings)
         self.assertIn("text/xml", headers["Accept"])
         self.assertIn("es-AR", headers["Accept-Language"])
-        self.assertNotIn("PulsoCollector", settings.user_agent)
+        self.assertEqual(settings.user_agent,
+                         "PulsoCollector/0.3 (+https://pulso-web-re4x.onrender.com)")
+        self.assertNotIn("Chrome/", settings.user_agent)
+        self.assertNotIn("Mozilla/5.0", settings.user_agent)
         cfg = SourceConfig(candidate_id=uuid4(), source="rss_media", enabled=True, interval_seconds=1200,
                            settings={"feed_user_agents": {"https://example.com/rss": "CustomUA/1.0"}})
         self.assertEqual(feed_user_agent(settings, cfg, "https://example.com/rss"), "CustomUA/1.0")
