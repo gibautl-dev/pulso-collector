@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { RELEVANCE_BADGE, RELEVANCE_LABEL, RUN_STATUS_BADGE, RUN_STATUS_LABEL, TONE_BADGE, TONE_LABEL } from "@/lib/labels";
+import { RELEVANCE_BADGE, RELEVANCE_LABEL, RUN_STATUS_BADGE, RUN_STATUS_LABEL, SOURCE_BADGE, SOURCE_BADGE_DEFAULT, sourceLabel, TONE_BADGE, TONE_LABEL } from "@/lib/labels";
 import type { Relevance, RunStatus, Tone } from "@/lib/types";
 
 export function Card({ title, subtitle, children, className = "", action }: {
@@ -41,6 +41,10 @@ export function ToneBadge({ tone }: { tone: Tone | null }) {
 export function RelevanceBadge({ relevance }: { relevance: Relevance | null }) {
   if (!relevance) return null;
   return <Badge className={RELEVANCE_BADGE[relevance]}>Relevancia {RELEVANCE_LABEL[relevance].toLowerCase()}</Badge>;
+}
+
+export function SourceBadge({ source }: { source: string }) {
+  return <Badge className={SOURCE_BADGE[source] ?? SOURCE_BADGE_DEFAULT}>{sourceLabel(source)}</Badge>;
 }
 
 export function RunStatusBadge({ status }: { status: RunStatus }) {

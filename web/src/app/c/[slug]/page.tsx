@@ -4,8 +4,9 @@ import { MentionRow } from "@/components/mention-row";
 import { VolumeChart } from "@/components/volume-chart";
 import { computeDashboard } from "@/lib/analytics";
 import { loadCandidate } from "@/lib/context";
-import { NEGATIVE_TONES, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
+import { NEGATIVE_TONES, SOURCE_BAR, SOURCE_BAR_DEFAULT, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
 import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { formatCount, youtubeThumbnailUrl, youtubeVideoId } from "@/lib/youtube";
 
 export const metadata = { title: "Tablero · Pulso" };
 const PERIODS = [7, 14, 30];
@@ -33,6 +34,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const maxTopic = Math.max(1, ...d.topTopics.map((t) => t.count));
   const maxOutlet = Math.max(1, ...d.topOutlets.map((o) => o.count));
   const maxTone = Math.max(1, ...d.toneAboutCandidate.map((t) => t.count));
+  const maxSource = Math.max(1, ...d.bySource.map((s) => s.count));
 
   return (
     <>
@@ -81,6 +83,73 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
             objetivo poco claro.
           </p>
         </Card>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+        <Card title="Menciones por fuente" subtitle="Todas las menciones de terceros del período.">
+          {d.bySource.length === 0 ? (
+            <EmptyState>Sin menciones en el período.</EmptyState>
+          ) : (
+            <div className="space-y-3">
+              {d.bySource.map((s) => (
+                <HBar
+                  key={s.source}
+                  label={
+                    <Link href={`/c/${slug}/menciones?source=${s.source}`} className="hover:text-indigo-700">
+                      {sourceLabel(s.source)}
+                    </Link>
+                  }
+                  value={s.count}
+                  max={maxSource}
+                  barClass={SOURCE_BAR[s.source] ?? SOURCE_BAR_DEFAULT}
+                  extra={s.negative > 0 ? <span className="ml-1.5 text-xs text-rose-600">({s.negative} neg.)</span> : null}
+                />
+              ))}
+            </div>
+          )}
+        </Card>
+        {d.topYoutubeVideos.length > 0 && (
+          <Card
+            title="Videos más vistos"
+            subtitle="YouTube, ordenados por cantidad de vistas al recolectarlos."
+            className="lg:col-span-2"
+            action={
+              <Link href={`/c/${slug}/menciones?source=youtube`} className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
+                Ver YouTube →
+              </Link>
+            }
+          >
+            <ul className="divide-y divide-slate-100">
+              {d.topYoutubeVideos.map(({ mention: m, views }) => {
+                const videoId = youtubeVideoId(m);
+                const thumb = videoId ? youtubeThumbnailUrl(videoId) : null;
+                return (
+                  <li key={m.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                    {thumb && (
+                      <Link href={`/c/${slug}/menciones/${m.id}`} className="shrink-0 overflow-hidden rounded-md bg-slate-200">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={thumb} alt="" width={96} height={54} className="h-[54px] w-[96px] object-cover" />
+                      </Link>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <Link href={`/c/${slug}/menciones/${m.id}`} className="block truncate text-sm font-medium text-slate-900 hover:text-indigo-700">
+                        {m.title ?? "(sin título)"}
+                      </Link>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {m.author ?? m.outlet ?? "YouTube"}
+                        {m.author && m.outlet && m.author !== m.outlet ? ` · ${m.outlet}` : ""}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-semibold tabular-nums text-slate-900">{formatCount(views)}</p>
+                      <p className="text-[11px] text-slate-500">vistas</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        )}
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">

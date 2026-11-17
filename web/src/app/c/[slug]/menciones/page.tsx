@@ -3,7 +3,7 @@ import { Card, EmptyState, PageHeader } from "@/components/ui";
 import { MentionRow } from "@/components/mention-row";
 import { loadCandidate } from "@/lib/context";
 import { filtersToSearch, hasActiveFilters, PAGE_SIZE, parseFilters } from "@/lib/filters";
-import { RELEVANCE, RELEVANCE_LABEL, sourceLabel, TARGET_LABEL, TONES, TONE_LABEL } from "@/lib/labels";
+import { PRIMARY_SOURCES, RELEVANCE, RELEVANCE_LABEL, sourceLabel, TARGET_LABEL, TONES, TONE_LABEL } from "@/lib/labels";
 
 export const metadata = { title: "Menciones · Pulso" };
 
@@ -29,7 +29,9 @@ export default async function MentionsPage({ params, searchParams }: PageProps<"
     repo.searchMentions(candidate.id, f, PAGE_SIZE),
   ]);
   const topicLabel = new Map(topics.map((t) => [t.id, t.label]));
-  const sourceOptions = sources.filter((s) => s.enabled).map((s) => s.source);
+  const sourceOptions = Array.from(
+    new Set([...PRIMARY_SOURCES, ...sources.filter((s) => s.enabled).map((s) => s.source)]),
+  );
   const pages = Math.max(1, Math.ceil(page.total / PAGE_SIZE));
   const base = `/c/${slug}/menciones`;
 

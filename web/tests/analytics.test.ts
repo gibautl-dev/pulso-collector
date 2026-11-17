@@ -58,6 +58,58 @@ describe("computeDashboard", () => {
     expect(d.topTopics[0]).toMatchObject({ label: "interna peronista", count: 2, negative: 2 });
     expect(d.topOutlets[0]).toMatchObject({ outlet: "Medio", count: 4 });
   });
+  it("desglose por fuente (todas google_news en este set)", () => {
+    expect(d.bySource).toEqual([{ source: "google_news", count: 5, negative: 2 }]);
+    expect(d.topYoutubeVideos).toEqual([]);
+  });
+});
+
+describe("computeDashboard YouTube", () => {
+  it("separa fuentes y ordena videos por vistas, sin contar comentarios", () => {
+    const ms = [
+      mention({
+        source: "youtube",
+        title: "Video menos visto",
+        url: "https://www.youtube.com/watch?v=aaaaaaaaaaa",
+        author: "Canal A",
+        outlet: "YouTube",
+        metrics: { view_count: 100, like_count: 1, comment_count: 0 },
+        published_at: "2026-11-03T12:00:00Z",
+      }),
+      mention({
+        source: "youtube",
+        title: "Video más visto",
+        url: "https://www.youtube.com/watch?v=bbbbbbbbbbb",
+        author: "Canal B",
+        outlet: "YouTube",
+        metrics: { view_count: 50000, like_count: 800, comment_count: 40 },
+        published_at: "2026-11-03T13:00:00Z",
+      }),
+      mention({
+        source: "youtube",
+        title: "Un comentario",
+        url: "https://www.youtube.com/watch?v=bbbbbbbbbbb&lc=Ugx1",
+        author: "Usuario",
+        outlet: "YouTube",
+        metrics: { video_id: "bbbbbbbbbbb", like_count: 2, reply_count: 0 },
+        published_at: "2026-11-03T14:00:00Z",
+      }),
+      mention({
+        source: "rss_media",
+        outlet: "Página 12",
+        published_at: "2026-11-03T15:00:00Z",
+      }),
+    ];
+    const d = computeDashboard(ms, topics, { days: 7, now: NOW });
+    expect(d.bySource).toEqual([
+      { source: "youtube", count: 3, negative: 0 },
+      { source: "rss_media", count: 1, negative: 0 },
+    ]);
+    expect(d.topYoutubeVideos.map((v) => [v.mention.title, v.views])).toEqual([
+      ["Video más visto", 50000],
+      ["Video menos visto", 100],
+    ]);
+  });
 });
 
 describe("dayRange", () => {

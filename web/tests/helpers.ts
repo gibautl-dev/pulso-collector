@@ -24,6 +24,7 @@ export function mention(over: Partial<Mention> = {}): Mention {
     classified_at: "2026-11-03T15:20:00+00:00",
     classification_model: "gpt-6-luna",
     classification_prompt_version: "auto-v1",
+    metrics: null,
     ...over,
   };
 }

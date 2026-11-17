@@ -9,9 +9,9 @@ import type { MentionPage, PulsoRepo } from "./repo";
 // Columnas explícitas: nunca pedimos settings/cursor de candidate_sources
 // (pueden contener URLs privadas) ni nada que la app no muestre.
 const MENTION_COLS =
-  "id,candidate_id,source,url,title,content,author,outlet,published_at,collected_at,account_relation,tone,tone_reason,tone_confidence,target,topic_id,relevance,classified_at,classification_model,classification_prompt_version";
+  "id,candidate_id,source,url,title,content,author,outlet,published_at,collected_at,account_relation,tone,tone_reason,tone_confidence,target,topic_id,relevance,classified_at,classification_model,classification_prompt_version,metrics";
 const MENTION_LIST_COLS =
-  "id,candidate_id,source,url,title,outlet,published_at,collected_at,account_relation,tone,tone_confidence,target,topic_id,relevance,classified_at,content,author,tone_reason,classification_model,classification_prompt_version";
+  "id,candidate_id,source,url,title,outlet,published_at,collected_at,account_relation,tone,tone_confidence,target,topic_id,relevance,classified_at,content,author,tone_reason,classification_model,classification_prompt_version,metrics";
 const SOURCE_COLS =
   "candidate_id,source,enabled,interval_seconds,last_attempt_at,last_success_at,collection_started_at,earliest_observed_at,latest_observed_at,coverage_status";
 const RUN_COLS = "id,candidate_id,source,run_kind,started_at,finished_at,status,items_found,items_new,error";

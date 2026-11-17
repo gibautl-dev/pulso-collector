@@ -24,6 +24,10 @@ await page.goto(`${fixture}/c/${slug}/menciones?tone=negativas&target=candidate&
 const href = await page.locator('ul a[href*="/menciones/"]').first().getAttribute("href");
 await shot(`${fixture}${href}`, "05-detalle-mencion.png");
 await shot(`${fixture}/c/${slug}/fuentes`, "06-salud-fuentes.png");
+await shot(`${fixture}/c/${slug}/menciones?source=youtube`, "08-menciones-youtube.png");
+await page.goto(`${fixture}/c/${slug}/menciones?source=youtube`, { waitUntil: "networkidle" });
+const ytHref = await page.locator('ul a[href*="/menciones/"]').first().getAttribute("href");
+if (ytHref) await shot(`${fixture}${ytHref}`, "09-detalle-youtube.png");
 const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "es-AR" });
 const mp = await mobile.newPage();
 await mp.goto(`${fixture}/c/${slug}`, { waitUntil: "networkidle" });

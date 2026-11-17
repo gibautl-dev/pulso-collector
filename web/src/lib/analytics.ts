@@ -1,6 +1,7 @@
 import { NEGATIVE_TONES, TONES } from "./labels";
 import type { Mention, Relevance, Tone, Topic } from "./types";
 import { dayKey } from "./time";
+import { isYoutubeComment, metricNumber } from "./youtube";
 
 export type ToneBucket = "positivo" | "neutral" | "negativo" | "pendiente";
 
@@ -30,6 +31,10 @@ export interface DashboardData {
   volume: DayVolume[];
   topTopics: { topicId: string | null; label: string; count: number; negative: number }[];
   topOutlets: { outlet: string; count: number; negative: number }[];
+  /** Desglose por fuente de recolección (incluye YouTube). */
+  bySource: { source: string; count: number; negative: number }[];
+  /** Videos de YouTube del período, ordenados por vistas. */
+  topYoutubeVideos: { mention: Mention; views: number }[];
   highlights: Mention[];
 }
 
@@ -76,6 +81,8 @@ export function computeDashboard(
   const toneCount = new Map<Tone, number>(TONES.map((t) => [t, 0]));
   const topicMap = new Map<string, { topicId: string | null; label: string; count: number; negative: number }>();
   const outletMap = new Map<string, { outlet: string; count: number; negative: number }>();
+  const sourceMap = new Map<string, { source: string; count: number; negative: number }>();
+  const youtubeVideos: { mention: Mention; views: number }[] = [];
 
   let last24h = 0;
   let aboutCandidate = 0;
@@ -121,6 +128,16 @@ export function computeDashboard(
     o.count++;
     if (b === "negativo") o.negative++;
     outletMap.set(outlet, o);
+
+    const s = sourceMap.get(m.source) ?? { source: m.source, count: 0, negative: 0 };
+    s.count++;
+    if (b === "negativo") s.negative++;
+    sourceMap.set(m.source, s);
+
+    if (m.source === "youtube" && !isYoutubeComment(m)) {
+      const views = metricNumber(m.metrics, "view_count") ?? 0;
+      youtubeVideos.push({ mention: m, views });
+    }
   }
 
   const highlights = mentions
@@ -152,6 +169,8 @@ export function computeDashboard(
     volume: days.map((d) => volMap.get(d)!),
     topTopics: [...topicMap.values()].sort((a, b) => b.count - a.count).slice(0, 8),
     topOutlets: [...outletMap.values()].sort((a, b) => b.count - a.count).slice(0, 8),
+    bySource: [...sourceMap.values()].sort((a, b) => b.count - a.count),
+    topYoutubeVideos: youtubeVideos.sort((a, b) => b.views - a.views || b.mention.published_at.localeCompare(a.mention.published_at)).slice(0, 5),
     highlights,
   };
 }

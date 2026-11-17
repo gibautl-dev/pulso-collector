@@ -74,6 +74,28 @@ export function sourceLabel(source: string): string {
   return SOURCE_LABELS[source] ?? source;
 }
 
+/** Clases Tailwind por fuente (badge). */
+export const SOURCE_BADGE: Record<string, string> = {
+  google_news: "bg-sky-50 text-sky-800 ring-sky-600/20",
+  rss_media: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  google_alerts: "bg-teal-50 text-teal-800 ring-teal-600/20",
+  youtube: "bg-red-50 text-red-800 ring-red-600/20",
+};
+export const SOURCE_BADGE_DEFAULT = "bg-slate-100 text-slate-700 ring-slate-500/20";
+
+/** Color de barra por fuente (tablero). */
+export const SOURCE_BAR: Record<string, string> = {
+  google_news: "bg-sky-500",
+  rss_media: "bg-amber-500",
+  google_alerts: "bg-teal-500",
+  youtube: "bg-red-500",
+};
+export const SOURCE_BAR_DEFAULT = "bg-slate-400";
+
+/** Fuentes de producto que siempre aparecen en el filtro, aunque no estén habilitadas. */
+export const PRIMARY_SOURCES = ["google_news", "rss_media", "youtube"] as const;
+
+
 export const RUN_STATUS_LABEL: Record<RunStatus, string> = {
   running: "En curso",
   ok: "OK",

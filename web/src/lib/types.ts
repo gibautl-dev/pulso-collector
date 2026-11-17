@@ -42,6 +42,8 @@ export interface Mention {
   classified_at: string | null;
   classification_model: string | null;
   classification_prompt_version: string | null;
+  /** Métricas de la fuente (p. ej. vistas/likes de YouTube). jsonb, puede ser null. */
+  metrics: Record<string, unknown> | null;
 }
 
 export interface SourceRun {
