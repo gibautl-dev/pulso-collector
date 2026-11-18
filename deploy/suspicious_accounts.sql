@@ -149,12 +149,17 @@ create policy suspicious_accounts_member_update_status
 create or replace function public.suspicious_accounts_guard_web_update()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if tg_op <> 'UPDATE' then
     return new;
   end if;
-  -- El recolector (rol de servicio, sin JWT) puede actualizar puntaje y evidencia.
+  -- El recolector no tiene USAGE sobre schema auth; no llamar auth.uid().
+  -- Sesión de servicio, sin JWT: puede actualizar puntaje y evidencia.
+  if current_user = 'pulso_collector' then
+    return new;
+  end if;
   if auth.uid() is null then
     return new;
   end if;

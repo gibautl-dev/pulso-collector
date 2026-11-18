@@ -72,6 +72,21 @@ solo sobre `status`, `status_note`, `status_updated_at` y `status_updated_by`,
 y un trigger rechaza cambios a puntaje, señales u otras columnas. `anon` no
 ve nada. El recolector escribe puntaje y evidencia y no pisa el estado humano.
 
+
+## Parche propuesto (no aplicado): trigger y pulso_collector
+
+En pulso-demo, el 18 de noviembre de 2026, el upsert del detector falló con
+`42501 permission denied for schema auth` al tomar el camino
+`ON CONFLICT DO UPDATE`. El trigger `suspicious_accounts_guard_web_update`
+(BEFORE UPDATE, SECURITY INVOKER) llama `auth.uid()` y `pulso_collector` no
+tiene USAGE sobre el schema `auth`. Los grants de tabla del recolector están
+bien; `tighten_grants` no los tocó.
+
+El arreglo mínimo está en `deploy/suspicious_accounts_guard_collector.sql`,
+con rollback en `deploy/suspicious_accounts_guard_collector_rollback.sql`.
+No otorga USAGE sobre `auth` ni cambia grants. **No está aplicado** en
+producción: hay que revisarlo y aprobarlo antes.
+
 ## Limitaciones
 
 - YouTube: los comentarios no traen fecha de creación del canal, seguidores,
