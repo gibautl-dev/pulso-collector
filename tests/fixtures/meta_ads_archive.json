@@ -1,0 +1,65 @@
+{
+  "note": "Respuesta simulada para tests. No es un anuncio real ni un dry-run de la API.",
+  "data": [
+    {
+      "id": "111111111111111",
+      "page_id": "222222222222222",
+      "page_name": "Ejemplo Página",
+      "bylines": "Ejemplo Fideicomiso",
+      "publisher_platforms": [
+        "facebook",
+        "instagram"
+      ],
+      "currency": "ARS",
+      "spend": {
+        "lower_bound": "100",
+        "upper_bound": "499"
+      },
+      "impressions": {
+        "lower_bound": "1000",
+        "upper_bound": "4999"
+      },
+      "estimated_audience_size": {
+        "lower_bound": "10000",
+        "upper_bound": "49999"
+      },
+      "demographic_distribution": [
+        {
+          "age": "25-34",
+          "gender": "male",
+          "percentage": "0.40"
+        },
+        {
+          "age": "25-34",
+          "gender": "female",
+          "percentage": "0.35"
+        }
+      ],
+      "delivery_by_region": [
+        {
+          "region": "Buenos Aires",
+          "percentage": "0.55"
+        },
+        {
+          "region": "CABA",
+          "percentage": "0.20"
+        }
+      ],
+      "languages": [
+        "es"
+      ],
+      "ad_creative_bodies": [
+        "Texto simulado sobre el candidato."
+      ],
+      "ad_creative_link_titles": [
+        "Título simulado"
+      ],
+      "ad_creative_link_captions": [],
+      "ad_creative_link_descriptions": [],
+      "ad_snapshot_url": "https://www.facebook.com/ads/library/?id=111111111111111",
+      "ad_creation_time": "2026-11-01T12:00:00+0000",
+      "ad_delivery_start_time": "2026-11-02T00:00:00+0000",
+      "ad_delivery_stop_time": null
+    }
+  ]
+}
