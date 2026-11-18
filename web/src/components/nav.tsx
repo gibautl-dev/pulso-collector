@@ -8,6 +8,7 @@ const ICONS: Record<string, string> = {
   menciones: "M4 6h16M4 12h16M4 18h10",
   fuentes: "M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2l2.8 2.8M5.6 18.4l2.8-2.8m7.2-7.2l2.8-2.8",
   sospechosas: "M12 3l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z",
+  ia: "M12 3a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5V13h-4v-2.5C8.8 9.8 8 8.5 8 7a4 4 0 0 1 4-4zM8 16h8v2H8z",
 };
 
 export function Nav({ slug }: { slug: string }) {
@@ -18,6 +19,7 @@ export function Nav({ slug }: { slug: string }) {
     { href: `${base}/menciones`, label: "Menciones", icon: "menciones", active: pathname.startsWith(`${base}/menciones`) },
     { href: `${base}/fuentes`, label: "Salud de fuentes", icon: "fuentes", active: pathname.startsWith(`${base}/fuentes`) },
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },
+    { href: `${base}/ia`, label: "En la IA", icon: "ia", active: pathname.startsWith(`${base}/ia`) },
   ];
   return (
     <nav className="flex gap-1 lg:flex-col">

@@ -129,3 +129,45 @@ export function isSuspiciousStatus(value: string): value is SuspiciousStatus {
 export function isSuspiciousPlatform(value: string): value is SuspiciousPlatform {
   return value === "x" || value === "youtube";
 }
+
+
+export interface AiCitation {
+  url: string;
+  title: string | null;
+  domain: string | null;
+  source?: string | null;
+  kept: boolean;
+  filter_reason?: string | null;
+}
+
+export interface AiAnswer {
+  id: string;
+  candidate_id: string;
+  provider: string;
+  model: string;
+  prompt_key: string;
+  prompt: string;
+  answer: string;
+  citations: AiCitation[];
+  balance: number | null;
+  balance_reason: string | null;
+  positives: string[];
+  negatives: string[];
+  topics: string[];
+  other_politicians: string[];
+  asked_at: string;
+  asked_on: string;
+  cost: number | string | null;
+  classification_model: string | null;
+}
+
+export interface AiDayScore {
+  day: string;
+  balance: number;
+  answers: number;
+}
+
+export interface AiDomainRank {
+  domain: string;
+  count: number;
+}

@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import { asCitations, asStringList } from "@/lib/ai-visibility";
 import type { MentionPage, PulsoRepo } from "./repo";
 
 // Columnas explícitas: nunca pedimos settings/cursor de candidate_sources
@@ -138,6 +139,26 @@ export class SupabaseRepo implements PulsoRepo {
       .select("id");
     if (res.error) throw new Error(`Error actualizando el estado: ${res.error.message}`);
     if (!res.data?.length) throw new Error("No se pudo actualizar la cuenta");
+  }
+  async listAiAnswers(candidateId: string) {
+    const rows = check<AiAnswer[]>(
+      await this.db
+        .from("ai_answers")
+        .select("id,candidate_id,provider,model,prompt_key,prompt,answer,citations,balance,balance_reason,positives,negatives,topics,other_politicians,asked_at,asked_on,cost,classification_model")
+        .eq("candidate_id", candidateId)
+        .order("asked_on", { ascending: false })
+        .order("prompt_key", { ascending: true })
+        .limit(400),
+      "respuestas en IA",
+    );
+    return rows.map((row) => ({
+      ...row,
+      citations: asCitations(row.citations),
+      positives: asStringList(row.positives),
+      negatives: asStringList(row.negatives),
+      topics: asStringList(row.topics),
+      other_politicians: asStringList(row.other_politicians),
+    }));
   }
   async dataTimestamp() {
     return null;

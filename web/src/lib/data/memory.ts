@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import type { MentionPage, PulsoRepo } from "./repo";
 
 export interface FixtureData {
@@ -10,6 +10,7 @@ export interface FixtureData {
   source_runs: SourceRun[];
   candidate_sources: CandidateSource[];
   suspicious_accounts?: SuspiciousAccount[];
+  ai_answers?: AiAnswer[];
 }
 
 /** Repositorio en memoria: usado por el modo fixture y los tests. */
@@ -67,6 +68,12 @@ export class MemoryRepo implements PulsoRepo {
     account.status = status;
     account.status_note = note;
     account.status_updated_at = new Date().toISOString();
+  }
+  async listAiAnswers(candidateId: string) {
+    return (this.data.ai_answers ?? [])
+      .filter((a) => a.candidate_id === candidateId)
+      .slice()
+      .sort((a, b) => b.asked_on.localeCompare(a.asked_on) || a.prompt_key.localeCompare(b.prompt_key, "es"));
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;
