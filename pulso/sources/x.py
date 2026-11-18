@@ -124,7 +124,7 @@ def search_query(candidate: Candidate, settings: dict | None = None) -> str:
         query += " lang:es"
     if _bool_setting(settings, "exclude_retweets", True):
         query += " -is:retweet"
-    if _bool_setting(settings, "exclude_replies", False):
+    if _bool_setting(settings, "exclude_replies", True):
         query += " -is:reply"
     if len(query) > QUERY_MAX_LEN:
         raise ValueError("query_demasiado_larga")

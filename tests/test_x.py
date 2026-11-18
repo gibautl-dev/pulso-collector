@@ -147,15 +147,15 @@ class XTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.cursor["quota"]["posts"], 4)
         self.assertEqual(result.cursor["quota"]["requests"], 2)
 
-    async def test_query_excludes_retweets_by_default(self):
+    async def test_query_excludes_retweets_and_replies_by_default(self):
         cand = candidate()
         self.assertEqual(
             search_query(cand, {}),
-            '("Axel Kicillof" OR Kicillof OR @Kicillofok) lang:es -is:retweet',
+            '("Axel Kicillof" OR Kicillof OR @Kicillofok) lang:es -is:retweet -is:reply',
         )
         self.assertEqual(
-            search_query(cand, {"exclude_retweets": False, "exclude_replies": True}),
-            '("Axel Kicillof" OR Kicillof OR @Kicillofok) lang:es -is:reply',
+            search_query(cand, {"exclude_retweets": False, "exclude_replies": False}),
+            '("Axel Kicillof" OR Kicillof OR @Kicillofok) lang:es',
         )
         result, transport, _, _ = await self.fetch_with([load("empty.json")], cand=cand)
         self.assertEqual(result.feeds_ok, 1)

@@ -110,6 +110,8 @@ orden:
 3. Ejecutar `deploy/x_enable.sql` en el SQL Editor (ajusta el slug si hace
    falta). Eso prende la fila, deja el intervalo en al menos 3600 s y carga
    techos de 300 posts por día, 10 pedidos por día y 25 posts por corrida.
+   Por defecto solo se piden posts originales en español (`lang:es -is:retweet
+   -is:reply`).
 
 El precio oficial de lectura es USD 0.005 por post y USD 0.010 por usuario
 incluido en la expansión `author_id` ([pricing](https://docs.x.com/x-api/getting-started/pricing)).

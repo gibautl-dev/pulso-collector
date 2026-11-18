@@ -36,7 +36,7 @@ update public.candidate_sources
        interval_seconds = greatest(interval_seconds, 3600),
        settings = coalesce(settings, '{}'::jsonb) || jsonb_build_object(
          'exclude_retweets', true,
-         'exclude_replies', false,
+         'exclude_replies', true,
          'lang_es', true,
          'max_posts_per_day', 300,
          'max_requests_per_day', 10,
