@@ -71,3 +71,61 @@ export interface CandidateSource {
   latest_observed_at: string | null;
   coverage_status: "unknown" | "partial" | "complete";
 }
+
+
+export const SUSPICIOUS_STATUSES = [
+  "pending",
+  "reviewed_suspicious",
+  "discarded",
+  "reported_manual",
+] as const;
+export type SuspiciousStatus = (typeof SUSPICIOUS_STATUSES)[number];
+export type SuspiciousPlatform = "x" | "youtube";
+
+export interface SuspiciousEvidence {
+  mention_id: string;
+  url: string;
+  published_at: string;
+  excerpt: string;
+  fingerprint?: string | null;
+}
+
+export interface SuspiciousSignal {
+  type: string;
+  weight: number;
+  summary: string;
+  evidence: SuspiciousEvidence[];
+}
+
+export interface SuspiciousAccount {
+  id: string;
+  candidate_id: string;
+  platform: SuspiciousPlatform;
+  account_key: string;
+  handle: string | null;
+  display_name: string | null;
+  profile_url: string | null;
+  score: number;
+  signals: SuspiciousSignal[];
+  mention_count: number;
+  first_seen_at: string | null;
+  last_seen_at: string | null;
+  account_created_at: string | null;
+  status: SuspiciousStatus;
+  status_note: string | null;
+  status_updated_at: string | null;
+  detected_at: string;
+}
+
+export interface SuspiciousFilters {
+  status?: SuspiciousStatus;
+  platform?: SuspiciousPlatform;
+}
+
+export function isSuspiciousStatus(value: string): value is SuspiciousStatus {
+  return (SUSPICIOUS_STATUSES as readonly string[]).includes(value);
+}
+
+export function isSuspiciousPlatform(value: string): value is SuspiciousPlatform {
+  return value === "x" || value === "youtube";
+}

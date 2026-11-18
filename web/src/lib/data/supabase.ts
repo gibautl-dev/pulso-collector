@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { Candidate, CandidateSource, Mention, SourceRun, Topic } from "@/lib/types";
+import type { Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import type { MentionPage, PulsoRepo } from "./repo";
 
 // Columnas explícitas: nunca pedimos settings/cursor de candidate_sources
@@ -15,6 +15,8 @@ const MENTION_LIST_COLS =
 const SOURCE_COLS =
   "candidate_id,source,enabled,interval_seconds,last_attempt_at,last_success_at,collection_started_at,earliest_observed_at,latest_observed_at,coverage_status";
 const RUN_COLS = "id,candidate_id,source,run_kind,started_at,finished_at,status,items_found,items_new,error";
+const SUSPICIOUS_COLS =
+  "id,candidate_id,platform,account_key,handle,display_name,profile_url,score,signals,mention_count,first_seen_at,last_seen_at,account_created_at,status,status_note,status_updated_at,detected_at";
 
 function check<T>(res: { data: T | null; error: { message: string } | null }, what: string): T {
   if (res.error) throw new Error(`Error leyendo ${what}: ${res.error.message}`);
@@ -109,6 +111,33 @@ export class SupabaseRepo implements PulsoRepo {
       await this.db.from("candidate_sources").select(SOURCE_COLS).eq("candidate_id", candidateId).order("source"),
       "fuentes",
     );
+  }
+  async listSuspiciousAccounts(candidateId: string, filters: SuspiciousFilters = {}) {
+    let q = this.db
+      .from("suspicious_accounts_web")
+      .select(SUSPICIOUS_COLS)
+      .eq("candidate_id", candidateId);
+    if (filters.status) q = q.eq("status", filters.status);
+    if (filters.platform) q = q.eq("platform", filters.platform);
+    const rows = check<SuspiciousAccount[]>(
+      await q.order("score", { ascending: false }).order("detected_at", { ascending: false }),
+      "cuentas sospechosas",
+    );
+    return rows.map((row) => ({
+      ...row,
+      signals: Array.isArray(row.signals) ? row.signals : [],
+    }));
+  }
+  async updateSuspiciousStatus(candidateId: string, id: string, status: SuspiciousStatus, note: string | null) {
+    // Solo columnas de estado: el trigger completa status_updated_at/by con la sesión.
+    const res = await this.db
+      .from("suspicious_accounts")
+      .update({ status, status_note: note })
+      .eq("candidate_id", candidateId)
+      .eq("id", id)
+      .select("id");
+    if (res.error) throw new Error(`Error actualizando el estado: ${res.error.message}`);
+    if (!res.data?.length) throw new Error("No se pudo actualizar la cuenta");
   }
   async dataTimestamp() {
     return null;

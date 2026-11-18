@@ -1,4 +1,8 @@
--- Cuentas sospechosas (propuesta). NO aplicar hasta que se apruebe el esquema.
+-- Cuentas sospechosas. En pulso-demo ya está aplicada (2026-11-18), más el
+-- ajuste de grants (ver también deploy/suspicious_accounts_tighten_grants.sql).
+-- No volver a correrla ahí. En un proyecto nuevo, aplicar este archivo una vez
+-- (incluye el ajuste de privilegios por defecto).
+--
 -- Detección local a partir de menciones ya guardadas. Nunca denuncia en lote
 -- ni llama a las APIs de X o YouTube para actuar sobre una cuenta.
 --
@@ -188,5 +192,20 @@ grant select on public.suspicious_accounts_web to authenticated;
 
 revoke all on public.suspicious_accounts from anon;
 revoke all on public.suspicious_accounts_web from anon;
+
+-- Ajuste por los privilegios por defecto de Supabase (ALL a authenticated
+-- sobre tablas nuevas). Deja solo SELECT y el UPDATE de las columnas de estado.
+-- En pulso-demo ya se aplicó por separado; es idempotente.
+revoke all on public.suspicious_accounts from authenticated;
+grant select on public.suspicious_accounts to authenticated;
+grant update (status, status_note, status_updated_at, status_updated_by) on public.suspicious_accounts to authenticated;
+
+revoke all on public.suspicious_accounts_web from authenticated;
+grant select on public.suspicious_accounts_web to authenticated;
+
+revoke all on public.suspicious_accounts from anon;
+revoke all on public.suspicious_accounts_web from anon;
+
+alter function public.suspicious_accounts_guard_web_update() set search_path = public;
 
 commit;

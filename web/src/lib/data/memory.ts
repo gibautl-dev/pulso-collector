@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { Candidate, CandidateSource, Mention, SourceRun, Topic } from "@/lib/types";
+import type { Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import type { MentionPage, PulsoRepo } from "./repo";
 
 export interface FixtureData {
@@ -9,6 +9,7 @@ export interface FixtureData {
   mentions: Mention[];
   source_runs: SourceRun[];
   candidate_sources: CandidateSource[];
+  suspicious_accounts?: SuspiciousAccount[];
 }
 
 /** Repositorio en memoria: usado por el modo fixture y los tests. */
@@ -52,6 +53,20 @@ export class MemoryRepo implements PulsoRepo {
   }
   async listCandidateSources(candidateId: string) {
     return this.data.candidate_sources.filter((s) => s.candidate_id === candidateId);
+  }
+  async listSuspiciousAccounts(candidateId: string, filters: SuspiciousFilters = {}) {
+    return (this.data.suspicious_accounts ?? [])
+      .filter((a) => a.candidate_id === candidateId)
+      .filter((a) => (filters.status ? a.status === filters.status : true))
+      .filter((a) => (filters.platform ? a.platform === filters.platform : true))
+      .sort((a, b) => b.score - a.score || b.detected_at.localeCompare(a.detected_at));
+  }
+  async updateSuspiciousStatus(candidateId: string, id: string, status: SuspiciousStatus, note: string | null) {
+    const account = (this.data.suspicious_accounts ?? []).find((a) => a.candidate_id === candidateId && a.id === id);
+    if (!account) throw new Error("Cuenta no encontrada");
+    account.status = status;
+    account.status_note = note;
+    account.status_updated_at = new Date().toISOString();
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;

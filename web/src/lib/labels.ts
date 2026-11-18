@@ -1,4 +1,4 @@
-import type { Relevance, RunStatus, Target, Tone } from "./types";
+import type { Relevance, RunStatus, SuspiciousPlatform, SuspiciousStatus, Target, Tone } from "./types";
 
 export const TONES: Tone[] = [
   "critica",
@@ -110,3 +110,45 @@ export const RUN_STATUS_BADGE: Record<RunStatus, string> = {
   error: "bg-rose-50 text-rose-700 ring-rose-600/20",
   skipped: "bg-slate-100 text-slate-600 ring-slate-500/20",
 };
+
+
+
+export const SUSPICIOUS_STATUS_LABEL: Record<SuspiciousStatus, string> = {
+  pending: "Pendiente",
+  reviewed_suspicious: "Sospechosa",
+  discarded: "Descartada",
+  reported_manual: "Denunciada a mano",
+};
+
+export const SUSPICIOUS_STATUS_BADGE: Record<SuspiciousStatus, string> = {
+  pending: "bg-amber-50 text-amber-800 ring-amber-600/20",
+  reviewed_suspicious: "bg-rose-50 text-rose-800 ring-rose-600/20",
+  discarded: "bg-slate-100 text-slate-600 ring-slate-500/20",
+  reported_manual: "bg-indigo-50 text-indigo-800 ring-indigo-600/20",
+};
+
+export const SUSPICIOUS_SIGNAL_LABEL: Record<string, string> = {
+  self_repeat: "Texto repetido",
+  coordination: "Posible coordinación",
+  author_burst: "Ráfaga",
+  group_burst: "Ráfaga de grupo",
+  new_account: "Cuenta nueva",
+  follow_ratio: "Relación de seguidos",
+  digit_name: "Nombre con dígitos",
+  low_engagement: "Poco engagement",
+};
+
+export function suspiciousSignalLabel(type: string): string {
+  return SUSPICIOUS_SIGNAL_LABEL[type] ?? type;
+}
+
+export function suspiciousAccountLabel(a: {
+  platform: SuspiciousPlatform;
+  handle: string | null;
+  display_name: string | null;
+  account_key: string;
+}): string {
+  if (a.platform === "youtube" && a.display_name?.startsWith("@")) return a.display_name;
+  if (a.handle) return `@${a.handle.replace(/^@/, "")}`;
+  return a.display_name || a.account_key;
+}

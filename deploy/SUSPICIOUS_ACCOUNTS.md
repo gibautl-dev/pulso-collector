@@ -14,6 +14,9 @@ menciones ya guardadas.
 
 1. Revisar y aplicar `deploy/suspicious_accounts.sql` en el SQL Editor de
    Supabase (proyecto pulso-demo). Hacer backup previo. No corre solo.
+   En pulso-demo ya está aplicada, junto con
+   `deploy/suspicious_accounts_tighten_grants.sql`. No volver a aplicarlas
+   ahí. La vista web está en `/c/[slug]/sospechosas`.
 2. Setear `PULSO_SUSPICIOUS_ENABLED=true` en el cron `pulso-rss` y redesplegar.
 3. Hasta entonces, `python -m pulso.suspicious --from-json menciones.json --dry-run`
    corre en local, sin escribir en la base.
