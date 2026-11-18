@@ -29,6 +29,8 @@ export interface Mention {
   title: string | null;
   content: string | null;
   author: string | null;
+  /** Usuario de la cuenta en la fuente, sin @ (p. ej. X). */
+  author_handle?: string | null;
   outlet: string | null;
   published_at: string;
   collected_at: string;
