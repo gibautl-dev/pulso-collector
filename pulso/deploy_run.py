@@ -22,7 +22,7 @@ def stop(child):
         child.wait()
 
 COLLECTOR_ONLY = ('DATABASE_URL', 'PGPASSWORD', 'YOUTUBE_API_KEY', 'X_BEARER_TOKEN')
-CLASSIFIER_ONLY = ('LLM_API_KEY', 'CLASSIFIER_DATABASE_URL', 'CLASSIFIER_PGPASSWORD')
+CLASSIFIER_ONLY = ('LLM_API_KEY', 'OPENAI_API_KEY', 'CLASSIFIER_DATABASE_URL', 'CLASSIFIER_PGPASSWORD')
 
 def child_env(drop):
     """Cada proceso ve solo sus credenciales: el recolector no ve la clave del LLM
@@ -74,7 +74,9 @@ def main():
     if code not in (124, 143):
         run_classifier(args)
         run_suspicious(args)
-    # El resultado del clasificador o del detector nunca cambia el código de salida del cron.
+        run_ai_visibility(args)
+    # El resultado del clasificador, el detector o la visibilidad en IA
+    # nunca cambia el código de salida del cron.
     return code
 
 def run_classifier(collector_args):
@@ -116,6 +118,29 @@ def run_suspicious(collector_args):
     except Exception as exc:
         log(event='suspicious_error', error_type=type(exc).__name__)
         return None
+
+
+
+def run_ai_visibility(collector_args):
+    """Preguntas diarias a OpenAI sobre el candidato. Apagado por defecto."""
+    try:
+        if os.getenv('PULSO_AI_VISIBILITY_ENABLED', 'false').lower() != 'true':
+            log(event='ai_visibility_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_AI_VISIBILITY_TIMEOUT_SECONDS', '600'))
+        if not 60 <= timeout <= 900:
+            raise ValueError('Invalid ai-visibility timeout')
+        args = ['--dry-run']
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1], '--dry-run']
+        # Misma clave LLM y rol del clasificador; no ve la conexión del recolector.
+        return run_command([sys.executable, '-m', 'pulso.ai_visibility', *args], timeout,
+                           env=child_env(COLLECTOR_ONLY), prefix='ai_visibility')
+    except Exception as exc:
+        log(event='ai_visibility_error', error_type=type(exc).__name__)
+        return None
+
 
 if __name__ == '__main__':
     sys.exit(main())
