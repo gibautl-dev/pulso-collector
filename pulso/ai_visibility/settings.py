@@ -51,13 +51,14 @@ class VisibilitySettings:
     request_timeout: float = 120.0
     max_retries: int = 2
     dry_run: bool = True
+    run_after_hour: int = 9
 
     @classmethod
     def from_env(cls, dry_run: bool | None = None) -> "VisibilitySettings":
         base = (os.getenv("LLM_BASE_URL", "").strip() or DEFAULT_BASE_URL).rstrip("/")
         if urlsplit(base).scheme != "https":
             raise ValueError("LLM_BASE_URL debe ser https")
-        flag = dry_run if dry_run is not None else _bool("PULSO_AI_VISIBILITY_DRY_RUN", "true")
+        flag = dry_run if dry_run is not None else _bool("PULSO_AI_VISIBILITY_DRY_RUN", "false")
         return cls(
             api_key=api_key_from_env(),
             base_url=base,
@@ -67,4 +68,5 @@ class VisibilitySettings:
             request_timeout=_float("PULSO_AI_VISIBILITY_TIMEOUT", 120.0, 15.0, 300.0),
             max_retries=_int("PULSO_AI_VISIBILITY_MAX_RETRIES", 2, 0, 5),
             dry_run=flag,
+            run_after_hour=_int("PULSO_AI_VISIBILITY_HOUR", 9, 0, 23),
         )

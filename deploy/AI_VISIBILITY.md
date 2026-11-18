@@ -1,8 +1,9 @@
 # Resultados en IA
 
 Qué responde un modelo cuando alguien pregunta por el candidato. Arranca solo
-con OpenAI. Esta migración **no está aplicada**. El job queda apagado
-(`PULSO_AI_VISIBILITY_ENABLED=false`) hasta que se apruebe.
+con OpenAI. La migración se aplica con `deploy/ai_visibility.sql`. El job queda apagado
+hasta setear `PULSO_AI_VISIBILITY_ENABLED=true`. Corre una vez por día a partir
+de las 09:00 (hora de Argentina); el cron de 20 minutos se saltea si ya hay filas de ese día.
 
 ## Qué hace el módulo
 
@@ -43,7 +44,7 @@ una estimación a ojo. La proyección mensual asume una corrida diaria × 30.
   `chat-latest` porque es el Instant documentado de ChatGPT.
 - El corte de conocimiento de `chat-latest` es el 20 de abril de 2026; la
   búsqueda web puede aportar fuentes más recientes.
-- El clasificador recorta cada respuesta a 1200 caracteres.
+- Se pide una respuesta de 250 a 400 palabras. El análisis de balance cubre el texto completo (puntaje -100 a +100, aspectos positivos y negativos, temas, otros políticos y filtro de citas).
 - Una corrida diaria es una foto fija, no un panel de usuarios.
 
 ## Cómo habilitarlo (cuando se apruebe)
@@ -53,8 +54,8 @@ una estimación a ojo. La proyección mensual asume una corrida diaria × 30.
    reemplazar el resto de las variables. Hace falta `LLM_API_KEY` (ya usada
    por el clasificador) y `CLASSIFIER_DATABASE_URL`.
 3. El supervisor llama `python -m pulso.ai_visibility` después del detector de
-   cuentas sospechosas. Un error de este paso no cambia el código de salida del cron.
-4. No mergear ni desplegar este cambio hasta que se pida explícitamente.
+   cuentas sospechosas, a partir de las 09:00 (hora de Argentina), una vez por día.
+   Un error de este paso no cambia el código de salida del cron.
 
 El dry-run de desarrollo:
 

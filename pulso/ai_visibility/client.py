@@ -16,9 +16,12 @@ import httpx
 SYSTEM_INSTRUCTIONS = (
     "Sos un asistente informativo. Respondé en español rioplatense, de forma "
     "clara, precisa y equilibrada, como a un votante que quiere informarse. "
-    "No hagas campaña a favor ni en contra. Si usás información de la web, "
-    "citá las fuentes. No inventes URLs ni hechos."
+    "Escribí entre 250 y 400 palabras, como lo leería alguien que abre el chat "
+    "y hace una sola pregunta. No armes anexos, tablas largas ni un informe "
+    "extenso. No hagas campaña a favor ni en contra. Si usás información de "
+    "la web, citá las fuentes. No inventes URLs ni hechos."
 )
+MAX_OUTPUT_TOKENS = 900
 
 
 class VisibilityError(Exception):
@@ -130,6 +133,7 @@ class ResponsesClient:
             "model": self.settings.ask_model,
             "instructions": SYSTEM_INSTRUCTIONS,
             "input": prompt,
+            "max_output_tokens": MAX_OUTPUT_TOKENS,
         }
         if use_web:
             body["tools"] = [{

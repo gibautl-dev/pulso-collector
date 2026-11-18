@@ -1,10 +1,14 @@
 -- Resultados en IA (respuestas de un modelo a preguntas fijas sobre el candidato).
--- PROPUESTA. NO APLICAR en pulso-demo hasta que se apruebe explícitamente.
--- No contiene secretos. No habilita el job: PULSO_AI_VISIBILITY_ENABLED sigue en false.
+-- Aplicar una vez en pulso-demo cuando se apruebe. No contiene secretos.
+-- El job queda en PULSO_AI_VISIBILITY_ENABLED (el valor lo define el entorno).
 --
 -- El job (python -m pulso.ai_visibility) usa la misma clave LLM que el clasificador
--- y, cuando se habilite, debería correr con el rol pulso_classifier. La web
--- (authenticated, vía candidate_members) solo lee. anon no recibe permisos.
+-- y corre con el rol pulso_classifier. La web (authenticated, vía
+-- candidate_members) solo lee. anon no recibe permisos.
+--
+-- Supabase otorga ALL a authenticated en tablas nuevas: este archivo revoca
+-- esos privilegios y deja solo SELECT. No crea funciones (no hay search_path
+-- que ajustar).
 
 begin;
 
@@ -33,12 +37,11 @@ create table if not exists public.ai_answers (
   prompt text not null,
   answer text not null,
   citations jsonb not null default '[]'::jsonb,
-  tone text check (tone in ('a_favor', 'critica', 'insulto', 'acusacion', 'pregunta', 'informativo')),
-  target text check (target in ('candidate', 'other', 'unclear')),
-  tone_confidence numeric,
-  tone_reason text,
-  topic text,
-  relevance text check (relevance in ('alta', 'media', 'baja')),
+  balance integer check (balance is null or (balance >= -100 and balance <= 100)),
+  balance_reason text,
+  positives jsonb not null default '[]'::jsonb,
+  negatives jsonb not null default '[]'::jsonb,
+  topics jsonb not null default '[]'::jsonb,
   other_politicians jsonb not null default '[]'::jsonb,
   asked_at timestamptz not null,
   asked_on date not null,
@@ -48,21 +51,28 @@ create table if not exists public.ai_answers (
   classification_prompt_version text,
   created_at timestamptz not null default now(),
   check (jsonb_typeof(citations) = 'array'),
+  check (jsonb_typeof(positives) = 'array'),
+  check (jsonb_typeof(negatives) = 'array'),
+  check (jsonb_typeof(topics) = 'array'),
   check (jsonb_typeof(other_politicians) = 'array'),
   unique (candidate_id, provider, prompt_key, asked_on)
 );
 
 comment on table public.ai_answers is
-  'Respuestas de un modelo a un set fijo de preguntas sobre el candidato. Una fila por pregunta y día.';
+  'Respuestas de un modelo a un set fijo de preguntas. Una fila por pregunta y día. balance de -100 a +100 hacia el candidato.';
 comment on column public.ai_answers.asked_on is
   'Día de la corrida en America/Argentina/Buenos_Aires. Garantiza una corrida diaria.';
 comment on column public.ai_answers.citations is
-  'Lista de {url, title, source} extraída de la búsqueda web de la API.';
+  'Lista de {url, title, domain, source, kept, filter_reason}.';
+comment on column public.ai_answers.balance is
+  'Puntaje de -100 a +100: cómo queda el candidato en esa respuesta completa.';
 comment on column public.ai_answers.cost is
   'Costo estimado en USD de esa respuesta (tokens + llamadas de web search).';
 
 create index if not exists ai_answers_candidate_asked_idx
   on public.ai_answers (candidate_id, asked_at desc);
+create index if not exists ai_answers_candidate_asked_on_idx
+  on public.ai_answers (candidate_id, asked_on desc);
 
 alter table public.ai_visibility_settings enable row level security;
 alter table public.ai_visibility_settings force row level security;

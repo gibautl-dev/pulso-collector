@@ -130,11 +130,14 @@ def run_ai_visibility(collector_args):
         timeout = int(os.getenv('PULSO_AI_VISIBILITY_TIMEOUT_SECONDS', '600'))
         if not 60 <= timeout <= 900:
             raise ValueError('Invalid ai-visibility timeout')
-        args = ['--dry-run']
+        args = []
         if '--candidate' in collector_args:
             i = collector_args.index('--candidate')
-            args = ['--candidate', collector_args[i + 1], '--dry-run']
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_AI_VISIBILITY_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
         # Misma clave LLM y rol del clasificador; no ve la conexión del recolector.
+        # Una vez por día a partir de las 09:00 (hora de Argentina); el módulo se saltea si ya corrió.
         return run_command([sys.executable, '-m', 'pulso.ai_visibility', *args], timeout,
                            env=child_env(COLLECTOR_ONLY), prefix='ai_visibility')
     except Exception as exc:
