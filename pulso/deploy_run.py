@@ -73,7 +73,8 @@ def main():
         return 2
     if code not in (124, 143):
         run_classifier(args)
-    # El resultado del clasificador nunca cambia el código de salida del cron.
+        run_suspicious(args)
+    # El resultado del clasificador o del detector nunca cambia el código de salida del cron.
     return code
 
 def run_classifier(collector_args):
@@ -93,6 +94,27 @@ def run_classifier(collector_args):
                            env=child_env(COLLECTOR_ONLY), prefix='classifier')
     except Exception as exc:
         log(event='classifier_error', error_type=type(exc).__name__)
+        return None
+
+
+def run_suspicious(collector_args):
+    """Detección posterior a la recolección. Apagada por defecto; no denuncia."""
+    try:
+        if os.getenv('PULSO_SUSPICIOUS_ENABLED', 'false').lower() != 'true':
+            log(event='suspicious_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_SUSPICIOUS_TIMEOUT_SECONDS', '120'))
+        if not 10 <= timeout <= 300:
+            raise ValueError('Invalid suspicious timeout')
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        # Misma conexión del recolector; no usa el LLM ni el rol del clasificador.
+        return run_command([sys.executable, '-m', 'pulso.suspicious', *args], timeout,
+                           env=child_env(CLASSIFIER_ONLY), prefix='suspicious')
+    except Exception as exc:
+        log(event='suspicious_error', error_type=type(exc).__name__)
         return None
 
 if __name__ == '__main__':

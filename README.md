@@ -75,6 +75,22 @@ Repetir con `--refresh` sobre feeds sin cambios debe dar `items_new=0`. Si entra
 noticias entre corridas, pueden aparecer nuevos legítimos.
 
 
+
+## Cuentas sospechosas (propuesta, no aplicada)
+
+Detector local de cuentas con señales baratas (textos repetidos, ráfagas,
+cuentas nuevas y señales opcionales de calidad) para revisión humana. **No
+denuncia ni actúa sobre las redes.** La migración
+`deploy/suspicious_accounts.sql` no está aplicada; el paso en el cron queda
+apagado (`PULSO_SUSPICIOUS_ENABLED=false`). Detalle, limitaciones y propuesta
+de vista web: `deploy/SUSPICIOUS_ACCOUNTS.md`.
+
+Corrida local de solo lectura:
+
+```bash
+python -m pulso.suspicious --from-json menciones.json --dry-run
+```
+
 ## Activar YouTube
 
 El adaptador usa YouTube Data API v3 (`search.list`, `videos.list` y, si
