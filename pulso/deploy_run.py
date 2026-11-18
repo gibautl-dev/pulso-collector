@@ -21,12 +21,17 @@ def stop(child):
     except ProcessLookupError:
         child.wait()
 
-COLLECTOR_ONLY = ('DATABASE_URL', 'PGPASSWORD', 'YOUTUBE_API_KEY', 'X_BEARER_TOKEN')
+COLLECTOR_ONLY = ('DATABASE_URL', 'PGPASSWORD', 'YOUTUBE_API_KEY', 'X_BEARER_TOKEN', 'META_ADS_ACCESS_TOKEN')
 CLASSIFIER_ONLY = ('LLM_API_KEY', 'OPENAI_API_KEY', 'CLASSIFIER_DATABASE_URL', 'CLASSIFIER_PGPASSWORD')
+META_ADS_ONLY = ('META_ADS_ACCESS_TOKEN',)
 
-def child_env(drop):
+def child_env(*groups):
     """Cada proceso ve solo sus credenciales: el recolector no ve la clave del LLM
-    y el clasificador no ve la conexión del rol pulso_collector."""
+    y el clasificador no ve la conexión del rol pulso_collector. El token de Meta
+    queda solo en el job de la Biblioteca de anuncios."""
+    drop = set()
+    for group in groups:
+        drop.update(group)
     return {k: v for k, v in os.environ.items() if k not in drop}
 
 def run_command(command, timeout, env=None, prefix='cron'):
@@ -67,7 +72,7 @@ def main():
         if dry == 'true' and '--dry-run' not in args:
             args = [*args, '--dry-run']
         code = run_command([sys.executable, '-m', 'pulso.collect_rss', *args], timeout,
-                           env=child_env(CLASSIFIER_ONLY))
+                           env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY))
     except Exception as exc:
         log(event='cron_error', error_type=type(exc).__name__)
         return 2
@@ -75,7 +80,8 @@ def main():
         run_classifier(args)
         run_suspicious(args)
         run_ai_visibility(args)
-    # El resultado del clasificador, el detector o la visibilidad en IA
+        run_meta_ads(args)
+    # El resultado del clasificador, el detector, la visibilidad en IA o Meta Ads
     # nunca cambia el código de salida del cron.
     return code
 
@@ -114,7 +120,7 @@ def run_suspicious(collector_args):
             args = ['--candidate', collector_args[i + 1]]
         # Misma conexión del recolector; no usa el LLM ni el rol del clasificador.
         return run_command([sys.executable, '-m', 'pulso.suspicious', *args], timeout,
-                           env=child_env(CLASSIFIER_ONLY), prefix='suspicious')
+                           env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY), prefix='suspicious')
     except Exception as exc:
         log(event='suspicious_error', error_type=type(exc).__name__)
         return None
@@ -142,6 +148,31 @@ def run_ai_visibility(collector_args):
                            env=child_env(COLLECTOR_ONLY), prefix='ai_visibility')
     except Exception as exc:
         log(event='ai_visibility_error', error_type=type(exc).__name__)
+        return None
+
+
+
+
+def run_meta_ads(collector_args):
+    """Biblioteca de anuncios de Meta, una vez por día. Apagada por defecto."""
+    try:
+        if os.getenv('PULSO_META_ADS_ENABLED', 'false').lower() != 'true':
+            log(event='meta_ads_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_META_ADS_TIMEOUT_SECONDS', '180'))
+        if not 30 <= timeout <= 600:
+            raise ValueError('Invalid meta-ads timeout')
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_META_ADS_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
+        # Conexión del recolector y token de Meta; no ve el LLM ni el rol del clasificador.
+        return run_command([sys.executable, '-m', 'pulso.meta_ads', *args], timeout,
+                           env=child_env(CLASSIFIER_ONLY), prefix='meta_ads')
+    except Exception as exc:
+        log(event='meta_ads_error', error_type=type(exc).__name__)
         return None
 
 
