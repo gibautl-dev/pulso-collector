@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlsplit, urlunsplit
 import re
 
 API_HOST = "https://graph.facebook.com"
@@ -174,6 +174,32 @@ class ArchivedAd:
         return asdict(self)
 
 
+
+_SENSITIVE_SNAPSHOT_PARAMS = frozenset({"access_token", "appsecret_proof"})
+
+
+def sanitize_snapshot_url(url: str | None) -> str | None:
+    """Quita access_token (y appsecret_proof) de ad_snapshot_url antes de guardar."""
+    raw = (url or "").strip()
+    if not raw:
+        return None
+    parts = urlsplit(raw)
+
+    def _clean(query: str) -> str:
+        kept = [
+            (key, value)
+            for key, value in parse_qsl(query, keep_blank_values=True)
+            if key.lower() not in _SENSITIVE_SNAPSHOT_PARAMS
+        ]
+        return urlencode(kept, doseq=True)
+
+    query = _clean(parts.query)
+    fragment = parts.fragment
+    if fragment and any(name in fragment.lower() for name in ("access_token=", "appsecret_proof=")):
+        fragment = _clean(fragment)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, query, fragment)) or None
+
+
 def parse_ad(payload: dict, *, query_kind: str | None = None,
              query_value: str | None = None) -> ArchivedAd | None:
     ad_id = str(payload.get("id") or "").strip()
@@ -214,7 +240,7 @@ def parse_ad(payload: dict, *, query_kind: str | None = None,
         ad_creative_link_captions=_list("ad_creative_link_captions"),
         ad_creative_link_descriptions=_list("ad_creative_link_descriptions"),
         ad_creative_link_titles=_list("ad_creative_link_titles"),
-        ad_snapshot_url=payload.get("ad_snapshot_url") or None,
+        ad_snapshot_url=sanitize_snapshot_url(payload.get("ad_snapshot_url")),
         ad_creation_time=_time("ad_creation_time"),
         ad_delivery_start_time=_time("ad_delivery_start_time"),
         ad_delivery_stop_time=_time("ad_delivery_stop_time"),

@@ -33,6 +33,7 @@ from pulso.sources.meta_ads import (
     parse_ad,
     parse_range,
     parse_time,
+    sanitize_snapshot_url,
 )
 
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "meta_ads_archive.json"
@@ -75,6 +76,43 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(ad.page_name, "Ejemplo Página")
         self.assertIn("instagram", ad.publisher_platforms)
         self.assertTrue(ad.ad_delivery_start_time.startswith("2026-11-02"))
+
+
+    def test_sanitize_snapshot_url_strips_access_token(self):
+        raw = "https://www.facebook.com/ads/archive/render_ad/?id=123&access_token=SECRET-TOKEN"
+        clean = sanitize_snapshot_url(raw)
+        self.assertEqual(clean, "https://www.facebook.com/ads/archive/render_ad/?id=123")
+        self.assertNotIn("access_token", clean)
+        self.assertNotIn("SECRET-TOKEN", clean)
+
+        first = "https://www.facebook.com/ads/archive/render_ad/?access_token=SECRET-TOKEN&id=123"
+        self.assertEqual(
+            sanitize_snapshot_url(first),
+            "https://www.facebook.com/ads/archive/render_ad/?id=123",
+        )
+
+        only = sanitize_snapshot_url(
+            "https://www.facebook.com/ads/archive/render_ad/?access_token=SECRET-TOKEN"
+        )
+        self.assertEqual(only, "https://www.facebook.com/ads/archive/render_ad/")
+        self.assertNotIn("access_token", only)
+
+        public = "https://www.facebook.com/ads/library/?id=123"
+        self.assertEqual(sanitize_snapshot_url(public), public)
+        self.assertIsNone(sanitize_snapshot_url(None))
+        self.assertIsNone(sanitize_snapshot_url("  "))
+
+    def test_parse_ad_does_not_keep_token_in_snapshot_url(self):
+        ad = parse_ad({
+            "id": "123",
+            "ad_snapshot_url": (
+                "https://www.facebook.com/ads/archive/render_ad/"
+                "?id=123&access_token=SECRET-TOKEN"
+            ),
+        })
+        self.assertEqual(ad.ad_snapshot_url, "https://www.facebook.com/ads/archive/render_ad/?id=123")
+        self.assertNotIn("access_token", ad.ad_snapshot_url)
+        self.assertNotIn("SECRET-TOKEN", ad.to_dict()["ad_snapshot_url"])
 
     def test_search_terms_length_limit(self):
         with self.assertRaises(MetaAdsError):
