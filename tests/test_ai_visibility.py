@@ -367,7 +367,8 @@ class RunTests(unittest.TestCase):
 
 class SqlTests(unittest.TestCase):
     def test_migration_has_balance_rls_and_no_anon_grant(self):
-        sql = Path("/tmp/repo/deploy/ai_visibility.sql").read_text(encoding="utf-8")
+        root = Path(__file__).resolve().parents[1]
+        sql = (root / "deploy" / "ai_visibility.sql").read_text(encoding="utf-8")
         self.assertIn("create table if not exists public.ai_answers", sql)
         self.assertIn("balance integer", sql)
         self.assertIn("positives jsonb", sql)

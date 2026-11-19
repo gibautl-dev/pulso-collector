@@ -171,8 +171,9 @@ create policy meta_ads_member_select
   );
 
 revoke all on table public.meta_ads_settings, public.meta_ads
-  from public, anon, authenticated;
+  from public, anon, authenticated, pulso_collector;
 grant select on table public.meta_ads_settings, public.meta_ads to authenticated;
+grant select, insert, update on public.meta_ads_settings, public.meta_ads to pulso_collector;
 grant all on table public.meta_ads_settings, public.meta_ads to service_role;
 
 commit;

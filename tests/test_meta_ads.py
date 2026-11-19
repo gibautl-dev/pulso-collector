@@ -251,7 +251,8 @@ class RunTests(unittest.TestCase):
 
 class SqlTests(unittest.TestCase):
     def test_migration_grants_and_no_collector_trigger(self):
-        sql = Path("/tmp/repo/deploy/meta_ads.sql").read_text(encoding="utf-8")
+        root = Path(__file__).resolve().parents[1]
+        sql = (root / "deploy" / "meta_ads.sql").read_text(encoding="utf-8")
         self.assertIn("create table if not exists public.meta_ads", sql)
         self.assertIn("unique (candidate_id, ad_id)", sql)
         self.assertIn("spend_lower", sql)
@@ -265,6 +266,8 @@ class SqlTests(unittest.TestCase):
         self.assertIn("(select auth.uid())", sql)
         self.assertIn("revoke all on table public.meta_ads_settings, public.meta_ads", sql)
         self.assertIn("grant select on table public.meta_ads_settings, public.meta_ads to authenticated", sql)
+        self.assertIn("from public, anon, authenticated, pulso_collector", sql)
+        self.assertIn("grant select, insert, update on public.meta_ads_settings, public.meta_ads to pulso_collector", sql)
         self.assertNotIn("create function", sql.lower())
         self.assertNotIn("create or replace function", sql.lower())
         self.assertNotIn("create trigger", sql.lower())
@@ -273,6 +276,9 @@ class SqlTests(unittest.TestCase):
             stripped = line.strip().lower()
             if stripped.startswith("grant") and "anon" in stripped:
                 self.fail(f"grant a anon: {line}")
+            if stripped.startswith("grant") and "pulso_collector" in stripped:
+                if any(priv in stripped for priv in ("delete", "truncate", "references", "trigger")) or " grant all " in f" {stripped} " or stripped.startswith("grant all "):
+                    self.fail(f"grant amplio a pulso_collector: {line}")
 
 
 class HookTests(unittest.TestCase):
