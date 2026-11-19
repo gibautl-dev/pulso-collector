@@ -3,9 +3,14 @@ import { MemoryRepo } from "@/lib/data/memory";
 import {
   answersOnDay,
   balanceTone,
+  computeAiDashboard,
   dailyScores,
   domainRanking,
   formatBalance,
+  formatShare,
+  cleanQuote,
+  extractQuote,
+  groupClaims,
   latestDay,
 } from "@/lib/ai-visibility";
 import type { AiAnswer } from "@/lib/types";
@@ -83,5 +88,56 @@ describe("MemoryRepo listAiAnswers", () => {
     const rows = await repo.listAiAnswers("c1");
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe("a1");
+  });
+});
+
+describe("tablero de En la IA", () => {
+  it("calcula el balance general, las proporciones y agrupa lo bueno y lo malo", () => {
+    const rows = [
+      answer({ id: "1", prompt_key: "quien_es", prompt: "¿Quién es?", balance: 12, asked_on: "2026-11-17", positives: ["Reelección en 2023"], negatives: ["Inflación"], answer: "Fue reelegido gobernador en 2023. Lo critican por la inflación." }),
+      answer({ id: "2", prompt_key: "economia", prompt: "¿Cómo está la economía?", balance: -18, asked_on: "2026-11-17", positives: [], negatives: ["Déficit y presión tributaria"], answer: "Persistió el déficit y se cuestiona la presión tributaria." }),
+      answer({ id: "3", prompt_key: "quien_es", prompt: "¿Quién es?", balance: 10, asked_on: "2026-11-18", positives: ["Reelegido gobernador en 2023"], negatives: ["Inflación y controles"], answer: "Lo reelegido como gobernador en 2023 convive con críticas por inflación." }),
+    ];
+    const view = computeAiDashboard(rows);
+    expect(view.insufficient).toBe(false);
+    expect(view.classified).toBe(3);
+    expect(view.positive).toBe(2);
+    expect(view.negative).toBe(1);
+    expect(view.neutral).toBe(0);
+    expect(formatShare(view.positiveShare)).toBe("67%");
+    expect(view.overallBalance).toBeCloseTo(1.3, 1);
+    expect(view.trendInsufficient).toBe(false);
+    expect(view.trend).toBe(13); // 10 - (-3)
+    expect(view.positives[0].count).toBe(2);
+    expect(view.positives[0].text.toLowerCase()).toContain("reeleg");
+    expect(view.positives[0].examples[0].quote.length).toBeGreaterThan(10);
+    expect(view.questions[0].promptKey).toBe("economia"); // worst first
+    expect(view.questions.at(-1)?.promptKey).toBe("quien_es");
+  });
+
+  it("marca datos insuficientes sin respuestas o con menos de tres clasificadas", () => {
+    expect(computeAiDashboard([]).insufficient).toBe(true);
+    expect(computeAiDashboard([answer({ balance: 4 }), answer({ id: "x", prompt_key: "otra", balance: -2 })]).insufficient).toBe(true);
+  });
+
+  it("agrupa afirmaciones parecidas sin una llamada extra al modelo", () => {
+    const groups = groupClaims([
+      { text: "Reelegido gobernador en 2023", promptKey: "quien_es", prompt: "¿Quién es?", answer: "Fue reelegido gobernador en 2023 con un discurso de gestión.", askedOn: "2026-11-18" },
+      { text: "Reelección en 2023", promptKey: "presidente", prompt: "¿Puede ser presidente?", answer: "Su reelección en 2023 fortaleció el liderazgo.", askedOn: "2026-11-18" },
+      { text: "Construcción de escuelas", promptKey: "educacion", prompt: "¿Educación?", answer: "Destaca la construcción de escuelas.", askedOn: "2026-11-18" },
+    ]);
+    const reelect = groups.find((g) => /reeleg|reels/i.test(g.text) || /2023/.test(g.text) && /reele/i.test(g.text));
+    expect(groups[0].count).toBeGreaterThanOrEqual(2);
+    expect(groups.some((g) => g.count === 2)).toBe(true);
+  });
+});
+
+describe("citas de lo bueno y lo malo", () => {
+  it("limpia markdown y URLs de las citas", () => {
+    const raw = "Su gestión se caracteriza por priorizar la inversión ([axelkicillof.com.ar](https://axelkicillof.com.ar/bio)). **Educación** y salud.";
+    expect(cleanQuote(raw)).toBe("Su gestión se caracteriza por priorizar la inversión (axelkicillof.com.ar). Educación y salud.");
+    const quote = extractQuote(raw, "priorizar la inversión en educación");
+    expect(quote).not.toContain("https://");
+    expect(quote).not.toContain("**");
   });
 });

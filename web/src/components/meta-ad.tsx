@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui";
-import { adSnippet, formatMetaAdDate, formatSpendRange, isAdActive, publicAdLibraryUrl } from "@/lib/meta-ads";
+import { adSnippet, adStance, formatMetaAdDate, formatSpendRange, isAdActive, publicAdLibraryUrl, STANCE_LABEL } from "@/lib/meta-ads";
 import type { MetaAd } from "@/lib/types";
 
 const PLATFORM_LABEL: Record<string, string> = {
@@ -12,6 +12,19 @@ const PLATFORM_LABEL: Record<string, string> = {
 
 function platformLabel(value: string): string {
   return PLATFORM_LABEL[value.toLowerCase()] ?? value;
+}
+
+
+const STANCE_BADGE: Record<string, string> = {
+  a_favor: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  en_contra: "bg-rose-50 text-rose-700 ring-rose-600/20",
+  neutral_otro: "bg-slate-100 text-slate-600 ring-slate-500/20",
+};
+
+function stanceBadge(ad: MetaAd) {
+  const stance = adStance(ad);
+  if (!stance) return null;
+  return <Badge className={STANCE_BADGE[stance]}>{STANCE_LABEL[stance]}</Badge>;
 }
 
 export function MetaAdCard({ ad, now }: { ad: MetaAd; now: Date }) {
@@ -36,11 +49,17 @@ export function MetaAdCard({ ad, now }: { ad: MetaAd; now: Date }) {
                 {platformLabel(p)}
               </Badge>
             ))}
+            {stanceBadge(ad)}
           </div>
           {ad.bylines && ad.bylines.trim() !== page ? (
             <p className="mt-0.5 text-xs text-slate-500">Pagado por {ad.bylines.trim()}</p>
           ) : null}
           <p className="mt-2 text-sm text-slate-700">{snippet}</p>
+          {ad.stance_reason ? (
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">
+              {STANCE_LABEL[adStance(ad)!] ?? "Clasificación"}: {ad.stance_reason}
+            </p>
+          ) : null}
           <p className="mt-2 text-xs text-slate-500">
             {start} – {stop}
             <span className="mx-1.5 text-slate-300">·</span>

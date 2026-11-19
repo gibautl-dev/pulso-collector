@@ -196,7 +196,16 @@ export interface MetaAd {
   ad_delivery_stop_time: string | null;
   fetched_at: string;
   fetched_on: string;
+  stance?: MetaAdStance | null;
+  stance_reason?: string | null;
+  stance_confidence?: number | string | null;
+  classified_at?: string | null;
+  classification_model?: string | null;
+  classification_prompt_version?: string | null;
 }
+
+export const META_AD_STANCES = ["a_favor", "en_contra", "neutral_otro"] as const;
+export type MetaAdStance = (typeof META_AD_STANCES)[number];
 
 export type MetaAdStatusFilter = "activo" | "inactivo";
 
@@ -205,9 +214,14 @@ export interface MetaAdFilters {
   page?: string;
   status?: MetaAdStatusFilter;
   currency?: string;
+  stance?: MetaAdStance | "sin_clasificar";
 }
 
 export function isMetaAdStatus(value: string): value is MetaAdStatusFilter {
   return value === "activo" || value === "inactivo";
+}
+
+export function isMetaAdStance(value: string): value is MetaAdStance {
+  return (META_AD_STANCES as readonly string[]).includes(value);
 }
 

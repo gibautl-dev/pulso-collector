@@ -1,5 +1,6 @@
 import { dayKey, formatMonth, parseDate } from "./time";
-import type { MetaAd, MetaAdFilters } from "./types";
+import type { MetaAd, MetaAdFilters, MetaAdStance } from "./types";
+import { isMetaAdStance } from "./types";
 
 const LIBRARY_URL = "https://www.facebook.com/ads/library/?id=";
 
@@ -70,7 +71,21 @@ export function normalizeMetaAd(row: MetaAd): MetaAd {
     ad_delivery_start_time: asIso(row.ad_delivery_start_time),
     ad_delivery_stop_time: asIso(row.ad_delivery_stop_time),
     fetched_at: asIso(row.fetched_at) ?? row.fetched_at,
+    stance: isMetaAdStance(String(row.stance ?? "")) ? row.stance : (row.stance == null ? null : null),
+    stance_reason: row.stance_reason ? String(row.stance_reason).trim() : row.stance_reason ?? null,
+    stance_confidence: asConfidence(row.stance_confidence),
+    classified_at: asIso(row.classified_at ?? null),
+    classification_model: row.classification_model ?? null,
+    classification_prompt_version: row.classification_prompt_version ?? null,
   };
+}
+
+function asConfidence(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (n < 0 || n > 1) return null;
+  return n;
 }
 
 export function isAdActive(ad: Pick<MetaAd, "ad_delivery_stop_time">, now: Date): boolean {
@@ -335,7 +350,66 @@ export function matchesMetaAdFilters(ad: MetaAd, filters: MetaAdFilters, now: Da
       .toLowerCase();
     if (!hay.includes(q)) return false;
   }
+  if (filters.stance === "sin_clasificar") {
+    if (ad.stance) return false;
+  } else if (filters.stance) {
+    if (ad.stance !== filters.stance) return false;
+  }
   return true;
+}
+
+export const STANCE_ORDER: MetaAdStance[] = ["a_favor", "en_contra", "neutral_otro"];
+
+export const STANCE_LABEL: Record<MetaAdStance, string> = {
+  a_favor: "A favor",
+  en_contra: "En contra",
+  neutral_otro: "Neutrales u otros",
+};
+
+export const STANCE_BAR: Record<MetaAdStance, string> = {
+  a_favor: "bg-emerald-500",
+  en_contra: "bg-rose-500",
+  neutral_otro: "bg-slate-400",
+};
+
+export interface StanceSplit {
+  stance: MetaAdStance;
+  label: string;
+  ads: number;
+  share: number | null;
+  active: number;
+  spend: SpendByCurrency[];
+}
+
+export function adStance(ad: Pick<MetaAd, "stance">): MetaAdStance | null {
+  return isMetaAdStance(String(ad.stance ?? "")) ? (ad.stance as MetaAdStance) : null;
+}
+
+export function stanceSplit(ads: MetaAd[], now: Date): {
+  classified: number;
+  unclassified: number;
+  rows: StanceSplit[];
+  insufficient: boolean;
+} {
+  const classifiedAds = ads.filter((ad) => adStance(ad));
+  const unclassified = ads.length - classifiedAds.length;
+  const rows: StanceSplit[] = STANCE_ORDER.map((stance) => {
+    const group = classifiedAds.filter((ad) => ad.stance === stance);
+    return {
+      stance,
+      label: STANCE_LABEL[stance],
+      ads: group.length,
+      share: classifiedAds.length ? group.length / classifiedAds.length : null,
+      active: group.filter((ad) => isAdActive(ad, now)).length,
+      spend: aggregateSpend(group),
+    };
+  });
+  return {
+    classified: classifiedAds.length,
+    unclassified,
+    rows,
+    insufficient: classifiedAds.length === 0,
+  };
 }
 
 export interface MetaAdsView {
@@ -353,6 +427,7 @@ export interface MetaAdsView {
   items: MetaAd[];
   filteredTotal: number;
   insufficient: boolean;
+  classification: ReturnType<typeof stanceSplit>;
 }
 
 export function computeMetaAdsView(
@@ -419,5 +494,6 @@ export function computeMetaAdsView(
     items: matched.slice(startIdx, startIdx + pageSize),
     filteredTotal: matched.length,
     insufficient: all.length === 0,
+    classification: stanceSplit(period, now),
   };
 }

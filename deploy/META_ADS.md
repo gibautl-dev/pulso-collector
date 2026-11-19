@@ -77,3 +77,29 @@ No se piden campos que las docs limitan a UE, Reino Unido o Brasil (`target_ages
 - Token en `META_ADS_ACCESS_TOKEN`. El recolector, el clasificador y el detector no lo ven.
 - Consultas: `search_terms` por defecto `Axel Kicillof` y `Kicillof` (cada una por separado, frase exacta), más `search_page_ids` opcionales; `ad_reached_countries=['AR']`, `ad_active_status=ALL`.
 - Dry-run local sin token: `python -m pulso.meta_ads --from-json tests/fixtures/meta_ads_archive.json --dry-run` (datos simulados).
+
+## Clasificación de anuncios (propuesta, no aplicada)
+
+El módulo `python -m pulso.meta_ads.classify` etiqueta cada anuncio como `a_favor`,
+`en_contra` o `neutral_otro` respecto del candidato, con un motivo corto y una
+confianza. Corre después de la recolección de la Biblioteca, solo sobre anuncios
+sin clasificar, en tandas, y no pisa una etiqueta existente.
+
+La migración propuesta está en `deploy/meta_ads_classification.sql`. **No aplicarla
+todavía.** Crea `meta_ad_classifications` (no agrega columnas a `meta_ads`, para
+que el upsert diario no borre las etiquetas). Grants: `authenticated` solo SELECT
+con la misma RLS de miembros que `meta_ads`; `pulso_classifier` SELECT+INSERT en
+la tabla nueva y SELECT en `meta_ads`; `anon` sin permisos.
+
+Variables (todas opcionales; el job está apagado por defecto):
+
+- `PULSO_META_ADS_CLASSIFY_ENABLED=false`
+- `PULSO_META_ADS_CLASSIFY_DRY_RUN=false`
+- `PULSO_META_ADS_CLASSIFY_BATCH_SIZE=12`
+- `PULSO_META_ADS_CLASSIFY_MAX_PER_RUN=250`
+- `PULSO_META_ADS_CLASSIFY_MAX_USD=1.0` (tope de costo por corrida)
+- `PULSO_META_ADS_CLASSIFY_TIMEOUT_SECONDS=300`
+
+Usa `LLM_API_KEY` / `OPENAI_API_KEY` y `CLASSIFIER_DATABASE_URL` (rol
+`pulso_classifier`). El proceso no ve `META_ADS_ACCESS_TOKEN` ni `DATABASE_URL`
+del recolector.

@@ -81,8 +81,9 @@ def main():
         run_suspicious(args)
         run_ai_visibility(args)
         run_meta_ads(args)
-    # El resultado del clasificador, el detector, la visibilidad en IA o Meta Ads
-    # nunca cambia el código de salida del cron.
+        run_meta_ads_classify(args)
+    # El resultado del clasificador, el detector, la visibilidad en IA, Meta Ads
+    # o la clasificación de anuncios nunca cambia el código de salida del cron.
     return code
 
 def run_classifier(collector_args):
@@ -173,6 +174,29 @@ def run_meta_ads(collector_args):
                            env=child_env(CLASSIFIER_ONLY), prefix='meta_ads')
     except Exception as exc:
         log(event='meta_ads_error', error_type=type(exc).__name__)
+        return None
+
+
+def run_meta_ads_classify(collector_args):
+    """Clasifica anuncios nuevos de Meta. Apagada por defecto; no pisa etiquetas."""
+    try:
+        if os.getenv('PULSO_META_ADS_CLASSIFY_ENABLED', 'false').lower() != 'true':
+            log(event='meta_ads_classify_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_META_ADS_CLASSIFY_TIMEOUT_SECONDS', '300'))
+        if not 30 <= timeout <= 900:
+            raise ValueError('Invalid meta-ads classify timeout')
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_META_ADS_CLASSIFY_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
+        # Misma clave LLM y rol del clasificador; no ve el token de Meta ni al recolector.
+        return run_command([sys.executable, '-m', 'pulso.meta_ads.classify', *args], timeout,
+                           env=child_env(COLLECTOR_ONLY, META_ADS_ONLY), prefix='meta_ads_classify')
+    except Exception as exc:
+        log(event='meta_ads_classify_error', error_type=type(exc).__name__)
         return None
 
 

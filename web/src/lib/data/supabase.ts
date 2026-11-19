@@ -174,9 +174,52 @@ export class SupabaseRepo implements PulsoRepo {
         .limit(5000),
       "anuncios de Meta",
     );
-    return rows.map(normalizeMetaAd);
+    const classified = await this.mergeAdClassifications(candidateId, rows);
+    return classified.map(normalizeMetaAd);
   }
   async dataTimestamp() {
     return null;
+  }
+
+  /**
+   * Une la clasificación si la tabla existe. Si la migración todavía no se
+   * aplicó, PostgREST responde error y devolvemos los anuncios sin etiqueta.
+   */
+  private async mergeAdClassifications(candidateId: string, rows: MetaAd[]): Promise<MetaAd[]> {
+    if (rows.length === 0) return rows;
+    const res = await this.db
+      .from("meta_ad_classifications")
+      .select("meta_ad_id,ad_id,stance,reason,confidence,classified_at,classification_model,classification_prompt_version")
+      .eq("candidate_id", candidateId)
+      .limit(5000);
+    if (res.error || !res.data) return rows;
+    const byMetaId = new Map<string, (typeof res.data)[number]>();
+    const byAdId = new Map<string, (typeof res.data)[number]>();
+    for (const row of res.data) {
+      const rec = row as { meta_ad_id?: string; ad_id?: string };
+      if (rec.meta_ad_id) byMetaId.set(rec.meta_ad_id, row);
+      if (rec.ad_id) byAdId.set(rec.ad_id, row);
+    }
+    return rows.map((ad) => {
+      const hit = byMetaId.get(ad.id) ?? byAdId.get(ad.ad_id);
+      if (!hit) return ad;
+      const row = hit as {
+        stance?: string;
+        reason?: string | null;
+        confidence?: number | string | null;
+        classified_at?: string | null;
+        classification_model?: string | null;
+        classification_prompt_version?: string | null;
+      };
+      return {
+        ...ad,
+        stance: (row.stance as MetaAd["stance"]) ?? null,
+        stance_reason: row.reason ?? null,
+        stance_confidence: row.confidence ?? null,
+        classified_at: row.classified_at ?? null,
+        classification_model: row.classification_model ?? null,
+        classification_prompt_version: row.classification_prompt_version ?? null,
+      };
+    });
   }
 }

@@ -3,10 +3,11 @@ import { AdsVolumeChart } from "@/components/ads-volume-chart";
 import { MetaAdCard } from "@/components/meta-ad";
 import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
-import { computeMetaAdsView, formatAmount, formatSpendAggregate, type AdsBucket } from "@/lib/meta-ads";
+import { computeMetaAdsView, formatAmount, formatSpendAggregate, STANCE_BAR, STANCE_LABEL, type AdsBucket } from "@/lib/meta-ads";
+import { formatShare } from "@/lib/ai-visibility";
 import { formatMetaAdDate } from "@/lib/meta-ads";
 import { formatDate, formatDateTime, TZ_LABEL } from "@/lib/time";
-import { isMetaAdStatus, type MetaAdFilters } from "@/lib/types";
+import { isMetaAdStance, isMetaAdStatus, type MetaAdFilters } from "@/lib/types";
 
 export const metadata = { title: "Anuncios · Pulso" };
 
@@ -31,11 +32,13 @@ function parseFilters(sp: Record<string, string | string[] | undefined>): MetaAd
   const page = typeof sp.pagina === "string" ? sp.pagina.trim() : "";
   const status = typeof sp.estado === "string" ? sp.estado : "";
   const currency = typeof sp.moneda === "string" ? sp.moneda.trim().toUpperCase() : "";
+  const stance = typeof sp.postura === "string" ? sp.postura.trim() : "";
   return {
     q: q || undefined,
     page: page || undefined,
     status: isMetaAdStatus(status) ? status : undefined,
     currency: currency || undefined,
+    stance: isMetaAdStance(stance) || stance === "sin_clasificar" ? stance : undefined,
   };
 }
 
@@ -46,6 +49,7 @@ function withParams(base: string, days: number | "all", filters: MetaAdFilters, 
   if (filters.page) params.set("pagina", filters.page);
   if (filters.status) params.set("estado", filters.status);
   if (filters.currency) params.set("moneda", filters.currency);
+  if (filters.stance) params.set("postura", filters.stance);
   if (page && page > 1) params.set("p", String(page));
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
@@ -79,7 +83,7 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
     pageSize: PAGE_SIZE,
   });
   const base = `/c/${slug}/anuncios`;
-  const filtered = Boolean(filters.q || filters.page || filters.status || filters.currency);
+  const filtered = Boolean(filters.q || filters.page || filters.status || filters.currency || filters.stance);
   const pageOptions = [...view.topPages];
   if (filters.page && !pageOptions.some((p) => p.pageId === filters.page || p.pageName === filters.page)) {
     pageOptions.unshift({
@@ -180,6 +184,49 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
             )}
           </div>
 
+          <Card
+            title="A favor, en contra y neutrales"
+            subtitle="Clasificación automática respecto del candidato. El gasto es la suma de rangos de Meta, no un total exacto."
+            className="mb-6"
+          >
+            {view.classification.insufficient ? (
+              <EmptyState>
+                datos insuficientes. Todavía no hay anuncios clasificados en este período. Cuando el clasificador corra,
+                acá vas a ver cuántos están a favor, en contra o son neutrales, y el gasto estimado de cada grupo.
+              </EmptyState>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-3">
+                {view.classification.rows.map((row) => (
+                  <div key={row.stance}>
+                    <HBar
+                      label={
+                        <Link href={withParams(base, days, { ...filters, stance: row.stance })} className="hover:text-indigo-700">
+                          {row.label}
+                        </Link>
+                      }
+                      value={row.ads}
+                      max={Math.max(1, ...view.classification.rows.map((r) => r.ads))}
+                      barClass={STANCE_BAR[row.stance]}
+                      extra={<span className="ml-1.5 text-xs text-slate-500">{formatShare(row.share)}</span>}
+                    />
+                    <p className="mt-2 text-xs text-slate-500">
+                      {row.active} activos.
+                      {row.spend.length
+                        ? ` Gasto estimado: ${row.spend.map((s) => formatSpendAggregate(s).value).join(" · ")}.`
+                        : " Sin dato de gasto."}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {view.classification.unclassified > 0 && !view.classification.insufficient ? (
+              <p className="mt-4 text-xs text-slate-500">
+                {view.classification.unclassified} anuncios todavía no tienen clasificación y no entran en estos
+                porcentajes.
+              </p>
+            ) : null}
+          </Card>
+
           <div className="mb-6 grid gap-6 lg:grid-cols-3">
             <Card title="Anuncios en el tiempo" subtitle={volumeSubtitle(view.volumeBucket)} className="lg:col-span-2">
               {view.total === 0 ? (
@@ -209,7 +256,7 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
           </div>
 
           <Card className="mb-6">
-            <form method="get" action={base} className="grid grid-cols-2 gap-3 md:grid-cols-5">
+            <form method="get" action={base} className="grid grid-cols-2 gap-3 md:grid-cols-6">
               {days !== "all" ? <input type="hidden" name="dias" value={days} /> : null}
               <label className="col-span-2 block min-w-0 md:col-span-1">
                 <span className="text-xs font-medium text-slate-600">Buscar</span>
@@ -251,7 +298,17 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
                   ))}
                 </select>
               </label>
-              <div className="col-span-2 flex items-end gap-3 md:col-span-5">
+              <label className="block min-w-0">
+                <span className="text-xs font-medium text-slate-600">Postura</span>
+                <select name="postura" defaultValue={filters.stance ?? ""} className={selectCls}>
+                  <option value="">Todas</option>
+                  <option value="a_favor">{STANCE_LABEL.a_favor}</option>
+                  <option value="en_contra">{STANCE_LABEL.en_contra}</option>
+                  <option value="neutral_otro">{STANCE_LABEL.neutral_otro}</option>
+                  <option value="sin_clasificar">Sin clasificar</option>
+                </select>
+              </label>
+              <div className="col-span-2 flex items-end gap-3 md:col-span-6">
                 <button
                   type="submit"
                   className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"

@@ -7,6 +7,8 @@ import { loadCandidate } from "@/lib/context";
 import { NEGATIVE_TONES, SOURCE_BAR, SOURCE_BAR_DEFAULT, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
 import { formatDateTime, TZ_LABEL } from "@/lib/time";
 import { formatCount, youtubeThumbnailUrl, youtubeVideoId } from "@/lib/youtube";
+import { computeHomeCards } from "@/lib/home-summaries";
+import { SourceSummaryCards } from "@/components/source-summary-cards";
 
 export const metadata = { title: "Tablero · Pulso" };
 const PERIODS = [7, 14, 30];
@@ -20,12 +22,25 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const ts = await repo.dataTimestamp();
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - days * 86400000).toISOString();
-  const [mentions, topics, sources] = await Promise.all([
+  const [mentions, topics, sources, ads, answers, suspicious] = await Promise.all([
     repo.mentionsSince(candidate.id, since),
     repo.listTopics(candidate.id),
     repo.listCandidateSources(candidate.id),
+    repo.listMetaAds(candidate.id),
+    repo.listAiAnswers(candidate.id),
+    repo.listSuspiciousAccounts(candidate.id),
   ]);
   const d = computeDashboard(mentions, topics, { days, now });
+  const sourceCards = computeHomeCards({
+    slug,
+    days,
+    now,
+    mentions,
+    topics,
+    ads,
+    answers,
+    suspicious,
+  });
   const topicLabel = new Map(topics.map((t) => [t.id, t.label]));
   const classifiedAbout = d.toneAboutCandidate.reduce((s, t) => s + t.count, 0);
   const negPct = classifiedAbout ? Math.round((d.negativeAboutCandidate / classifiedAbout) * 100) : 0;
@@ -66,6 +81,8 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
         />
         <Stat label="A favor" value={d.positiveAboutCandidate} tone="positive" hint={`${d.pending} menciones esperando clasificación`} />
       </div>
+
+      <SourceSummaryCards cards={sourceCards} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card title="Volumen de menciones por día" subtitle={`Días en ${TZ_LABEL}. Solo menciones de terceros.`} className="lg:col-span-2">

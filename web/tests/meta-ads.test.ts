@@ -13,6 +13,7 @@ import {
   formatMetaAdDate,
   metaAdDateKey,
   publicAdLibraryUrl,
+  stanceSplit,
 } from "@/lib/meta-ads";
 import type { MetaAd } from "@/lib/types";
 
@@ -228,5 +229,45 @@ describe("MemoryRepo.listMetaAds", () => {
     expect(rows[0].ad_snapshot_url).toBe("https://www.facebook.com/ads/library/?id=9");
     expect(rows[0].ad_snapshot_url).not.toContain("access_token");
     expect(await repo.listMetaAds("otro")).toHaveLength(1);
+  });
+});
+
+describe("clasificación de anuncios", () => {
+  it("parte a favor, en contra y neutrales, con gasto por grupo, y no cuenta los sin etiqueta en el porcentaje", () => {
+    const rows = [
+      ad({ ad_id: "1", stance: "a_favor", spend_lower: 100, spend_upper: 199 }),
+      ad({ ad_id: "2", stance: "a_favor", spend_lower: 200, spend_upper: 299 }),
+      ad({ ad_id: "3", stance: "en_contra", spend_lower: 1000, spend_upper: 1499 }),
+      ad({ ad_id: "4", stance: "neutral_otro", spend_lower: 10, spend_upper: 20 }),
+      ad({ ad_id: "5", stance: null, spend_lower: 50, spend_upper: 60 }),
+    ];
+    const split = stanceSplit(rows, NOW);
+    expect(split.classified).toBe(4);
+    expect(split.unclassified).toBe(1);
+    expect(split.insufficient).toBe(false);
+    const favor = split.rows.find((r) => r.stance === "a_favor")!;
+    const contra = split.rows.find((r) => r.stance === "en_contra")!;
+    expect(favor.ads).toBe(2);
+    expect(favor.share).toBe(0.5);
+    expect(favor.spend[0].lowerSum).toBe(300);
+    expect(contra.ads).toBe(1);
+    expect(contra.share).toBe(0.25);
+    expect(stanceSplit([], NOW).insufficient).toBe(true);
+  });
+
+  it("filtra por postura, incluido sin clasificar, y el agregado de la vista lo expone", () => {
+    const rows = [
+      ad({ ad_id: "1", stance: "a_favor" }),
+      ad({ ad_id: "2", stance: "en_contra" }),
+      ad({ ad_id: "3", stance: null }),
+    ];
+    expect(matchesMetaAdFilters(rows[0], { stance: "a_favor" }, NOW)).toBe(true);
+    expect(matchesMetaAdFilters(rows[1], { stance: "a_favor" }, NOW)).toBe(false);
+    expect(matchesMetaAdFilters(rows[2], { stance: "sin_clasificar" }, NOW)).toBe(true);
+    expect(matchesMetaAdFilters(rows[0], { stance: "sin_clasificar" }, NOW)).toBe(false);
+    const view = computeMetaAdsView(rows, { days: "all", now: NOW, filters: { stance: "en_contra" } });
+    expect(view.filteredTotal).toBe(1);
+    expect(view.items[0].ad_id).toBe("2");
+    expect(view.classification.classified).toBe(2);
   });
 });
