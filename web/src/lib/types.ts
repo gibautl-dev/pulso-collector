@@ -173,3 +173,41 @@ export interface AiDomainRank {
   domain: string;
   count: number;
 }
+
+
+export interface MetaAd {
+  id: string;
+  candidate_id: string;
+  ad_id: string;
+  page_id: string | null;
+  page_name: string | null;
+  bylines: string | null;
+  publisher_platforms: string[];
+  currency: string | null;
+  spend_lower: number | string | null;
+  spend_upper: number | string | null;
+  impressions_lower: number | string | null;
+  impressions_upper: number | string | null;
+  ad_creative_bodies: string[];
+  ad_creative_link_titles: string[];
+  ad_snapshot_url: string | null;
+  ad_creation_time: string | null;
+  ad_delivery_start_time: string | null;
+  ad_delivery_stop_time: string | null;
+  fetched_at: string;
+  fetched_on: string;
+}
+
+export type MetaAdStatusFilter = "activo" | "inactivo";
+
+export interface MetaAdFilters {
+  q?: string;
+  page?: string;
+  status?: MetaAdStatusFilter;
+  currency?: string;
+}
+
+export function isMetaAdStatus(value: string): value is MetaAdStatusFilter {
+  return value === "activo" || value === "inactivo";
+}
+

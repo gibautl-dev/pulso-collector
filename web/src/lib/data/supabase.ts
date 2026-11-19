@@ -3,8 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateSource, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
+import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
 
 // Columnas explícitas: nunca pedimos settings/cursor de candidate_sources
@@ -16,6 +17,8 @@ const MENTION_LIST_COLS =
 const SOURCE_COLS =
   "candidate_id,source,enabled,interval_seconds,last_attempt_at,last_success_at,collection_started_at,earliest_observed_at,latest_observed_at,coverage_status";
 const RUN_COLS = "id,candidate_id,source,run_kind,started_at,finished_at,status,items_found,items_new,error";
+const META_AD_COLS =
+  "id,candidate_id,ad_id,page_id,page_name,bylines,publisher_platforms,currency,spend_lower,spend_upper,impressions_lower,impressions_upper,ad_creative_bodies,ad_creative_link_titles,ad_snapshot_url,ad_creation_time,ad_delivery_start_time,ad_delivery_stop_time,fetched_at,fetched_on";
 const SUSPICIOUS_COLS =
   "id,candidate_id,platform,account_key,handle,display_name,profile_url,score,signals,mention_count,first_seen_at,last_seen_at,account_created_at,status,status_note,status_updated_at,detected_at";
 
@@ -159,6 +162,19 @@ export class SupabaseRepo implements PulsoRepo {
       topics: asStringList(row.topics),
       other_politicians: asStringList(row.other_politicians),
     }));
+  }
+  async listMetaAds(candidateId: string) {
+    const rows = check<MetaAd[]>(
+      await this.db
+        .from("meta_ads")
+        .select(META_AD_COLS)
+        .eq("candidate_id", candidateId)
+        .order("ad_delivery_start_time", { ascending: false, nullsFirst: false })
+        .order("ad_id", { ascending: true })
+        .limit(5000),
+      "anuncios de Meta",
+    );
+    return rows.map(normalizeMetaAd);
   }
   async dataTimestamp() {
     return null;

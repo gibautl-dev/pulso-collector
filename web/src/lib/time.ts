@@ -22,10 +22,45 @@ const shortDayFmt = new Intl.DateTimeFormat("es-AR", {
   day: "2-digit",
   month: "2-digit",
 });
+const dateFmt = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
+const monthFmt = new Intl.DateTimeFormat("es-AR", {
+  timeZone: TZ,
+  month: "short",
+  year: "numeric",
+});
+
+/** Acepta ISO y el formato de Postgres (`2026-11-19 19:16:01+00`). */
+export function parseDate(iso: string): Date {
+  let value = iso.trim();
+  if (/^\d{4}-\d{2}-\d{2} /.test(value)) value = value.replace(" ", "T");
+  value = value.replace(/([+-]\d{2})$/, "$1:00");
+  return new Date(value);
+}
 
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
-  return dateTimeFmt.format(new Date(iso));
+  const date = parseDate(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return dateTimeFmt.format(date);
+}
+
+/** Fecha (dd/mm/aaaa) en hora de Argentina. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const date = parseDate(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return dateFmt.format(date);
+}
+
+/** Mes corto (p. ej. "nov 2026") en hora de Argentina. */
+export function formatMonth(key: string): string {
+  const iso = key.length === 7 ? `${key}-01T12:00:00-03:00` : `${key}T12:00:00-03:00`;
+  return monthFmt.format(new Date(iso)).replace(".", "");
 }
 
 /** Clave de día (YYYY-MM-DD) en hora de Argentina. */

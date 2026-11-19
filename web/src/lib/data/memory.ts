@@ -1,5 +1,6 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, Mention, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateSource, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
 
 export interface FixtureData {
@@ -11,6 +12,7 @@ export interface FixtureData {
   candidate_sources: CandidateSource[];
   suspicious_accounts?: SuspiciousAccount[];
   ai_answers?: AiAnswer[];
+  meta_ads?: MetaAd[];
 }
 
 /** Repositorio en memoria: usado por el modo fixture y los tests. */
@@ -74,6 +76,16 @@ export class MemoryRepo implements PulsoRepo {
       .filter((a) => a.candidate_id === candidateId)
       .slice()
       .sort((a, b) => b.asked_on.localeCompare(a.asked_on) || a.prompt_key.localeCompare(b.prompt_key, "es"));
+  }
+  async listMetaAds(candidateId: string) {
+    return (this.data.meta_ads ?? [])
+      .filter((a) => a.candidate_id === candidateId)
+      .map(normalizeMetaAd)
+      .sort((a, b) => {
+        const aStart = a.ad_delivery_start_time ?? a.fetched_at;
+        const bStart = b.ad_delivery_start_time ?? b.fetched_at;
+        return bStart.localeCompare(aStart) || a.ad_id.localeCompare(b.ad_id);
+      });
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;

@@ -28,6 +28,10 @@ fuentes. Next.js 16 (App Router, TypeScript) + Tailwind 4 + `@supabase/ssr`.
 | `/c/[slug]/menciones` | Feed con filtros (tono, sobre quién, tema, fuente, relevancia, fechas) y búsqueda; cada ítem enlaza a la fuente |
 | `/c/[slug]/menciones/[id]` | Detalle: razón de la IA, confianza, modelo, versión de prompt |
 | `/c/[slug]/fuentes` | Estado por fuente y últimas `source_runs` |
+| `/c/[slug]/sospechosas` | Cuentas marcadas para revisión humana, con participación, motivos y balance |
+| `/c/[slug]/ia` | Respuestas de modelos de IA sobre el candidato |
+| `/c/[slug]/x` | Posts en X: volumen, balance, autores y publicaciones |
+| `/c/[slug]/anuncios` | Biblioteca de anuncios de Meta: totales, páginas, gasto en rangos y listado filtrable |
 
 Las fechas se muestran en hora de Argentina. Solo `account_relation = third_party`
 entra al tablero. Las críticas con `target = other` no cuentan en contra.
