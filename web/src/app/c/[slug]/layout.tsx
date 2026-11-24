@@ -1,4 +1,5 @@
 import { Brand } from "@/components/brand";
+import { CandidateHeading, CandidateSwitcher } from "@/components/candidate-switcher";
 import { Nav } from "@/components/nav";
 import { signOut } from "@/app/auth/actions";
 import { loadCandidate } from "@/lib/context";
@@ -7,10 +8,11 @@ import { clockFromRegion, formatDateTime } from "@/lib/time";
 
 export default async function CandidateLayout({ children, params }: LayoutProps<"/c/[slug]">) {
   const { slug } = await params;
-  const { viewer, candidate, repo } = await loadCandidate(slug);
+  const { viewer, candidate, candidates, repo } = await loadCandidate(slug);
   const exportedAt = viewer.fixture ? await repo.dataTimestamp() : null;
   const region = regionFor(candidate.slug);
   const clock = clockFromRegion(region);
+  const showSwitcher = candidates.length > 1;
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
@@ -19,9 +21,11 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
           <Brand />
         </div>
         <div className="px-5 pb-4 lg:pb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Candidato</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{candidate.name}</p>
-          <p className="text-xs text-slate-500">{region.electionLabel}</p>
+          {showSwitcher ? (
+            <CandidateSwitcher candidates={candidates} current={candidate} />
+          ) : (
+            <CandidateHeading candidate={candidate} electionLabel={region.electionLabel} />
+          )}
         </div>
         <div className="px-3 pb-4">
           <Nav slug={candidate.slug} showAds={region.showMetaAds} />

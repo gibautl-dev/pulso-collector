@@ -6,6 +6,8 @@ import type { MentionPage, PulsoRepo } from "./repo";
 export interface FixtureData {
   exported_at?: string;
   candidate: Candidate;
+  /** Si está, el usuario local ve todos estos (además del `candidate`). */
+  candidates?: Candidate[];
   topics: Topic[];
   mentions: Mention[];
   source_runs: SourceRun[];
@@ -20,11 +22,18 @@ export class MemoryRepo implements PulsoRepo {
   readonly mode = "fixture" as const;
   constructor(private readonly data: FixtureData) {}
 
+  private visibleCandidates(): Candidate[] {
+    const bySlug = new Map<string, Candidate>();
+    bySlug.set(this.data.candidate.slug, this.data.candidate);
+    for (const c of this.data.candidates ?? []) bySlug.set(c.slug, c);
+    return [...bySlug.values()].sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }
+
   async listCandidates() {
-    return [this.data.candidate];
+    return this.visibleCandidates();
   }
   async getCandidate(slug: string) {
-    return this.data.candidate.slug === slug ? this.data.candidate : null;
+    return this.visibleCandidates().find((c) => c.slug === slug) ?? null;
   }
   async listTopics(candidateId: string) {
     return this.data.topics
