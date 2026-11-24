@@ -6,7 +6,7 @@ import {
   suspiciousAccountLabel,
   suspiciousSignalLabel,
 } from "@/lib/labels";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { clockFor, formatDateTime } from "@/lib/time";
 import type { SuspiciousAccount, SuspiciousStatus } from "@/lib/types";
 
 const ACTIONS: { status: SuspiciousStatus; label: string }[] = [
@@ -17,9 +17,10 @@ const ACTIONS: { status: SuspiciousStatus; label: string }[] = [
 ];
 
 export function SuspiciousAccountCard({ account, slug }: { account: SuspiciousAccount; slug: string }) {
+  const clock = clockFor(slug);
   const label = suspiciousAccountLabel(account);
   const created = account.account_created_at
-    ? `Creada el ${formatDateTime(account.account_created_at)} (${TZ_LABEL})`
+    ? `Creada el ${formatDateTime(account.account_created_at, clock)} (${clock.tzLabel})`
     : account.platform === "youtube"
       ? "Sin fecha de creación del canal"
       : "Sin fecha de creación";
@@ -38,8 +39,8 @@ export function SuspiciousAccountCard({ account, slug }: { account: SuspiciousAc
           )}
           <p className="mt-1 text-xs text-slate-500">
             {account.mention_count} {account.mention_count === 1 ? "mención" : "menciones"}
-            {account.first_seen_at ? ` · primera ${formatDateTime(account.first_seen_at)}` : ""}
-            {account.last_seen_at ? ` · última ${formatDateTime(account.last_seen_at)}` : ""}
+            {account.first_seen_at ? ` · primera ${formatDateTime(account.first_seen_at, clock)}` : ""}
+            {account.last_seen_at ? ` · última ${formatDateTime(account.last_seen_at, clock)}` : ""}
             {` · ${created}`}
           </p>
         </div>
@@ -82,7 +83,7 @@ export function SuspiciousAccountCard({ account, slug }: { account: SuspiciousAc
               <ul className="mt-2 space-y-2">
                 {sig.evidence.map((ev) => (
                   <li key={ev.mention_id} className="text-sm text-slate-700">
-                    <span className="text-xs text-slate-500">{formatDateTime(ev.published_at)} ({TZ_LABEL}) · </span>
+                    <span className="text-xs text-slate-500">{formatDateTime(ev.published_at, clock)} ({clock.tzLabel}) · </span>
                     {ev.url ? (
                       <a href={ev.url} target="_blank" rel="noopener noreferrer nofollow" className="text-indigo-600 hover:text-indigo-500">
                         {ev.excerpt || "Ver mención"}
@@ -132,7 +133,7 @@ export function SuspiciousAccountCard({ account, slug }: { account: SuspiciousAc
         </div>
         {account.status_updated_at && (
           <p className="mt-2 text-xs text-slate-500">
-            Estado actualizado el {formatDateTime(account.status_updated_at)} ({TZ_LABEL})
+            Estado actualizado el {formatDateTime(account.status_updated_at, clock)} ({clock.tzLabel})
           </p>
         )}
       </form>

@@ -73,6 +73,78 @@ DEFAULT_PROMPTS: list[dict[str, str]] = [
 ]
 
 
+
+# Preguntas para un candidato a la presidencia del Gobierno de España.
+# Se usan cuando el candidato no tiene una lista propia en la base.
+SPAIN_GOVERNMENT_PROMPTS: list[dict[str, str]] = [
+    {
+        "key": "quien_es",
+        "text": "¿Quién es {name} y cuál es su trayectoria política?",
+    },
+    {
+        "key": "economia",
+        "text": (
+            "¿Cómo se evalúa la gestión económica de {name} y el manejo de "
+            "las cuentas públicas en España?"
+        ),
+    },
+    {
+        "key": "vivienda",
+        "text": "¿Cómo se evalúa la política de vivienda de {name}?",
+    },
+    {
+        "key": "sanidad",
+        "text": "¿Cómo se evalúa la gestión de {name} en sanidad?",
+    },
+    {
+        "key": "educacion",
+        "text": "¿Cómo se evalúa la gestión de {name} en educación?",
+    },
+    {
+        "key": "polemicas",
+        "text": (
+            "¿Cuáles son las principales polémicas, críticas, casos de "
+            "corrupción o controversias asociadas a {name}?"
+        ),
+    },
+    {
+        "key": "presidente",
+        "text": (
+            "Según lo que se publica y se debate, ¿sería {name} un buen "
+            "presidente del Gobierno de España?"
+        ),
+    },
+    {
+        "key": "comparacion_feijoo",
+        "text": (
+            "¿Cómo se compara {name} con Alberto Núñez Feijóo en el debate "
+            "político actual de España?"
+        ),
+    },
+    {
+        "key": "coaliciones",
+        "text": (
+            "¿Qué coaliciones, pactos o escenarios de investidura se mencionan "
+            "en relación con {name}?"
+        ),
+    },
+    {
+        "key": "elecciones_29n",
+        "text": (
+            "¿Qué propuestas, posicionamientos o escenarios se mencionan para "
+            "{name} de cara a las elecciones generales del 29 de noviembre de 2026?"
+        ),
+    },
+]
+
+
+def prompts_for_slug(slug: str | None) -> list[dict[str, str]] | None:
+    """Lista por defecto según el candidato, o None para usar DEFAULT_PROMPTS."""
+    if slug == "pedro-sanchez":
+        return SPAIN_GOVERNMENT_PROMPTS
+    return None
+
+
 def load_prompt_overrides(path: Path | None) -> list[dict[str, str]] | None:
     """Lee una lista JSON de {key, text}. Devuelve None si no hay archivo."""
     if path is None:

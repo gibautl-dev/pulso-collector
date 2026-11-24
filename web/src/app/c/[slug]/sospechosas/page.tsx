@@ -5,7 +5,7 @@ import { SuspiciousInsightsPanel } from "@/components/suspicious-insights";
 import { loadCandidate } from "@/lib/context";
 import { computeSuspiciousInsights } from "@/lib/suspicious-insights";
 import { isSuspiciousPlatform, isSuspiciousStatus, type SuspiciousFilters } from "@/lib/types";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { clockFor, formatDateTime } from "@/lib/time";
 
 export const metadata = { title: "Cuentas sospechosas · Pulso" };
 
@@ -28,6 +28,7 @@ export default async function SuspiciousAccountsPage({
   searchParams,
 }: PageProps<"/c/[slug]/sospechosas">) {
   const { slug } = await params;
+  const clock = clockFor(slug);
   const sp = await searchParams;
   const filters = parseSuspiciousFilters(sp);
   const days = PERIODS.includes(Number(sp.dias)) ? Number(sp.dias) : 7;
@@ -45,7 +46,7 @@ export default async function SuspiciousAccountsPage({
   const insights = computeSuspiciousInsights(mentions, allAccounts, topics, { days, now });
   const lastRun = runs.find((r) => r.finished_at)?.finished_at ?? null;
   const lastRunLabel = lastRun
-    ? `Última recolección: ${formatDateTime(lastRun)} (${TZ_LABEL}).`
+    ? `Última recolección: ${formatDateTime(lastRun, clock)} (${clock.tzLabel}).`
     : "Todavía no hay una recolección registrada.";
   const filtered = Boolean(filters.status || filters.platform);
   const base = `/c/${slug}/sospechosas`;
@@ -77,7 +78,7 @@ export default async function SuspiciousAccountsPage({
         {repo.mode === "fixture" ? " Este render es local, con datos exportados, y no es una captura de producción." : null}
       </p>
 
-      <SuspiciousInsightsPanel insights={insights} />
+      <SuspiciousInsightsPanel insights={insights} slug={slug} />
 
       <Card className="mb-6">
         <form method="get" action={base} className="grid grid-cols-2 gap-3 md:grid-cols-4">

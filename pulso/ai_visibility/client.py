@@ -21,7 +21,40 @@ SYSTEM_INSTRUCTIONS = (
     "extenso. No hagas campaña a favor ni en contra. Si usás información de "
     "la web, citá las fuentes. No inventes URLs ni hechos."
 )
+SPAIN_INSTRUCTIONS = (
+    "Eres un asistente informativo. Responde en español de España, de forma "
+    "clara, precisa y equilibrada, como a un votante que quiere informarse. "
+    "Escribe entre 250 y 400 palabras, como lo leería alguien que abre el chat "
+    "y hace una sola pregunta. No armes anexos, tablas largas ni un informe "
+    "extenso. No hagas campaña a favor ni en contra. Si usas información de "
+    "la web, cita las fuentes. No inventes URLs ni hechos."
+)
 MAX_OUTPUT_TOKENS = 900
+
+
+def instructions_for(style: str | None) -> str:
+    if (style or "").strip().lower() == "spain":
+        return SPAIN_INSTRUCTIONS
+    return SYSTEM_INSTRUCTIONS
+
+
+DEFAULT_USER_LOCATION = {
+    "type": "approximate",
+    "country": "AR",
+    "city": "Buenos Aires",
+    "region": "Buenos Aires",
+}
+
+
+def user_location_payload(location: dict | None = None) -> dict:
+    data = dict(location or DEFAULT_USER_LOCATION)
+    data.setdefault("type", "approximate")
+    return {
+        "type": "approximate",
+        "country": data["country"],
+        "city": data.get("city") or "",
+        "region": data.get("region") or "",
+    }
 
 
 class VisibilityError(Exception):
@@ -131,19 +164,16 @@ class ResponsesClient:
         use_web = self.settings.use_web_search if use_web_search is None else use_web_search
         body: dict = {
             "model": self.settings.ask_model,
-            "instructions": SYSTEM_INSTRUCTIONS,
+            "instructions": getattr(self.settings, "instructions", None) or instructions_for(
+                getattr(self.settings, "language_style", None)),
             "input": prompt,
             "max_output_tokens": MAX_OUTPUT_TOKENS,
         }
         if use_web:
+            location = getattr(self.settings, "user_location", None)
             body["tools"] = [{
                 "type": "web_search",
-                "user_location": {
-                    "type": "approximate",
-                    "country": "AR",
-                    "city": "Buenos Aires",
-                    "region": "Buenos Aires",
-                },
+                "user_location": user_location_payload(location),
             }]
             body["include"] = ["web_search_call.action.sources"]
         payload = self._complete(body)

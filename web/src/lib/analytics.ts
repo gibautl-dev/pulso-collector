@@ -53,10 +53,10 @@ export function isHighlight(m: Mention): boolean {
 }
 
 /** Lista de días (ART) desde hoy-(n-1) hasta hoy, para mostrar ceros también. */
-export function dayRange(days: number, now: Date): string[] {
+export function dayRange(days: number, now: Date, timeZone?: string): string[] {
   const out: string[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    out.push(dayKey(new Date(now.getTime() - i * 86400000)));
+    out.push(dayKey(new Date(now.getTime() - i * 86400000), timeZone));
   }
   return Array.from(new Set(out));
 }
@@ -64,9 +64,10 @@ export function dayRange(days: number, now: Date): string[] {
 export function computeDashboard(
   all: Mention[],
   topics: Topic[],
-  opts: { days: number; now?: Date; highlightLimit?: number },
+  opts: { days: number; now?: Date; highlightLimit?: number; timeZone?: string },
 ): DashboardData {
   const now = opts.now ?? new Date();
+  const timeZone = opts.timeZone;
   const since = new Date(now.getTime() - opts.days * 86400000);
   // Por diseño, solo third_party entra al radar de reputación.
   const mentions = all.filter(
@@ -74,7 +75,7 @@ export function computeDashboard(
   );
   const topicLabel = new Map(topics.map((t) => [t.id, t.label]));
 
-  const days = dayRange(opts.days, now);
+  const days = dayRange(opts.days, now, timeZone);
   const volMap = new Map<string, DayVolume>(
     days.map((d) => [d, { day: d, total: 0, positivo: 0, neutral: 0, negativo: 0, pendiente: 0 }]),
   );
@@ -93,7 +94,7 @@ export function computeDashboard(
 
   for (const m of mentions) {
     const b = bucketFor(m);
-    const v = volMap.get(dayKey(m.published_at));
+    const v = volMap.get(dayKey(m.published_at, timeZone));
     if (v) {
       v.total++;
       v[b]++;

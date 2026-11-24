@@ -54,7 +54,8 @@ Usar puerto 5432 de **sesión**; 6543 transaccional no conserva advisory locks.
 |---|---|---|
 | DATABASE_URL | Sí | URI de arriba, sin contraseña, sslmode=require; secreto/config privada de servidor |
 | PGPASSWORD | Sí con URI sin contraseña | Contraseña cruda del rol pulso_collector, cargada solo en Environment del servicio |
-| PULSO_CANDIDATE | Sí para el CMD del contenedor | Slug exacto que ya existe en candidates, por ejemplo candidato-demo |
+| PULSO_CANDIDATE | Sí, si no está PULSO_CANDIDATES | Slug exacto que ya existe en candidates, por ejemplo candidato-demo |
+| PULSO_CANDIDATES | Alternativa a PULSO_CANDIDATE | Lista de slugs separados por coma, p. ej. axel-kicillof,pedro-sanchez. Si está, se usa en lugar de PULSO_CANDIDATE. El CLI `--candidate` gana sobre ambas. |
 | PULSO_URL_SECURITY_MODE | No; declarada | strict; allowlist para excepciones exactas justificadas; off solo en entorno/feeds confiables |
 | PULSO_URL_ALLOWED_HOSTS | No | Vacío normalmente; en allowlist, hosts separados por coma sin esquema ni path, p. ej. news.google.com,medio.example |
 | PULSO_HTTP_TRUST_ENV | No; declarada | false en Render sin proxy; true si se configura proxy/certificado del entorno |

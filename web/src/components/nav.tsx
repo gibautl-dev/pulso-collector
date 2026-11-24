@@ -13,7 +13,7 @@ const ICONS: Record<string, string> = {
   anuncios: "M3 7h13v11H3zM16 10l5-2v11l-5-2",
 };
 
-export function Nav({ slug }: { slug: string }) {
+export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean }) {
   const pathname = usePathname();
   const base = `/c/${slug}`;
   const items = [
@@ -23,7 +23,9 @@ export function Nav({ slug }: { slug: string }) {
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },
     { href: `${base}/ia`, label: "En la IA", icon: "ia", active: pathname.startsWith(`${base}/ia`) },
     { href: `${base}/x`, label: "En X", icon: "x", active: pathname.startsWith(`${base}/x`) },
-    { href: `${base}/anuncios`, label: "Anuncios", icon: "anuncios", active: pathname.startsWith(`${base}/anuncios`) },
+    ...(showAds
+      ? [{ href: `${base}/anuncios`, label: "Anuncios", icon: "anuncios", active: pathname.startsWith(`${base}/anuncios`) }]
+      : []),
   ];
   return (
     <nav className="flex flex-wrap gap-1 lg:flex-col">

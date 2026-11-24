@@ -4,7 +4,7 @@ import { Card, RelevanceBadge, SourceBadge, ToneBadge } from "@/components/ui";
 import { cleanTitle } from "@/components/mention-row";
 import { loadCandidate } from "@/lib/context";
 import { sourceLabel, TARGET_LABEL } from "@/lib/labels";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { clockFor, formatDateTime } from "@/lib/time";
 import {
   formatCount,
   isYoutubeComment,
@@ -78,7 +78,7 @@ export default async function MentionDetail({ params }: PageProps<"/c/[slug]/men
             <p className="mt-2 text-sm text-slate-500">
               {isYt
                 ? [ytComment ? m.author : null, m.outlet ?? m.author ?? "YouTube"].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(" · ")
-                : (m.outlet ?? "Sin medio")} · {formatDateTime(m.published_at)} ({TZ_LABEL})
+                : (m.outlet ?? "Sin medio")} · {formatDateTime(m.published_at, clock)} ({clock.tzLabel})
             </p>
             {isYt && stats && (
               <dl className="mt-4 grid grid-cols-3 gap-3 max-w-md">
@@ -175,9 +175,9 @@ export default async function MentionDetail({ params }: PageProps<"/c/[slug]/men
                 {m.author && <Row label="Autor">{m.author}</Row>}
               </>
             )}
-            <Row label="Publicada">{formatDateTime(m.published_at)}</Row>
-            <Row label="Recolectada">{formatDateTime(m.collected_at)}</Row>
-            <Row label="Clasificada">{formatDateTime(m.classified_at)}</Row>
+            <Row label="Publicada">{formatDateTime(m.published_at, clock)}</Row>
+            <Row label="Recolectada">{formatDateTime(m.collected_at, clock)}</Row>
+            <Row label="Clasificada">{formatDateTime(m.classified_at, clock)}</Row>
             <Row label="Modelo">{m.classification_model ?? "—"}</Row>
             <Row label="Versión de prompt">
               <span className="break-all font-mono text-xs">{m.classification_prompt_version ?? "—"}</span>

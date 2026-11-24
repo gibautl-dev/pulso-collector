@@ -3,6 +3,7 @@ import { aggregateSpend, formatSpendAggregate, stanceSplit, type SpendByCurrency
 import { computeSuspiciousInsights, formatPercent } from "./suspicious-insights";
 import type { AiAnswer, Mention, MetaAd, SuspiciousAccount, Topic } from "./types";
 import { computeXView, formatBalance as formatXBalance } from "./x-posts";
+import { META_ADS_EU_UNAVAILABLE } from "./region";
 
 export interface HomeCardStat {
   label: string;
@@ -34,9 +35,12 @@ export function computeHomeCards(input: {
   ads: MetaAd[];
   answers: AiAnswer[];
   suspicious: SuspiciousAccount[];
+  showMetaAds?: boolean;
+  timeZone?: string;
 }): HomeSourceCard[] {
   const { slug, days, now } = input;
-  const x = computeXView(input.mentions, { days, now });
+  const showMetaAds = input.showMetaAds !== false;
+  const x = computeXView(input.mentions, { days, now, timeZone: input.timeZone });
   const insights = computeSuspiciousInsights(input.mentions, input.suspicious, input.topics, { days, now });
   const adsView = stanceSplit(input.ads, now);
   const activeAds = input.ads.filter((ad) => !ad.ad_delivery_stop_time || new Date(ad.ad_delivery_stop_time).getTime() > now.getTime()).length;
@@ -69,7 +73,8 @@ export function computeHomeCards(input: {
       ],
       caveat: xCaveat,
     },
-    {
+    ...(showMetaAds
+    ? [{
       href: `/c/${slug}/anuncios`,
       title: "Anuncios",
       hint: "Biblioteca de Meta, todo el período recolectado",
@@ -89,6 +94,15 @@ export function computeHomeCards(input: {
             ]),
       ],
     },
+    ]
+    : [{
+      href: `/c/${slug}/anuncios`,
+      title: "Anuncios",
+      hint: "Biblioteca de Meta",
+      insufficient: true,
+      emptyLabel: META_ADS_EU_UNAVAILABLE,
+      stats: [],
+    }]),
     {
       href: `/c/${slug}/ia`,
       title: "En la IA",

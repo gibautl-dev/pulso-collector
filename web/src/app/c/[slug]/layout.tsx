@@ -2,12 +2,15 @@ import { Brand } from "@/components/brand";
 import { Nav } from "@/components/nav";
 import { signOut } from "@/app/auth/actions";
 import { loadCandidate } from "@/lib/context";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { regionFor } from "@/lib/region";
+import { clockFromRegion, formatDateTime } from "@/lib/time";
 
 export default async function CandidateLayout({ children, params }: LayoutProps<"/c/[slug]">) {
   const { slug } = await params;
   const { viewer, candidate, repo } = await loadCandidate(slug);
   const exportedAt = viewer.fixture ? await repo.dataTimestamp() : null;
+  const region = regionFor(candidate.slug);
+  const clock = clockFromRegion(region);
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
@@ -18,10 +21,10 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
         <div className="px-5 pb-4 lg:pb-6">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Candidato</p>
           <p className="mt-1 text-sm font-semibold text-slate-900">{candidate.name}</p>
-          <p className="text-xs text-slate-500">Elecciones 2027 · Argentina</p>
+          <p className="text-xs text-slate-500">{region.electionLabel}</p>
         </div>
         <div className="px-3 pb-4">
-          <Nav slug={candidate.slug} />
+          <Nav slug={candidate.slug} showAds={region.showMetaAds} />
         </div>
         <div className="mt-auto hidden border-t border-slate-100 px-5 py-4 lg:block">
           <p className="truncate text-xs text-slate-500" title={viewer.email}>{viewer.email}</p>
@@ -36,7 +39,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
         {viewer.fixture && (
           <div className="border-b border-amber-200 bg-amber-50 px-6 py-2 text-xs text-amber-900">
             <strong>Modo local de prueba:</strong> datos reales exportados de Supabase
-            {exportedAt ? ` el ${formatDateTime(exportedAt)} (${TZ_LABEL})` : ""}, sin login. No se
+            {exportedAt ? ` el ${formatDateTime(exportedAt, clock)} (${clock.tzLabel})` : ""}, sin login. No se
             actualizan solos y este modo no funciona fuera de esta computadora.
           </div>
         )}

@@ -11,13 +11,62 @@ from typing import Callable
 from zoneinfo import ZoneInfo
 
 from pulso.meta_ads.settings import MetaAdsSettings, token_from_env
+from pulso.region import allows_meta_ads_defaults, profile_for
 from pulso.sources.meta_ads import (
     ArchivedAd,
     MetaAdsClient,
     MetaAdsError,
     MetaAdsQuery,
     parse_ad,
+    normalize_terms,
 )
+
+
+def resolve_meta_ads_query(slug: str | None, settings: MetaAdsSettings, stored: dict | None):
+    """Arma la consulta sin caer en los defaults de Kicillof/AR para otro slug.
+
+    Devuelve (query, settings_enabled, skip_reason).
+    """
+    profile = profile_for(slug)
+    if not profile.show_meta_ads:
+        enabled = True if stored is None else bool(stored.get("enabled", True))
+        return None, enabled, "region_disabled"
+    if stored:
+        enabled = bool(stored.get("enabled", True))
+        terms = stored.get("search_terms")
+        pages = stored.get("search_page_ids") or []
+        countries = stored.get("ad_reached_countries")
+        normalized = normalize_terms(terms) if terms else []
+        has_search = bool(normalized) or bool(pages)
+        has_countries = bool(countries)
+        if has_search and has_countries:
+            return MetaAdsQuery(
+                search_terms=normalized,
+                search_page_ids=list(pages),
+                ad_reached_countries=list(countries),
+                ad_active_status=stored.get("ad_active_status") or settings.ad_active_status,
+                ad_type=stored.get("ad_type") or settings.ad_type,
+                api_version=settings.api_version,
+                max_pages=settings.max_pages,
+                max_ads=settings.max_ads,
+            ), enabled, None
+        if allows_meta_ads_defaults(slug):
+            base = settings.query()
+            return MetaAdsQuery(
+                search_terms=normalized or list(base.search_terms),
+                search_page_ids=list(pages or []),
+                ad_reached_countries=list(countries or base.ad_reached_countries),
+                ad_active_status=stored.get("ad_active_status") or base.ad_active_status,
+                ad_type=stored.get("ad_type") or base.ad_type,
+                api_version=base.api_version,
+                max_pages=base.max_pages,
+                max_ads=base.max_ads,
+            ), enabled, None
+        return None, enabled, "missing_query_settings"
+    if allows_meta_ads_defaults(slug):
+        return settings.query(), True, None
+    return None, False, "defaults_not_allowed"
+
 
 TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 DEFAULT_SLUG = "axel-kicillof"

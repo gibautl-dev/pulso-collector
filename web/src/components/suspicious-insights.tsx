@@ -8,7 +8,7 @@ import {
   type SentimentSplit,
   type SuspiciousInsights,
 } from "@/lib/suspicious-insights";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { clockFor, formatDateTime, type Clock } from "@/lib/time";
 
 function SentimentCard({ title, subtitle, split }: { title: string; subtitle: string; split: SentimentSplit }) {
   return (
@@ -34,7 +34,7 @@ function SentimentCard({ title, subtitle, split }: { title: string; subtitle: st
   );
 }
 
-function ReasonsBlock({ reasons }: { reasons: GroupedReason[] }) {
+function ReasonsBlock({ reasons, clock }: { reasons: GroupedReason[]; clock: Clock }) {
   if (reasons.every((r) => r.accounts.length === 0)) {
     return <EmptyState>Todavía no hay señales agrupadas para mostrar.</EmptyState>;
   }
@@ -70,7 +70,7 @@ function ReasonsBlock({ reasons }: { reasons: GroupedReason[] }) {
                     {signals.flatMap((sig) =>
                       sig.evidence.slice(0, 3).map((ev) => (
                         <li key={`${sig.type}-${ev.mention_id}`} className="text-xs text-slate-600">
-                          <span className="text-slate-400">{formatDateTime(ev.published_at)} ({TZ_LABEL}) · </span>
+                          <span className="text-slate-400">{formatDateTime(ev.published_at, clock)} ({clock.tzLabel}) · </span>
                           {ev.url ? (
                             <a href={ev.url} target="_blank" rel="noopener noreferrer nofollow" className="text-indigo-600 hover:text-indigo-500">
                               {ev.excerpt || "Ver mención"}
@@ -92,7 +92,8 @@ function ReasonsBlock({ reasons }: { reasons: GroupedReason[] }) {
   );
 }
 
-export function SuspiciousInsightsPanel({ insights }: { insights: SuspiciousInsights }) {
+export function SuspiciousInsightsPanel({ insights, slug }: { insights: SuspiciousInsights; slug: string }) {
+  const clock = clockFor(slug);
   if (!insights.sufficient) {
     return (
       <Card title="Lectura de la conversación" subtitle="Evidencia para revisión humana. Pulso no denuncia en automático ni en lote." className="mb-6">
@@ -138,7 +139,7 @@ export function SuspiciousInsightsPanel({ insights }: { insights: SuspiciousInsi
         title="Motivos agrupados, con evidencia"
         subtitle="Las señales del detector se agrupan en tres lecturas. La evidencia ya estaba guardada; no se denuncia ni se actúa en automático."
       >
-        <ReasonsBlock reasons={insights.reasons} />
+        <ReasonsBlock reasons={insights.reasons} clock={clock} />
       </Card>
 
       <Card

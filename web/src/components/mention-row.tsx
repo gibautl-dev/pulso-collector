@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { RelevanceBadge, SourceBadge, ToneBadge } from "@/components/ui";
 import { TARGET_LABEL } from "@/lib/labels";
-import { formatDateTime } from "@/lib/time";
+import { clockFor, formatDateTime } from "@/lib/time";
 import type { Mention } from "@/lib/types";
 import { xEngagement, xHandle } from "@/lib/x-posts";
 import {
@@ -81,6 +81,7 @@ export function MentionRow({ m, slug, topicLabel, compact = false }: {
   topicLabel?: string;
   compact?: boolean;
 }) {
+  const clock = clockFor(slug);
   const isYt = m.source === "youtube";
   const videoId = isYt ? youtubeVideoId(m) : null;
   const thumb = videoId ? youtubeThumbnailUrl(videoId) : null;
@@ -136,7 +137,7 @@ export function MentionRow({ m, slug, topicLabel, compact = false }: {
             ) : (
               <span className="font-medium text-slate-700">{m.outlet ?? "Sin medio"}</span>
             )}
-            <span>{formatDateTime(m.published_at)}</span>
+            <span>{formatDateTime(m.published_at, clock)}</span>
             <a href={m.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 font-medium text-indigo-600 hover:text-indigo-500">
               {isYt ? "Ver en YouTube" : m.source === "x" ? "Ver en X" : "Ver fuente"}
               <svg viewBox="0 0 20 20" className="h-3 w-3" fill="currentColor" aria-hidden><path d="M11 3h6v6h-2V6.4l-6.3 6.3-1.4-1.4L13.6 5H11V3zM5 5h4v2H5v8h8v-4h2v6H3V5h2z" /></svg>

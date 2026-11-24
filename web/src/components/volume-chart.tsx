@@ -1,5 +1,5 @@
 import type { DayVolume } from "@/lib/analytics";
-import { formatDayShort } from "@/lib/time";
+import { DEFAULT_CLOCK, formatDayShort, type Clock } from "@/lib/time";
 
 const SERIES = [
   { key: "negativo", label: "Negativas sobre él", cls: "bg-rose-500" },
@@ -8,7 +8,7 @@ const SERIES = [
   { key: "pendiente", label: "Sin clasificar", cls: "bg-slate-200 bg-[repeating-linear-gradient(45deg,transparent,transparent_3px,rgba(148,163,184,.5)_3px,rgba(148,163,184,.5)_5px)]" },
 ] as const;
 
-export function VolumeChart({ data }: { data: DayVolume[] }) {
+export function VolumeChart({ data, clock = DEFAULT_CLOCK }: { data: DayVolume[]; clock?: Clock }) {
   const max = Math.max(1, ...data.map((d) => d.total));
   return (
     <div>
@@ -19,7 +19,7 @@ export function VolumeChart({ data }: { data: DayVolume[] }) {
             <div
               className="flex w-full max-w-10 flex-col-reverse overflow-hidden rounded-t-md"
               style={{ height: `${(d.total / max) * 85}%` }}
-              title={`${formatDayShort(d.day)}: ${d.total} menciones`}
+              title={`${formatDayShort(d.day, clock)}: ${d.total} menciones`}
             >
               {SERIES.map((s) =>
                 d[s.key] > 0 ? <div key={s.key} className={s.cls} style={{ height: `${(d[s.key] / d.total) * 100}%` }} /> : null,
@@ -31,7 +31,7 @@ export function VolumeChart({ data }: { data: DayVolume[] }) {
       <div className="mt-2 flex gap-1.5 border-t border-slate-100 pt-2">
         {data.map((d) => (
           <span key={d.day} className="min-w-0 flex-1 truncate text-center text-[10px] text-slate-500">
-            {formatDayShort(d.day)}
+            {formatDayShort(d.day, clock)}
           </span>
         ))}
       </div>

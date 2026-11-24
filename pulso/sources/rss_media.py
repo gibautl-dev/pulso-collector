@@ -158,6 +158,20 @@ async def request_feed(client, url, settings, headers, *, return_final=False, da
                     return (*result,current) if return_final else result
             raise ValueError("too_many_redirects")
 
+
+def google_news_locale(config, slug=None):
+    """Locale de Google News: settings del candidato, si no el perfil regional."""
+    from pulso.region import profile_for
+    profile = profile_for(slug)
+    settings = (config.settings if config is not None else None) or {}
+    hl = str(settings.get("hl") or settings.get("google_news_hl") or profile.google_news_hl).strip()
+    gl = str(settings.get("gl") or settings.get("google_news_gl") or profile.google_news_gl).strip()
+    ceid = str(settings.get("ceid") or settings.get("google_news_ceid") or profile.google_news_ceid).strip()
+    if not hl or not gl or not ceid:
+        raise ValueError("google_news_locale_invalido")
+    return {"hl": hl, "gl": gl, "ceid": ceid}
+
+
 class RSSSource(Source):
     def __init__(self, name: SourceName, settings: Settings):
         self.name, self.settings = name, settings
@@ -165,7 +179,10 @@ class RSSSource(Source):
     def feeds(self,candidate,config):
         if self.name == SourceName.NEWS:
             query = " OR ".join('"' + k.replace('"','') + '"' for k in candidate.keywords)
-            return ["https://news.google.com/rss/search?" + urlencode({"q":query,"hl":"es-419","gl":"AR","ceid":"AR:es-419"})]
+            locale = google_news_locale(config, getattr(candidate, "slug", None))
+            return ["https://news.google.com/rss/search?" + urlencode({
+                "q": query, "hl": locale["hl"], "gl": locale["gl"], "ceid": locale["ceid"],
+            })]
         if self.name == SourceName.ALERTS: return candidate.alert_feeds
         return config.settings.get("feeds",[])
 

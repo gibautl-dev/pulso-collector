@@ -1,8 +1,8 @@
 import type { AiDayScore } from "@/lib/types";
 import { formatBalance } from "@/lib/ai-visibility";
-import { formatDayShort } from "@/lib/time";
+import { DEFAULT_CLOCK, formatDayShort, type Clock } from "@/lib/time";
 
-export function AiBalanceChart({ data }: { data: AiDayScore[] }) {
+export function AiBalanceChart({ data, clock = DEFAULT_CLOCK }: { data: AiDayScore[]; clock?: Clock }) {
   if (data.length === 0) return null;
   const max = Math.max(20, ...data.map((d) => Math.abs(d.balance)));
   return (
@@ -20,7 +20,7 @@ export function AiBalanceChart({ data }: { data: AiDayScore[] }) {
                 <div
                   className={`w-full rounded-t-md ${positive ? "bg-emerald-500" : "bg-rose-500"}`}
                   style={{ height: `${height}%` }}
-                  title={`${formatDayShort(d.day)}: ${formatBalance(d.balance)}`}
+                  title={`${formatDayShort(d.day, clock)}: ${formatBalance(d.balance)}`}
                 />
               </div>
             </div>
@@ -30,7 +30,7 @@ export function AiBalanceChart({ data }: { data: AiDayScore[] }) {
       <div className="mt-2 flex gap-1.5 border-t border-slate-100 pt-2">
         {data.map((d) => (
           <span key={d.day} className="min-w-0 flex-1 truncate text-center text-[10px] text-slate-500">
-            {formatDayShort(d.day)}
+            {formatDayShort(d.day, clock)}
           </span>
         ))}
       </div>

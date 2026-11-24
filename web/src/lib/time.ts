@@ -1,38 +1,74 @@
-export const TZ = "America/Argentina/Buenos_Aires";
-export const TZ_LABEL = "hora de Argentina";
+import { DEFAULT_REGION, regionFor, type RegionProfile } from "./region";
 
-const dateTimeFmt = new Intl.DateTimeFormat("es-AR", {
+export const TZ = DEFAULT_REGION.timezone;
+export const TZ_LABEL = DEFAULT_REGION.tzLabel;
+
+export interface Clock {
+  timeZone: string;
+  locale: string;
+  tzLabel: string;
+}
+
+export const DEFAULT_CLOCK: Clock = {
   timeZone: TZ,
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-const dayKeyFmt = new Intl.DateTimeFormat("en-CA", {
-  timeZone: TZ,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-const shortDayFmt = new Intl.DateTimeFormat("es-AR", {
-  timeZone: TZ,
-  weekday: "short",
-  day: "2-digit",
-  month: "2-digit",
-});
-const dateFmt = new Intl.DateTimeFormat("es-AR", {
-  timeZone: TZ,
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-const monthFmt = new Intl.DateTimeFormat("es-AR", {
-  timeZone: TZ,
-  month: "short",
-  year: "numeric",
-});
+  locale: DEFAULT_REGION.locale,
+  tzLabel: TZ_LABEL,
+};
+
+export function clockFromRegion(region: RegionProfile): Clock {
+  return { timeZone: region.timezone, locale: region.locale, tzLabel: region.tzLabel };
+}
+
+export function clockFor(slug: string | null | undefined): Clock {
+  return clockFromRegion(regionFor(slug));
+}
+
+function dateTimeFmt(clock: Clock) {
+  return new Intl.DateTimeFormat(clock.locale, {
+    timeZone: clock.timeZone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function dayKeyFmt(timeZone: string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+function shortDayFmt(clock: Clock) {
+  return new Intl.DateTimeFormat(clock.locale, {
+    timeZone: clock.timeZone,
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function dateFmt(clock: Clock) {
+  return new Intl.DateTimeFormat(clock.locale, {
+    timeZone: clock.timeZone,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function monthFmt(clock: Clock) {
+  return new Intl.DateTimeFormat(clock.locale, {
+    timeZone: clock.timeZone,
+    month: "short",
+    year: "numeric",
+  });
+}
 
 /** Acepta ISO y el formato de Postgres (`2026-11-19 19:16:01+00`). */
 export function parseDate(iso: string): Date {
@@ -42,40 +78,57 @@ export function parseDate(iso: string): Date {
   return new Date(value);
 }
 
-export function formatDateTime(iso: string | null | undefined): string {
+export function formatDateTime(iso: string | null | undefined, clock: Clock = DEFAULT_CLOCK): string {
   if (!iso) return "—";
   const date = parseDate(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return dateTimeFmt.format(date);
+  return dateTimeFmt(clock).format(date);
 }
 
-/** Fecha (dd/mm/aaaa) en hora de Argentina. */
-export function formatDate(iso: string | null | undefined): string {
+/** Fecha (dd/mm/aaaa) en la zona del reloj. */
+export function formatDate(iso: string | null | undefined, clock: Clock = DEFAULT_CLOCK): string {
   if (!iso) return "—";
   const date = parseDate(iso);
   if (Number.isNaN(date.getTime())) return "—";
-  return dateFmt.format(date);
+  return dateFmt(clock).format(date);
 }
 
-/** Mes corto (p. ej. "nov 2026") en hora de Argentina. */
-export function formatMonth(key: string): string {
-  const iso = key.length === 7 ? `${key}-01T12:00:00-03:00` : `${key}T12:00:00-03:00`;
-  return monthFmt.format(new Date(iso)).replace(".", "");
+/** Mes corto (p. ej. "nov 2026") en la zona del reloj. */
+export function formatMonth(key: string, clock: Clock = DEFAULT_CLOCK): string {
+  const iso = key.length === 7 ? `${key}-01T12:00:00Z` : `${key}T12:00:00Z`;
+  return monthFmt(clock).format(new Date(iso)).replace(".", "");
 }
 
-/** Clave de día (YYYY-MM-DD) en hora de Argentina. */
-export function dayKey(iso: string | Date): string {
-  return dayKeyFmt.format(typeof iso === "string" ? new Date(iso) : iso);
+/** Clave de día (YYYY-MM-DD) en la zona indicada (por defecto, Argentina). */
+export function dayKey(iso: string | Date, timeZone: string = TZ): string {
+  return dayKeyFmt(timeZone).format(typeof iso === "string" ? new Date(iso) : iso);
 }
 
-export function formatDayShort(key: string): string {
-  // key YYYY-MM-DD en hora argentina; mediodía ART evita saltos de día.
-  return shortDayFmt.format(new Date(`${key}T12:00:00-03:00`));
+export function formatDayShort(key: string, clock: Clock = DEFAULT_CLOCK): string {
+  // Mediodía UTC cae el mismo día calendario en AR y en Madrid.
+  return shortDayFmt(clock).format(new Date(`${key}T12:00:00Z`));
+}
+
+function offsetIso(timeZone: string, date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "longOffset",
+  }).formatToParts(date);
+  const name = parts.find((part) => part.type === "timeZoneName")?.value ?? "GMT+00:00";
+  const match = name.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!match) return "+00:00";
+  return `${match[1]}${String(match[2]).padStart(2, "0")}:${match[3] ?? "00"}`;
+}
+
+/** Inicio del día (00:00 en la zona) de una clave YYYY-MM-DD, en ISO UTC. */
+export function startOfDay(key: string, timeZone: string = TZ): string {
+  const offset = offsetIso(timeZone, new Date(`${key}T12:00:00Z`));
+  return new Date(`${key}T00:00:00${offset}`).toISOString();
 }
 
 /** Inicio del día (00:00 ART) de una clave YYYY-MM-DD, en ISO UTC. */
 export function startOfDayArt(key: string): string {
-  return new Date(`${key}T00:00:00-03:00`).toISOString();
+  return startOfDay(key, TZ);
 }
 
 export function relativeTime(iso: string | null | undefined, now = new Date()): string {

@@ -81,9 +81,10 @@ def _analysis_schema(refs: list[str], topics: list[str]) -> dict:
     }
 
 
-def _system_prompt(candidate_name: str, topics: list[str]) -> str:
+def _system_prompt(candidate_name: str, topics: list[str], *, country_name: str | None = None) -> str:
     labels = json.dumps(topics, ensure_ascii=False)
-    return f"""Sos un analista de reputación política en Argentina. Evaluás lo que un
+    origin = f"no son de {country_name}" if country_name else "no son del país del candidato"
+    return f"""Sos un analista de reputación política. Evaluás lo que un
 modelo de IA respondió cuando le preguntaron por {candidate_name}.
 Respondés solo con el JSON pedido.
 
@@ -101,7 +102,7 @@ Reglas:
 - other_politicians: nombres de otros políticos o referentes, sin incluir a
   {candidate_name} ni variantes de su nombre.
 - drop_urls: como máximo 8 URLs de la lista, solo las que todavía están
-  marcadas como kept=true y que, de forma obvia, no son de Argentina o
+  marcadas como kept=true y que, de forma obvia, {origin} o
   están fuera de tema. Si no hay ninguna, lista vacía. No inventes URLs.
 - reason: una frase corta en español que explique el puntaje."""
 
@@ -162,7 +163,8 @@ def _clamp_balance(value: Any) -> int | None:
 
 
 def analyze_answers(client: LLMClient, candidate_name: str, rows: list[dict],
-                    topic_labels: list[str] | None = None) -> tuple[dict[str, dict], list[str], dict, str]:
+                    topic_labels: list[str] | None = None,
+                    country_name: str | None = None) -> tuple[dict[str, dict], list[str], dict, str]:
     """Devuelve (key -> análisis, problemas, usage, modelo)."""
     if not rows:
         return {}, [], {}, client.settings.model
@@ -178,7 +180,7 @@ def analyze_answers(client: LLMClient, candidate_name: str, rows: list[dict],
         batch = rows[start:start + batch_size]
         refs = [row["key"] for row in batch]
         payload, usage, model = client.complete(
-            _system_prompt(candidate_name, topics),
+            _system_prompt(candidate_name, topics, country_name=country_name),
             _user_prompt(batch),
             _analysis_schema(refs, topics),
             max_tokens=500 * len(batch) + 200,

@@ -2,7 +2,7 @@ import { Card, EmptyState, PageHeader, RunStatusBadge } from "@/components/ui";
 import { computeSourceHealth } from "@/lib/analytics";
 import { loadCandidate } from "@/lib/context";
 import { sourceLabel } from "@/lib/labels";
-import { durationSeconds, formatDateTime, relativeTime, TZ_LABEL } from "@/lib/time";
+import { clockFor, durationSeconds, formatDateTime, relativeTime } from "@/lib/time";
 
 export const metadata = { title: "Salud de fuentes · Pulso" };
 
@@ -10,6 +10,7 @@ const COVERAGE: Record<string, string> = { unknown: "Desconocida", partial: "Par
 
 export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuentes">) {
   const { slug } = await params;
+  const clock = clockFor(slug);
   const { repo, candidate } = await loadCandidate(slug);
   const [runs, sources, ts] = await Promise.all([
     repo.listSourceRuns(candidate.id, 40),
@@ -25,7 +26,7 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
     <>
       <PageHeader
         title="Salud de fuentes"
-        description={`El recolector corre cada 20 minutos. Horarios en ${TZ_LABEL}.`}
+        description={`El recolector corre cada 20 minutos. Horarios en ${clock.tzLabel}.`}
       />
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -62,7 +63,7 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
                 <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 font-mono text-xs text-amber-900">Último aviso: {h.lastRun.error}</p>
               )}
               <p className="mt-3 text-xs text-slate-500">
-                Recolectando desde {formatDateTime(s.collection_started_at)} · datos vistos desde {formatDateTime(s.earliest_observed_at)}
+                Recolectando desde {formatDateTime(s.collection_started_at, clock)} · datos vistos desde {formatDateTime(s.earliest_observed_at, clock)}
               </p>
             </Card>
           );
@@ -91,7 +92,7 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
                   const dur = durationSeconds(r.started_at, r.finished_at);
                   return (
                     <tr key={r.id} className="hover:bg-slate-50">
-                      <td className="whitespace-nowrap px-5 py-2.5 tabular-nums text-slate-700">{formatDateTime(r.started_at)}</td>
+                      <td className="whitespace-nowrap px-5 py-2.5 tabular-nums text-slate-700">{formatDateTime(r.started_at, clock)}</td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-slate-900">{sourceLabel(r.source)}</td>
                       <td className="px-3 py-2.5"><RunStatusBadge status={r.status} /></td>
                       <td className="px-3 py-2.5 text-right tabular-nums">{r.items_found}</td>

@@ -1,6 +1,6 @@
 import { NEGATIVE_TONES, RELEVANCE, TONES } from "./labels";
 import type { Mention, Relevance, Target, Tone } from "./types";
-import { startOfDayArt } from "./time";
+import { startOfDay, TZ } from "./time";
 
 export const PAGE_SIZE = 25;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -70,14 +70,13 @@ export function parseFilters(params: RawParams): MentionFilters {
   };
 }
 
-/** Límites de fecha en ISO UTC para [from 00:00 ART, (to+1) 00:00 ART). */
-export function dateBounds(f: MentionFilters): { gte?: string; lt?: string } {
+/** Límites de fecha en ISO UTC para [from 00:00, (to+1) 00:00) en la zona dada. */
+export function dateBounds(f: MentionFilters, timeZone: string = TZ): { gte?: string; lt?: string } {
   const out: { gte?: string; lt?: string } = {};
-  if (f.from) out.gte = startOfDayArt(f.from);
+  if (f.from) out.gte = startOfDay(f.from, timeZone);
   if (f.to) {
-    const next = new Date(`${f.to}T00:00:00-03:00`);
-    next.setUTCDate(next.getUTCDate() + 1);
-    out.lt = next.toISOString();
+    const start = new Date(startOfDay(f.to, timeZone));
+    out.lt = new Date(start.getTime() + 24 * 60 * 60 * 1000).toISOString();
   }
   return out;
 }

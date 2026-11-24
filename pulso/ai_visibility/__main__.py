@@ -17,9 +17,9 @@ from pulso.ai_visibility.run import (
     CANDIDATE_ID_KICILLOF,
     DEFAULT_NAME,
     DEFAULT_SLUG,
-    TZ,
     run_visibility,
 )
+from pulso.region import profile_for
 from pulso.ai_visibility.settings import VisibilitySettings, api_key_from_env
 
 
@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
             row = database.candidate(slug)
             candidate_id = str(row["id"])
             candidate_name = row["name"]
-            already = database.already_ran_on(row["id"], datetime.now(TZ).date())
+            already = database.already_ran_on(row["id"], datetime.now(profile_for(slug).zone).date())
         else:
             if slug == DEFAULT_SLUG:
                 candidate_id = candidate_id or CANDIDATE_ID_KICILLOF

@@ -10,7 +10,8 @@ import {
   formatShare,
 } from "@/lib/ai-visibility";
 import { loadCandidate } from "@/lib/context";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { regionFor } from "@/lib/region";
+import { clockFor, formatDateTime } from "@/lib/time";
 
 export const metadata = { title: "En la IA · Pulso" };
 
@@ -22,6 +23,8 @@ const POLARITY_BAR = {
 
 export default async function AiVisibilityPage({ params, searchParams }: PageProps<"/c/[slug]/ia">) {
   const { slug } = await params;
+  const clock = clockFor(slug);
+  const region = regionFor(slug);
   const sp = await searchParams;
   const pregunta = typeof sp.pregunta === "string" ? sp.pregunta : "";
   const { repo, candidate } = await loadCandidate(slug);
@@ -30,7 +33,7 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
   const latest = view.latestDay ? answersOnDay(answers, view.latestDay) : [];
   const askedAt = latest[0]?.asked_at ?? answers[0]?.asked_at ?? null;
   const lastLabel = askedAt
-    ? `Última foto: ${formatDateTime(askedAt)} (${TZ_LABEL}).`
+    ? `Última foto: ${formatDateTime(askedAt, clock)} (${clock.tzLabel}).`
     : "Todavía no hay una corrida registrada.";
   const drillDown = pregunta ? answers.filter((a) => a.prompt_key === pregunta) : latest;
   const selectedQuestion = view.questions.find((q) => q.promptKey === pregunta) ?? null;
@@ -49,8 +52,8 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
       <p className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
         Esta pantalla muestra una corrida diaria contra la API de OpenAI (<span className="font-medium">chat-latest</span> con
         búsqueda web), no una sesión de la app ChatGPT. No replica memoria, enrutado ni la interfaz de esa app. Las citas
-        que no son de Argentina o están claramente fuera de tema se filtran cuando es obvio. El job corre una vez por día
-        a partir de las 09:00 (hora de Argentina). El análisis de lo bueno y lo malo se arma con los aspectos que ya
+        que no son de {region.countryName} o están claramente fuera de tema se filtran cuando es obvio. El job corre una vez por día
+        a partir de las 09:00 ({clock.tzLabel}). El análisis de lo bueno y lo malo se arma con los aspectos que ya
         guardó el clasificador, sin una corrida extra.
         {repo.mode === "fixture" ? " Este render es local, con datos de un dry-run, y no es una captura de producción." : null}
       </p>
@@ -103,10 +106,10 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
                     datos insuficientes para una serie: por ahora hay una sola foto diaria. La tendencia se arma sola a
                     medida que se sumen días.
                   </p>
-                  <AiBalanceChart data={view.days} />
+                  <AiBalanceChart clock={clock} data={view.days} />
                 </div>
               ) : (
-                <AiBalanceChart data={view.days} />
+                <AiBalanceChart clock={clock} data={view.days} />
               )}
             </Card>
             <Card title="Composición" subtitle="Cómo se parten las respuestas clasificadas.">
@@ -214,7 +217,7 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
         {drillDown.length === 0 ? (
           <EmptyState>
             Todavía no hay respuestas guardadas. El recolector pregunta una vez por día a la API de OpenAI, a partir de
-            las 09:00 (hora de Argentina), y guarda acá el texto, el balance, los aspectos y las fuentes.
+            las 09:00 ({clock.tzLabel}), y guarda acá el texto, el balance, los aspectos y las fuentes.
           </EmptyState>
         ) : (
           <div>

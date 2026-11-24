@@ -6,7 +6,8 @@ import { loadCandidate } from "@/lib/context";
 import { computeMetaAdsView, formatAmount, formatSpendAggregate, STANCE_BAR, STANCE_LABEL, type AdsBucket } from "@/lib/meta-ads";
 import { formatShare } from "@/lib/ai-visibility";
 import { formatMetaAdDate } from "@/lib/meta-ads";
-import { formatDate, formatDateTime, TZ_LABEL } from "@/lib/time";
+import { META_ADS_EU_UNAVAILABLE, regionFor } from "@/lib/region";
+import { clockFor, formatDate, formatDateTime } from "@/lib/time";
 import { isMetaAdStance, isMetaAdStatus, type MetaAdFilters } from "@/lib/types";
 
 export const metadata = { title: "Anuncios · Pulso" };
@@ -55,19 +56,35 @@ function withParams(base: string, days: number | "all", filters: MetaAdFilters, 
   return qs ? `${base}?${qs}` : base;
 }
 
-function volumeSubtitle(bucket: AdsBucket): string {
-  if (bucket === "month") return "Anuncios que empezaron a pautar en cada mes (hora de Argentina).";
-  if (bucket === "week") return "Anuncios que empezaron a pautar en cada semana (hora de Argentina).";
-  return "Anuncios que empezaron a pautar en cada día (hora de Argentina).";
+function volumeSubtitle(bucket: AdsBucket, tzLabel: string): string {
+  if (bucket === "month") return `Anuncios que empezaron a pautar en cada mes (${tzLabel}).`;
+  if (bucket === "week") return `Anuncios que empezaron a pautar en cada semana (${tzLabel}).`;
+  return `Anuncios que empezaron a pautar en cada día (${tzLabel}).`;
 }
 
 export default async function MetaAdsPage({ params, searchParams }: PageProps<"/c/[slug]/anuncios">) {
   const { slug } = await params;
+  const clock = clockFor(slug);
+  const region = regionFor(slug);
   const sp = await searchParams;
   const days = parsePeriod(sp.dias);
   const filters = parseFilters(sp);
   const listPage = Math.max(1, Number(sp.p) || 1);
   const { repo, candidate } = await loadCandidate(slug);
+  if (!region.showMetaAds) {
+    return (
+      <>
+        <PageHeader
+          title="Anuncios"
+          description={`Biblioteca de anuncios de Meta para ${candidate.name}.`}
+        />
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          Esta sección no está activa para candidatos de la Unión Europea. {META_ADS_EU_UNAVAILABLE}{" "}
+          En Pulso no consultamos esa API para este candidato, para no usar valores de Argentina por defecto.
+        </p>
+      </>
+    );
+  }
   const ads = await repo.listMetaAds(candidate.id);
   const ts = await repo.dataTimestamp();
   const latestFetch = ads.reduce<string | null>((acc, ad) => {
@@ -97,9 +114,9 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
   const currencies = view.spend.map((s) => s.currency).filter((c) => c !== "sin moneda");
   const maxPageAds = Math.max(1, ...view.topPages.map((p) => p.ads));
   const lastFetched = view.fetchedAt
-    ? `Datos traídos el ${formatDateTime(view.fetchedAt)} (${TZ_LABEL}).`
+    ? `Datos traídos el ${formatDateTime(view.fetchedAt, clock)} (${clock.tzLabel}).`
     : view.fetchedOn
-      ? `Datos traídos el ${formatDate(view.fetchedOn)}.`
+      ? `Datos traídos el ${formatDate(view.fetchedOn, clock)}.`
       : "Todavía no hay una recolección de la Biblioteca registrada.";
   const dateRange =
     view.firstStart && view.lastDelivery
@@ -228,7 +245,7 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
           </Card>
 
           <div className="mb-6 grid gap-6 lg:grid-cols-3">
-            <Card title="Anuncios en el tiempo" subtitle={volumeSubtitle(view.volumeBucket)} className="lg:col-span-2">
+            <Card title="Anuncios en el tiempo" subtitle={volumeSubtitle(view.volumeBucket, clock.tzLabel)} className="lg:col-span-2">
               {view.total === 0 ? (
                 <EmptyState>No hay anuncios en este período.</EmptyState>
               ) : (

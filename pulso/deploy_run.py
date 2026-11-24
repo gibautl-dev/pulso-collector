@@ -6,6 +6,8 @@ import subprocess
 import sys
 import time
 
+from pulso.region import parse_candidate_slugs, profile_for
+
 def log(**values):
     print(json.dumps(values), flush=True)
 
@@ -60,6 +62,20 @@ def run_command(command, timeout, env=None, prefix='cron'):
         for s, handler in previous.items():
             signal.signal(s, handler)
 
+def args_for_slug(base_args, slug):
+    """Deja un único --candidate <slug> en los argumentos del cron."""
+    args = list(base_args)
+    if "--candidate" in args:
+        index = args.index("--candidate")
+        if index + 1 < len(args) and not args[index + 1].startswith("-"):
+            args[index + 1] = slug
+        else:
+            args.insert(index + 1, slug)
+    else:
+        args = ["--candidate", slug, *args]
+    return args
+
+
 def main():
     try:
         timeout = int(os.getenv('PULSO_RUN_TIMEOUT_SECONDS', '900'))
@@ -71,20 +87,71 @@ def main():
         args = sys.argv[1:]
         if dry == 'true' and '--dry-run' not in args:
             args = [*args, '--dry-run']
-        code = run_command([sys.executable, '-m', 'pulso.collect_rss', *args], timeout,
-                           env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY))
+        slugs = parse_candidate_slugs(argv=args)
+        # Sin lista ni --candidate, una sola corrida con los args originales
+        # (collect_rss exigirá PULSO_CANDIDATE). Así se mantiene el contrato
+        # anterior de los tests y de un cron que solo tiene PULSO_CANDIDATE.
+        started = time.monotonic()
+        if not slugs:
+            code = run_command(
+                [sys.executable, '-m', 'pulso.collect_rss', *args],
+                timeout,
+                env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY),
+            )
+            if code not in (124, 143):
+                run_classifier(args)
+                run_suspicious(args)
+                run_ai_visibility(args)
+                run_meta_ads(args)
+                run_meta_ads_classify(args)
+            return code
+        finished = []
+        timed_out = False
+        cancelled = False
+        for slug in slugs:
+            remaining = timeout - (time.monotonic() - started)
+            if remaining < 30:
+                timed_out = True
+                log(event='cron_timeout', timeout_seconds=timeout, pending_candidate=slug)
+                break
+            child_args = args_for_slug(args, slug)
+            log(event='cron_candidate_started', candidate=slug)
+            code = run_command(
+                [sys.executable, '-m', 'pulso.collect_rss', *child_args],
+                remaining,
+                env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY),
+            )
+            if code == 124:
+                timed_out = True
+                log(event='cron_candidate_timeout', candidate=slug)
+                break
+            if code == 143:
+                cancelled = True
+                break
+            finished.append((slug, code, child_args))
     except Exception as exc:
         log(event='cron_error', error_type=type(exc).__name__)
         return 2
-    if code not in (124, 143):
-        run_classifier(args)
-        run_suspicious(args)
-        run_ai_visibility(args)
-        run_meta_ads(args)
-        run_meta_ads_classify(args)
+    if not timed_out and not cancelled:
+        for slug, _collect_code, child_args in finished:
+            run_classifier(child_args)
+            run_suspicious(child_args)
+            run_ai_visibility(child_args)
+            if profile_for(slug).show_meta_ads:
+                run_meta_ads(child_args)
+                run_meta_ads_classify(child_args)
+            else:
+                log(event='meta_ads_skipped', reason='region_disabled', candidate=slug)
+                log(event='meta_ads_classify_skipped', reason='region_disabled', candidate=slug)
     # El resultado del clasificador, el detector, la visibilidad en IA, Meta Ads
     # o la clasificación de anuncios nunca cambia el código de salida del cron.
-    return code
+    if cancelled:
+        return 143
+    if timed_out:
+        return 124
+    if any(code != 0 for _slug, code, _args in finished):
+        return 1
+    return 0
 
 def run_classifier(collector_args):
     """Paso opcional posterior a la recolección, con timeout propio y errores aislados."""

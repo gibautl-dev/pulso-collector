@@ -52,6 +52,9 @@ class VisibilitySettings:
     max_retries: int = 2
     dry_run: bool = True
     run_after_hour: int = 9
+    language_style: str = "rioplatense"
+    instructions: str | None = None
+    user_location: dict | None = None
 
     @classmethod
     def from_env(cls, dry_run: bool | None = None) -> "VisibilitySettings":

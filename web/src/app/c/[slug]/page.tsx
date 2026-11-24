@@ -5,7 +5,8 @@ import { VolumeChart } from "@/components/volume-chart";
 import { computeDashboard } from "@/lib/analytics";
 import { loadCandidate } from "@/lib/context";
 import { NEGATIVE_TONES, SOURCE_BAR, SOURCE_BAR_DEFAULT, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { regionFor } from "@/lib/region";
+import { clockFor, formatDateTime } from "@/lib/time";
 import { formatCount, youtubeThumbnailUrl, youtubeVideoId } from "@/lib/youtube";
 import { computeHomeCards } from "@/lib/home-summaries";
 import { SourceSummaryCards } from "@/components/source-summary-cards";
@@ -15,6 +16,8 @@ const PERIODS = [7, 14, 30];
 
 export default async function Dashboard({ params, searchParams }: PageProps<"/c/[slug]">) {
   const { slug } = await params;
+  const clock = clockFor(slug);
+  const region = regionFor(slug);
   const sp = await searchParams;
   const days = PERIODS.includes(Number(sp.dias)) ? Number(sp.dias) : 7;
   const { repo, candidate } = await loadCandidate(slug);
@@ -30,7 +33,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     repo.listAiAnswers(candidate.id),
     repo.listSuspiciousAccounts(candidate.id),
   ]);
-  const d = computeDashboard(mentions, topics, { days, now });
+  const d = computeDashboard(mentions, topics, { days, now, timeZone: clock.timeZone });
   const sourceCards = computeHomeCards({
     slug,
     days,
@@ -40,6 +43,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     ads,
     answers,
     suspicious,
+    showMetaAds: region.showMetaAds,
   });
   const topicLabel = new Map(topics.map((t) => [t.id, t.label]));
   const classifiedAbout = d.toneAboutCandidate.reduce((s, t) => s + t.count, 0);
@@ -55,7 +59,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     <>
       <PageHeader
         title={`Tablero · ${candidate.name}`}
-        description={`Últimos ${days} días · ${active.length} fuentes activas (${active.map((s) => sourceLabel(s.source)).join(", ")}) · actualizado ${formatDateTime(now.toISOString())} (${TZ_LABEL})`}
+        description={`Últimos ${days} días · ${active.length} fuentes activas (${active.map((s) => sourceLabel(s.source)).join(", ")}) · actualizado ${formatDateTime(now.toISOString(), clock)} (${clock.tzLabel})`}
       >
         <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm shadow-sm">
           {PERIODS.map((p) => (
@@ -85,8 +89,8 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
       <SourceSummaryCards cards={sourceCards} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card title="Volumen de menciones por día" subtitle={`Días en ${TZ_LABEL}. Solo menciones de terceros.`} className="lg:col-span-2">
-          <VolumeChart data={d.volume} />
+        <Card title="Volumen de menciones por día" subtitle={`Días en ${clock.tzLabel}. Solo menciones de terceros.`} className="lg:col-span-2">
+          <VolumeChart data={d.volume} clock={clock} />
         </Card>
         <Card title="Tono sobre el candidato" subtitle="Solo menciones cuyo objetivo es él (target = candidato).">
           <div className="space-y-3">
@@ -230,7 +234,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
       </div>
 
       <p className="mt-6 text-xs text-slate-500">
-        Cobertura parcial: la recolección continua arrancó {started ? `el ${formatDateTime(started)} (${TZ_LABEL})` : "hace pocos días"}.
+        Cobertura parcial: la recolección continua arrancó {started ? `el ${formatDateTime(started, clock)} (${clock.tzLabel})` : "hace pocos días"}.
         Los días anteriores pueden estar incompletos. Negativas = {NEGATIVE_TONES.map((t) => TONE_LABEL[t].toLowerCase()).join(", ")} con objetivo en él.
         La clasificación es automática (IA) y puede tener errores.
       </p>

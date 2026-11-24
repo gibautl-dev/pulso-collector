@@ -1,4 +1,4 @@
-"""Normaliza citas: dominio y filtro de fuentes ajenas a Argentina o fuera de tema.
+"""Normaliza citas: dominio y filtro de fuentes ajenas al país del candidato o fuera de tema.
 
 El filtro es conservador: solo descarta cuando el origen o el tema son evidentes.
 No inventa URLs. Un modelo puede marcar citas adicionales como fuera de tema,
@@ -82,6 +82,57 @@ MIXED_HOSTS = {
     "cnnespanol.cnn.com": ("/argentina/",),
 }
 
+# Medios españoles (además de los hosts que terminan en .es).
+ES_HOSTS = {
+    "elpais.com",
+    "elmundo.es",
+    "abc.es",
+    "lavanguardia.com",
+    "elconfidencial.com",
+    "eldiario.es",
+    "rtve.es",
+    "europapress.es",
+    "elespanol.com",
+    "elindependiente.com",
+    "theobjective.com",
+    "infolibre.es",
+    "huffingtonpost.es",
+    "newtral.es",
+    "20minutos.es",
+    "cadenaser.com",
+    "epe.es",
+    "elperiodico.com",
+    "larazon.es",
+    "publico.es",
+    "efe.com",
+    "cope.es",
+    "ondacero.es",
+    "telemadrid.es",
+    "vozpopuli.com",
+    "lamoncloa.gob.es",
+    "boe.es",
+    "psoe.es",
+    "pp.es",
+}
+
+# En un candidato de España, estas rutas delatan otra sección de país.
+ES_OFFTOPIC_PATH_MARKERS = (
+    "/argentina/",
+    "/argentina",
+    "/mexico/",
+    "/colombia/",
+    "/chile/",
+    "/peru/",
+    "/america/",
+    "/internacional/argentina",
+)
+
+ES_MIXED_HOSTS = {
+    "elpais.com": ("/espana/", "/espana", "/politica/", "/politica"),
+    "bbc.com": ("/mundo/", "/mundo"),
+    "cnnespanol.cnn.com": ("/espana/", "/espana"),
+}
+
 
 def registrable_host(url: str) -> str | None:
     parsed = urlparse(url.strip())
@@ -115,7 +166,13 @@ def path_and_host(url: str) -> tuple[str, str]:
     return host, path.lower()
 
 
-def annotate_citation(citation: dict) -> dict:
+def is_spanish_host(host: str) -> bool:
+    if host.endswith(".es") or host.endswith(".gob.es") or host.endswith(".gov.es"):
+        return True
+    return any(host == item or host.endswith("." + item) for item in ES_HOSTS)
+
+
+def annotate_citation(citation: dict, country: str = "AR") -> dict:
     url = (citation.get("url") or "").strip()
     host = registrable_host(url)
     title = citation.get("title")
@@ -132,6 +189,13 @@ def annotate_citation(citation: dict) -> dict:
         out["filter_reason"] = "url_invalida"
         return out
     host, path = path_and_host(url)
+    country = (country or "AR").upper()
+    if country == "ES":
+        return _annotate_spain(out, host, path, title)
+    return _annotate_argentina(out, host, path, title)
+
+
+def _annotate_argentina(out: dict, host: str, path: str, title: str | None) -> dict:
     if any(marker in path or marker in (title or "").casefold() for marker in OFFTOPIC_PATH_MARKERS):
         # Excepción: elpais.com/argentina/... no se toca por el marcador genérico.
         if not (host.endswith("elpais.com") and "/argentina/" in path):
@@ -156,13 +220,35 @@ def annotate_citation(citation: dict) -> dict:
     return out
 
 
-def annotate_citations(citations: list[dict] | None) -> list[dict]:
+def _annotate_spain(out: dict, host: str, path: str, title: str | None) -> dict:
+    title_l = (title or "").casefold()
+    if any(marker in path or marker in title_l for marker in ES_OFFTOPIC_PATH_MARKERS):
+        out["filter_reason"] = "fuera_de_tema"
+        return out
+    if is_argentine_host(host):
+        out["filter_reason"] = "fuera_de_espana"
+        return out
+    for mixed, prefixes in ES_MIXED_HOSTS.items():
+        if host == mixed or host.endswith("." + mixed):
+            # elpais.com es un medio español: se acepta salvo sección de otro país
+            # (ya filtrada arriba). Las prefijas solo documentan secciones locales.
+            out["kept"] = True
+            return out
+    if is_spanish_host(host) or host in {"es.wikipedia.org", "wikipedia.org"}:
+        out["kept"] = True
+        return out
+    out["kept"] = True
+    out["filter_reason"] = None
+    return out
+
+
+def annotate_citations(citations: list[dict] | None, country: str = "AR") -> list[dict]:
     seen: set[str] = set()
     out: list[dict] = []
     for item in citations or []:
         if not isinstance(item, dict):
             continue
-        annotated = annotate_citation(item)
+        annotated = annotate_citation(item, country=country)
         url = annotated.get("url")
         if not url or url in seen:
             continue

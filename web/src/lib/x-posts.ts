@@ -95,15 +95,16 @@ function authorKey(m: Mention): string {
 
 export function computeXView(
   all: Mention[],
-  opts: { days: number; now?: Date; authorLimit?: number; engagedLimit?: number; recentLimit?: number },
+  opts: { days: number; now?: Date; authorLimit?: number; engagedLimit?: number; recentLimit?: number; timeZone?: string },
 ): XViewData {
   const now = opts.now ?? new Date();
+  const timeZone = opts.timeZone;
   const since = new Date(now.getTime() - opts.days * 86400000);
   const mentions = all.filter(
     (m) => m.source === "x" && m.account_relation === "third_party" && new Date(m.published_at) >= since,
   );
 
-  const days = dayRange(opts.days, now);
+  const days = dayRange(opts.days, now, timeZone);
   const volMap = new Map<string, DayVolume>(
     days.map((d) => [d, { day: d, total: 0, positivo: 0, neutral: 0, negativo: 0, pendiente: 0 }]),
   );
@@ -116,7 +117,7 @@ export function computeXView(
 
   for (const m of mentions) {
     const b = bucketFor(m);
-    const v = volMap.get(dayKey(m.published_at));
+    const v = volMap.get(dayKey(m.published_at, timeZone));
     if (v) {
       v.total++;
       v[b]++;

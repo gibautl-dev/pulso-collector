@@ -12,9 +12,9 @@ from datetime import datetime
 from pathlib import Path
 
 from pulso.meta_ads.db import MetaAdsDB, database_url_from_env
-from pulso.meta_ads.run import DEFAULT_SLUG, TZ, ads_from_payload, run_meta_ads
+from pulso.meta_ads.run import DEFAULT_SLUG, TZ, ads_from_payload, resolve_meta_ads_query, run_meta_ads
 from pulso.meta_ads.settings import MetaAdsSettings, token_from_env
-from pulso.sources.meta_ads import MetaAdsError, MetaAdsQuery, normalize_terms
+from pulso.sources.meta_ads import MetaAdsError
 
 
 def log(**values):
@@ -59,12 +59,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         settings = MetaAdsSettings.from_env(dry_run=dry_override)
         ads = ads_from_payload(_load_json(args.from_json)) if args.from_json else None
-        if ads is None:
-            token_from_env()
         candidate_id = None
         already = False
-        settings_enabled = True
-        query = settings.query()
+        stored = None
         if not settings.dry_run:
             url, password = database_url_from_env()
             database = MetaAdsDB(url, password)
@@ -72,21 +69,14 @@ def main(argv: list[str] | None = None) -> int:
             candidate_id = str(row["id"])
             already = database.already_ran_on(row["id"], datetime.now(TZ).date())
             stored = database.settings(row["id"])
-            if stored:
-                settings_enabled = bool(stored.get("enabled", True))
-                terms = stored.get("search_terms")
-                pages = stored.get("search_page_ids")
-                countries = stored.get("ad_reached_countries")
-                query = MetaAdsQuery(
-                    search_terms=normalize_terms(terms) if terms else query.search_terms,
-                    search_page_ids=list(pages or []),
-                    ad_reached_countries=list(countries or query.ad_reached_countries),
-                    ad_active_status=stored.get("ad_active_status") or query.ad_active_status,
-                    ad_type=stored.get("ad_type") or query.ad_type,
-                    api_version=query.api_version,
-                    max_pages=query.max_pages,
-                    max_ads=query.max_ads,
-                )
+        query, settings_enabled, skip_reason = resolve_meta_ads_query(
+            args.candidate, settings, stored,
+        )
+        if skip_reason:
+            log(event="meta_ads_skipped", reason=skip_reason, candidate=args.candidate)
+            return 0
+        if ads is None:
+            token_from_env()
         payload = run_meta_ads(
             settings,
             candidate_id=candidate_id,

@@ -119,7 +119,7 @@ def system_prompt(candidate_name: str, topics: list[str], examples: list[dict]) 
                                 "confidence": e["label"]["confidence"], "topic": e["label"]["topic"],
                                 "relevance": e["label"]["relevance"], "reason": e["label"]["reason"]}}
              for e in examples]
-    return f"""Sos un analista de escucha política en Argentina. Clasificás menciones de prensa
+    return f"""Sos un analista de escucha política. Clasificás menciones de prensa
 sobre el candidato {candidate_name}. Respondés solo con el JSON pedido.
 
 Reglas:

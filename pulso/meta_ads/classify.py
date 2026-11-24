@@ -132,7 +132,7 @@ def classifier_client(settings: AdsClassifySettings, transport=None, sleep=None)
 
 
 def system_prompt(candidate_name: str) -> str:
-    return f"""Sos un analista de publicidad política en Argentina. Clasificás anuncios
+    return f"""Sos un analista de publicidad política. Clasificás anuncios
 de Facebook e Instagram de la Biblioteca de Meta según cómo retratan a
 {candidate_name} o a su gobierno. Respondés solo con el JSON pedido.
 

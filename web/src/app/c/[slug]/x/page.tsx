@@ -4,7 +4,7 @@ import { VolumeChart } from "@/components/volume-chart";
 import { XPostCard } from "@/components/x-post";
 import { loadCandidate } from "@/lib/context";
 import { TONE_BAR, TONE_LABEL } from "@/lib/labels";
-import { formatDateTime, TZ_LABEL } from "@/lib/time";
+import { clockFor, formatDateTime } from "@/lib/time";
 import { formatCount } from "@/lib/youtube";
 import { balanceTone, computeXView, formatBalance } from "@/lib/x-posts";
 
@@ -14,6 +14,7 @@ const PERIODS = [7, 14, 30];
 
 export default async function XPostsPage({ params, searchParams }: PageProps<"/c/[slug]/x">) {
   const { slug } = await params;
+  const clock = clockFor(slug);
   const sp = await searchParams;
   const days = PERIODS.includes(Number(sp.dias)) ? Number(sp.dias) : 7;
   const { repo, candidate } = await loadCandidate(slug);
@@ -24,10 +25,10 @@ export default async function XPostsPage({ params, searchParams }: PageProps<"/c
     repo.mentionsSince(candidate.id, since),
     repo.listSourceRuns(candidate.id, 40),
   ]);
-  const view = computeXView(mentions, { days, now });
+  const view = computeXView(mentions, { days, now, timeZone: clock.timeZone });
   const lastRun = runs.find((r) => r.source === "x" && r.finished_at)?.finished_at ?? null;
   const lastRunLabel = lastRun
-    ? `Última recolección: ${formatDateTime(lastRun)} (${TZ_LABEL}).`
+    ? `Última recolección: ${formatDateTime(lastRun, clock)} (${clock.tzLabel}).`
     : "Todavía no hay una recolección de X registrada.";
   const maxTone = Math.max(1, ...view.toneAboutCandidate.map((t) => t.count));
   const maxAuthor = Math.max(1, ...view.topAuthors.map((a) => a.posts));
@@ -84,7 +85,7 @@ export default async function XPostsPage({ params, searchParams }: PageProps<"/c
       <div className="mb-6 grid gap-6 lg:grid-cols-3">
         <Card
           title="Posts por día"
-          subtitle={`Días en ${TZ_LABEL}. Solo posts de cuentas de terceros.`}
+          subtitle={`Días en ${clock.tzLabel}. Solo posts de cuentas de terceros.`}
           className="lg:col-span-2"
         >
           {view.total === 0 ? (
@@ -100,7 +101,7 @@ export default async function XPostsPage({ params, searchParams }: PageProps<"/c
                   entren posts de más días.
                 </p>
               ) : null}
-              <VolumeChart data={view.volume} />
+              <VolumeChart data={view.volume} clock={clock} />
             </div>
           )}
         </Card>

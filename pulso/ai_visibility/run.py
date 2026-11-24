@@ -6,6 +6,7 @@ ya hay filas de ese día, salvo --force.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from typing import Callable
 from zoneinfo import ZoneInfo
@@ -18,9 +19,10 @@ from pulso.ai_visibility.classify_answers import (
     attach_analysis,
     classifier_client,
 )
-from pulso.ai_visibility.client import ResponsesClient, VisibilityError
+from pulso.ai_visibility.client import ResponsesClient, VisibilityError, instructions_for
 from pulso.ai_visibility.cost import cost_for_usage, monthly_projection, sum_costs
-from pulso.ai_visibility.prompts import render_prompts
+from pulso.ai_visibility.prompts import prompts_for_slug, render_prompts
+from pulso.region import profile_for
 from pulso.ai_visibility.settings import VisibilitySettings
 
 TZ = ZoneInfo("America/Argentina/Buenos_Aires")
@@ -34,8 +36,8 @@ LIMITATIONS = [
     "chat-latest es el Instant model documentado para ChatGPT; OpenAI suele ilustrar búsquedas de producción con gpt-6.2-astra.",
     "El corte de conocimiento de chat-latest es el 20 de abril de 2026; la búsqueda web puede aportar fuentes más recientes.",
     "Se pide una respuesta de 250 a 400 palabras, parecida a la que leería un usuario en el chat, no un informe extenso.",
-    "El análisis de balance cubre la respuesta completa. El filtro de citas descarta orígenes ajenos a Argentina o fuera de tema solo cuando es obvio.",
-    "Una corrida diaria a las 09:00 (hora de Argentina) es una foto fija, no un panel de usuarios distintos.",
+    "El análisis de balance cubre la respuesta completa. El filtro de citas descarta orígenes ajenos al país del candidato o fuera de tema solo cuando es obvio.",
+    "Una corrida diaria a las 09:00 (zona horaria del candidato) es una foto fija, no un panel de usuarios distintos.",
 ]
 
 
@@ -100,10 +102,18 @@ def run_visibility(
     log: Callable[..., None] | None = None,
 ) -> dict:
     log = log or (lambda **kwargs: None)
-    asked_at = now or _now()
+    profile = profile_for(candidate_slug)
+    settings = replace(
+        settings,
+        language_style=profile.language_style,
+        instructions=settings.instructions or instructions_for(profile.language_style),
+        user_location=settings.user_location or profile.user_location,
+    )
+    asked_at = now or datetime.now(profile.zone)
     ok, reason = should_run_now(asked_at, settings.run_after_hour, already=already, force=force)
     if not ok:
-        log(event="ai_visibility_skipped", reason=reason, hour=settings.run_after_hour)
+        log(event="ai_visibility_skipped", reason=reason, hour=settings.run_after_hour,
+            timezone=profile.timezone, candidate=candidate_slug)
         return {
             "skipped": True,
             "reason": reason,
@@ -111,8 +121,10 @@ def run_visibility(
             "wrote_db": False,
             "answers": [],
             "asked_at": asked_at.isoformat(),
-            "timezone": "America/Argentina/Buenos_Aires",
+            "timezone": profile.timezone,
         }
+    if prompts is None:
+        prompts = prompts_for_slug(candidate_slug)
     rendered = render_prompts(candidate_name, prompts)
     own_ask = ask_client is None
     own_cls = classify_client is None
@@ -147,7 +159,7 @@ def run_visibility(
                 "model": result["model"],
                 "prompt": result["prompt"],
                 "answer": result["answer"],
-                "citations": annotate_citations(result["citations"]),
+                "citations": annotate_citations(result["citations"], country=profile.citation_country),
                 "asked_at": asked_at.isoformat(),
                 "used_web_search": result["used_web_search"],
                 "web_search_requested": result["web_search_requested"],
@@ -163,6 +175,7 @@ def run_visibility(
                 labels, classify_problems, classify_usage, classify_model = analyze_answers(
                     classify_client, candidate_name, rows,
                     topic_labels=topic_labels or DEFAULT_TOPIC_LABELS,
+                    country_name=profile.country_name,
                 )
                 attach_analysis(rows, labels, classify_model)
             except ClassifierError as exc:
@@ -195,7 +208,7 @@ def run_visibility(
             "web_search_fallback": web_fallback,
             "asked_at": asked_at.isoformat(),
             "asked_on": asked_at.date().isoformat(),
-            "timezone": "America/Argentina/Buenos_Aires",
+            "timezone": profile.timezone,
             "dry_run": settings.dry_run,
             "wrote_db": wrote,
             "saved": saved,

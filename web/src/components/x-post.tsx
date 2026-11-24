@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { RelevanceBadge, ToneBadge } from "@/components/ui";
 import { TARGET_LABEL } from "@/lib/labels";
-import { formatDateTime } from "@/lib/time";
+import { clockFor, formatDateTime } from "@/lib/time";
 import type { Mention } from "@/lib/types";
 import { xEngagement, xFlag, xHandle, xPostText, xProfileUrl } from "@/lib/x-posts";
 import { formatCount } from "@/lib/youtube";
@@ -38,6 +38,7 @@ function EngagementMeta({ m }: { m: Mention }) {
 }
 
 export function XPostCard({ m, slug }: { m: Mention; slug: string }) {
+  const clock = clockFor(slug);
   const handle = xHandle(m);
   const name = (m.author ?? "").trim() || (handle ? `@${handle}` : "Cuenta en X");
   const profile = handle ? xProfileUrl(handle) : null;
@@ -62,7 +63,7 @@ export function XPostCard({ m, slug }: { m: Mention; slug: string }) {
         ) : (
           <span className="font-medium text-slate-700">{name}</span>
         )}
-        <span>{formatDateTime(m.published_at)}</span>
+        <span>{formatDateTime(m.published_at, clock)}</span>
         <EngagementMeta m={m} />
         <a
           href={m.url}
