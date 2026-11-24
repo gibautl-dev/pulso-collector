@@ -61,6 +61,13 @@ describe("hrefForCandidate", () => {
     );
   });
 
+  it("conserva Comparación en el otro candidato", () => {
+    expect(sectionAvailable("comparacion", "pedro-sanchez")).toBe(true);
+    expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/comparacion")).toBe(
+      "/c/pedro-sanchez/comparacion",
+    );
+  });
+
   it("vuelve al tablero si la pestaña no existe", () => {
     expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/no-existe")).toBe("/c/pedro-sanchez");
   });

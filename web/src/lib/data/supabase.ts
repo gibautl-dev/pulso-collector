@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, RivalLevel, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import { isRivalLevel } from "@/lib/types";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -22,6 +23,13 @@ const META_AD_COLS =
 const SUSPICIOUS_COLS =
   "id,candidate_id,platform,account_key,handle,display_name,profile_url,score,signals,mention_count,first_seen_at,last_seen_at,account_created_at,status,status_note,status_updated_at,detected_at";
 
+
+function isMissingRelation(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  const code = error.code ?? "";
+  const msg = (error.message ?? "").toLowerCase();
+  return code === "42P01" || code === "PGRST205" || msg.includes("does not exist") || msg.includes("could not find the table");
+}
 function check<T>(res: { data: T | null; error: { message: string } | null }, what: string): T {
   if (res.error) throw new Error(`Error leyendo ${what}: ${res.error.message}`);
   return res.data as T;
@@ -237,8 +245,85 @@ export class SupabaseRepo implements PulsoRepo {
     if (!res.data?.length) throw new Error("No se pudo actualizar la alerta");
   }
 
+
   async dataTimestamp() {
     return null;
+  }
+
+  async isStaff() {
+    const res = await this.db.from("pulso_staff").select("user_id").limit(1);
+    if (res.error) {
+      if (isMissingRelation(res.error)) return false;
+      throw new Error(`Error leyendo el equipo: ${res.error.message}`);
+    }
+    return (res.data?.length ?? 0) > 0;
+  }
+
+  async getCandidateById(id: string) {
+    return check<Candidate | null>(
+      await this.db.from("candidates").select("id,slug,name").eq("id", id).maybeSingle(),
+      "candidato",
+    );
+  }
+
+  async listAssignableCandidates() {
+    if (!(await this.isStaff())) return this.listCandidates();
+    return check<Candidate[]>(
+      await this.db.from("candidates").select("id,slug,name").order("name"),
+      "directorio de candidatos",
+    );
+  }
+
+  async listRivals(candidateId: string) {
+    const res = await this.db
+      .from("candidate_rivals")
+      .select("candidate_id,rival_id,level,created_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at");
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo rivales: ${res.error.message}`);
+    }
+    return ((res.data ?? []) as CandidateRival[]).filter((row) => isRivalLevel(row.level));
+  }
+
+  async replaceRivals(candidateId: string, rows: { rival_id: string; level: RivalLevel }[]) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede asignar rivales");
+    const { data: session } = await this.db.auth.getUser();
+    const existing = await this.db
+      .from("candidate_rivals")
+      .select("rival_id")
+      .eq("candidate_id", candidateId);
+    if (existing.error) {
+      if (isMissingRelation(existing.error)) {
+        throw new Error("Todavía no se aplicó la migración de rivales");
+      }
+      throw new Error(`Error leyendo rivales: ${existing.error.message}`);
+    }
+    const nextIds = new Set(rows.map((r) => r.rival_id));
+    const toDelete = (existing.data ?? [])
+      .map((r) => r.rival_id as string)
+      .filter((id) => !nextIds.has(id));
+    if (toDelete.length) {
+      const del = await this.db
+        .from("candidate_rivals")
+        .delete()
+        .eq("candidate_id", candidateId)
+        .in("rival_id", toDelete);
+      if (del.error) throw new Error(`Error actualizando rivales: ${del.error.message}`);
+    }
+    if (rows.length) {
+      const up = await this.db.from("candidate_rivals").upsert(
+        rows.map((row) => ({
+          candidate_id: candidateId,
+          rival_id: row.rival_id,
+          level: row.level,
+          created_by: session.user?.id ?? null,
+        })),
+        { onConflict: "candidate_id,rival_id" },
+      );
+      if (up.error) throw new Error(`Error guardando rivales: ${up.error.message}`);
+    }
   }
 
   /**

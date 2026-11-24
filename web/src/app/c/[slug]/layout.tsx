@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { CandidateHeading, CandidateSwitcher } from "@/components/candidate-switcher";
 import { Nav } from "@/components/nav";
@@ -13,6 +14,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
   const region = regionFor(candidate.slug);
   const clock = clockFromRegion(region);
   const showSwitcher = candidates.length > 1;
+  const staff = await repo.isStaff();
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
@@ -32,6 +34,13 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
         </div>
         <div className="mt-auto hidden border-t border-slate-100 px-5 py-4 lg:block">
           <p className="truncate text-xs text-slate-500" title={viewer.email}>{viewer.email}</p>
+          {staff ? (
+            <p className="mt-2">
+              <Link href="/admin/rivales" className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
+                Panel Active · Rivales
+              </Link>
+            </p>
+          ) : null}
           <form action={signOut}>
             <button type="submit" className="mt-1 text-xs font-medium text-indigo-600 hover:text-indigo-500">
               Cerrar sesión

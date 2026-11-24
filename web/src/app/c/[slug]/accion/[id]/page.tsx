@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CrisisStatusForm, DraftBlock } from "@/components/crisis-actions";
+import { MANUAL_PUBLISH_NOTE } from "@/lib/crisis-drafts";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import {
@@ -139,7 +140,10 @@ export default async function AccionBriefPage({ params }: PageProps<"/c/[slug]/a
           )}
         </Card>
 
-        <Card title="Estratega y Redactor" subtitle="Tres caminos, con borradores listos para copiar. Nada se envía solo.">
+        <Card title="Estratega y Redactor" subtitle="Tres caminos, con borradores listos para copiar.">
+          <p className="mb-4 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950">
+            {MANUAL_PUBLISH_NOTE}
+          </p>
           {options.length === 0 ? (
             <p className="text-sm text-slate-500">Todavía no hay opciones de respuesta.</p>
           ) : (
@@ -162,6 +166,8 @@ export default async function AccionBriefPage({ params }: PageProps<"/c/[slug]/a
                           channel={draft.channel}
                           text={draft.text}
                           notes={draft.notes}
+                          type={draft.type}
+                          candidateName={candidate.name}
                         />
                       ))}
                     </div>

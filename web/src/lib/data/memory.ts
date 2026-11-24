@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, RivalLevel, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
 
@@ -17,7 +17,11 @@ export interface FixtureData {
   meta_ads?: MetaAd[];
   crisis_alerts?: CrisisAlert[];
   crisis_briefs?: CrisisBrief[];
+  /** En el modo local, el usuario se trata como equipo de Active. */
+  staff?: boolean;
+  candidate_rivals?: CandidateRival[];
 }
+
 
 /** Repositorio en memoria: usado por el modo fixture y los tests. */
 export class MemoryRepo implements PulsoRepo {
@@ -131,5 +135,34 @@ export class MemoryRepo implements PulsoRepo {
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;
+  }
+  async isStaff() {
+    return this.data.staff === true;
+  }
+  async getCandidateById(id: string) {
+    return this.visibleCandidates().find((c) => c.id === id) ?? null;
+  }
+  async listAssignableCandidates() {
+    return this.visibleCandidates();
+  }
+  async listRivals(candidateId: string) {
+    return (this.data.candidate_rivals ?? []).filter((r) => r.candidate_id === candidateId);
+  }
+  async replaceRivals(candidateId: string, rows: { rival_id: string; level: RivalLevel }[]) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede asignar rivales");
+    const known = new Set(this.visibleCandidates().map((c) => c.id));
+    const next: CandidateRival[] = [];
+    const seen = new Set<string>();
+    for (const row of rows) {
+      if (row.rival_id === candidateId) throw new Error("Un candidato no puede ser rival de sí mismo");
+      if (!known.has(row.rival_id)) throw new Error("El rival tiene que ser un candidato de Pulso");
+      if (seen.has(row.rival_id)) continue;
+      seen.add(row.rival_id);
+      next.push({ candidate_id: candidateId, rival_id: row.rival_id, level: row.level });
+    }
+    this.data.candidate_rivals = [
+      ...(this.data.candidate_rivals ?? []).filter((r) => r.candidate_id !== candidateId),
+      ...next,
+    ];
   }
 }

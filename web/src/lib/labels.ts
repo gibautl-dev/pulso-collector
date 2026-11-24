@@ -191,3 +191,14 @@ export const CRISIS_CHANNEL_LABEL: Record<string, string> = {
   comunicado: "Comunicado",
   argumento_oral: "Argumento oral",
 };
+
+export const RIVAL_LEVEL_LABEL: Record<string, string> = {
+  radar: "Radar",
+  comparativo: "Comparativo",
+  completo: "Completo",
+};
+export const RIVAL_LEVEL_HINT: Record<string, string> = {
+  radar: "Solo menciones en medios.",
+  comparativo: "Volumen, balance y anuncios: ranking y curvas frente al candidato.",
+  completo: "Medios, X, IA, anuncios y cuentas sospechosas.",
+};

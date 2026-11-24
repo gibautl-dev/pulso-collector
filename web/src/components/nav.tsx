@@ -12,6 +12,7 @@ const ICONS: Record<string, string> = {
   x: "M4.5 4.5l15 15M19.5 4.5l-15 15",
   anuncios: "M3 7h13v11H3zM16 10l5-2v11l-5-2",
   accion: "M12 3l3 6 6 .9-4.5 4.4 1 6.2L12 17.8 6.5 20.5l1-6.2L3 9.9 9 9z",
+  comparacion: "M5 19V8h4v11H5zm6 0V4h4v15h-4zm6 0v-7h4v7h-4z",
 };
 
 export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean }) {
@@ -23,6 +24,7 @@ export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean 
     { href: `${base}/fuentes`, label: "Salud de fuentes", icon: "fuentes", active: pathname.startsWith(`${base}/fuentes`) },
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },
     { href: `${base}/accion`, label: "Acción", icon: "accion", active: pathname.startsWith(`${base}/accion`) },
+    { href: `${base}/comparacion`, label: "Comparación", icon: "comparacion", active: pathname.startsWith(`${base}/comparacion`) },
     { href: `${base}/ia`, label: "En la IA", icon: "ia", active: pathname.startsWith(`${base}/ia`) },
     { href: `${base}/x`, label: "En X", icon: "x", active: pathname.startsWith(`${base}/x`) },
     ...(showAds

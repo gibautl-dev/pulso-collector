@@ -267,6 +267,8 @@ export interface CrisisDraft {
   channel: string;
   text: string;
   notes: string;
+  /** Tipo opcional del borrador (p. ej. vocero), si el job lo informa. */
+  type?: string | null;
 }
 
 export interface CrisisBriefOutput {
@@ -333,4 +335,18 @@ export interface CrisisAgentSetting {
   max_cost_usd: number | string;
   max_briefs_per_run: number;
   notify_email: boolean;
+}
+
+export const RIVAL_LEVELS = ["radar", "comparativo", "completo"] as const;
+export type RivalLevel = (typeof RIVAL_LEVELS)[number];
+
+export function isRivalLevel(value: string): value is RivalLevel {
+  return (RIVAL_LEVELS as readonly string[]).includes(value);
+}
+
+export interface CandidateRival {
+  candidate_id: string;
+  rival_id: string;
+  level: RivalLevel;
+  created_at?: string;
 }

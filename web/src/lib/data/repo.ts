@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, RivalLevel, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 
 export interface MentionPage {
   items: Mention[];
@@ -40,7 +40,14 @@ export interface PulsoRepo {
   ): Promise<void>;
   /** Momento de los datos (fixture: exportación; supabase: ahora). */
   dataTimestamp(): Promise<string | null>;
+  isStaff(): Promise<boolean>;
+  getCandidateById(id: string): Promise<Candidate | null>;
+  /** Directorio para el panel (todos, si es staff). */
+  listAssignableCandidates(): Promise<Candidate[]>;
+  listRivals(candidateId: string): Promise<CandidateRival[]>;
+  replaceRivals(candidateId: string, rows: { rival_id: string; level: RivalLevel }[]): Promise<void>;
 }
+
 
 export async function getRepo(): Promise<PulsoRepo> {
   if (isFixtureMode()) {

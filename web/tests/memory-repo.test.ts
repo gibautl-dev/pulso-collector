@@ -103,3 +103,45 @@ describe("MemoryRepo Acción", () => {
     expect(again?.cluster_label).toBe("Control laboral");
   });
 });
+
+describe("MemoryRepo rivales", () => {
+  const rivals = new MemoryRepo({
+    candidate: { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+    candidates: [
+      { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+      { id: "c2", slug: "pedro-sanchez", name: "Pedro Sánchez" },
+    ],
+    topics: [],
+    mentions: [],
+    source_runs: [],
+    candidate_sources: [],
+    staff: true,
+    candidate_rivals: [{ candidate_id: "c1", rival_id: "c2", level: "radar" }],
+  });
+
+  it("lista rivales del candidato y deja asignar desde el panel", async () => {
+    expect(await rivals.isStaff()).toBe(true);
+    expect(await rivals.getCandidateById("c2")).toMatchObject({ slug: "pedro-sanchez" });
+    expect((await rivals.listRivals("c1"))[0].level).toBe("radar");
+    await rivals.replaceRivals("c1", [{ rival_id: "c2", level: "completo" }]);
+    expect((await rivals.listRivals("c1"))[0].level).toBe("completo");
+    expect(await rivals.listRivals("c2")).toEqual([]);
+  });
+
+  it("no deja que un candidato sea rival de sí mismo", async () => {
+    await expect(rivals.replaceRivals("c1", [{ rival_id: "c1", level: "radar" }])).rejects.toThrow();
+  });
+});
+
+describe("MemoryRepo sin staff", () => {
+  const plain = new MemoryRepo({
+    candidate: { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+    topics: [],
+    mentions: [],
+    source_runs: [],
+    candidate_sources: [],
+  });
+  it("no se presenta como equipo de Active", async () => {
+    expect(await plain.isStaff()).toBe(false);
+  });
+});

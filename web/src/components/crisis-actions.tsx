@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { updateCrisisAlertStatus } from "@/app/c/[slug]/accion/actions";
+import { draftAudience } from "@/lib/crisis-drafts";
 import { CRISIS_CHANNEL_LABEL, CRISIS_STATUS_LABEL } from "@/lib/labels";
 import type { CrisisStatus } from "@/lib/types";
 
@@ -65,7 +66,7 @@ export function CopyDraftButton({ text, label }: { text: string; label?: string 
         setTimeout(() => setCopied(false), 2000);
       }}
     >
-      {copied ? "Copiado" : label ?? "Copiar"}
+      {copied ? "Copiado" : label ?? "Copiar texto"}
     </button>
   );
 }
@@ -74,18 +75,27 @@ export function DraftBlock({
   channel,
   text,
   notes,
+  candidateName,
+  type,
 }: {
   channel: string;
   text: string;
   notes?: string;
+  candidateName: string;
+  type?: string | null;
 }) {
+  const audience = draftAudience(channel, candidateName, { type });
   return (
     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          {CRISIS_CHANNEL_LABEL[channel] ?? channel}
-        </p>
-        <CopyDraftButton text={text} />
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            {CRISIS_CHANNEL_LABEL[channel] ?? channel}
+          </p>
+          <p className="mt-1 text-sm font-medium text-slate-900">{audience.label}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{audience.hint}</p>
+        </div>
+        <CopyDraftButton text={text} label="Copiar texto" />
       </div>
       <pre className="mt-2 whitespace-pre-wrap font-sans text-sm leading-6 text-slate-800">{text}</pre>
       {notes ? <p className="mt-2 text-xs text-slate-500">{notes}</p> : null}

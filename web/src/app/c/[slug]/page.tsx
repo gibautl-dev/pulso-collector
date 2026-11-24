@@ -25,13 +25,14 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const ts = await repo.dataTimestamp();
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - days * 86400000).toISOString();
-  const [mentions, topics, sources, ads, answers, suspicious] = await Promise.all([
+  const [mentions, topics, sources, ads, answers, suspicious, rivalRows] = await Promise.all([
     repo.mentionsSince(candidate.id, since),
     repo.listTopics(candidate.id),
     repo.listCandidateSources(candidate.id),
     repo.listMetaAds(candidate.id),
     repo.listAiAnswers(candidate.id),
     repo.listSuspiciousAccounts(candidate.id),
+    repo.listRivals(candidate.id),
   ]);
   const d = computeDashboard(mentions, topics, { days, now, timeZone: clock.timeZone });
   const sourceCards = computeHomeCards({
@@ -54,6 +55,12 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const maxOutlet = Math.max(1, ...d.topOutlets.map((o) => o.count));
   const maxTone = Math.max(1, ...d.toneAboutCandidate.map((t) => t.count));
   const maxSource = Math.max(1, ...d.bySource.map((s) => s.count));
+  const rivalNames: string[] = [];
+  for (const row of rivalRows) {
+    const rival = await repo.getCandidateById(row.rival_id);
+    if (rival) rivalNames.push(rival.name);
+  }
+
 
   return (
     <>
@@ -73,6 +80,24 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
           ))}
         </div>
       </PageHeader>
+
+      {rivalNames.length ? (
+        <Card
+          title="Comparación con rivales"
+          subtitle="Vista armada por el equipo de Active, con los datos que Pulso ya recolecta."
+        >
+          <p className="text-sm text-slate-700">
+            {rivalNames.length === 1
+              ? `Hay una comparación lista frente a ${rivalNames[0]}.`
+              : `Hay comparaciones listas frente a ${rivalNames.join(", ")}.`}
+          </p>
+          <p className="mt-3">
+            <Link href={`/c/${slug}/comparacion`} className="text-sm font-medium text-indigo-700 hover:underline">
+              Abrir la comparación
+            </Link>
+          </p>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Menciones" value={d.total} hint={`${d.last24h} en las últimas 24 h`} />

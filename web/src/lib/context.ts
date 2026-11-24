@@ -36,3 +36,18 @@ export const loadCandidate = cache(async (slug: string): Promise<CandidateContex
   if (!candidate) notFound();
   return { viewer, repo, candidate, candidates };
 });
+
+export interface StaffContext {
+  viewer: Viewer;
+  repo: PulsoRepo;
+  candidates: Candidate[];
+}
+
+/** Sesión + permiso de equipo de Active. 404 si no es staff (o si falta la migración). */
+export const requireStaff = cache(async (): Promise<StaffContext> => {
+  const viewer = await requireViewer();
+  const repo = await getRepo();
+  if (!(await repo.isStaff())) notFound();
+  const candidates = await repo.listAssignableCandidates();
+  return { viewer, repo, candidates };
+});
