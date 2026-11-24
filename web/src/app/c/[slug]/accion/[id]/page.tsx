@@ -64,16 +64,16 @@ export default async function AccionBriefPage({ params }: PageProps<"/c/[slug]/a
 
         <Card title="Vigilante" subtitle="Detección por umbrales, sin modelo.">
           <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-            {[
-              ["Medios", alert.metrics.media_count],
-              ["Notables", alert.metrics.notable_count],
-              ["Negativas", alert.metrics.negative_count],
-              ["Impresiones en X", alert.metrics.x_impressions],
-            ].map(([label, value]) => (
-              <div key={String(label)}>
-                <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
+            {([
+              { label: "Medios", value: alert.metrics.media_count },
+              { label: "Notables", value: alert.metrics.notable_count },
+              { label: "Negativas", value: alert.metrics.negative_count },
+              { label: "Impresiones en X", value: alert.metrics.x_impressions },
+            ]).map((item) => (
+              <div key={item.label}>
+                <dt className="text-xs uppercase tracking-wide text-slate-500">{item.label}</dt>
                 <dd className="mt-1 font-semibold tabular-nums text-slate-900">
-                  {value == null || value === "" ? "—" : Number(value).toLocaleString("es-AR")}
+                  {item.value == null || item.value === "" ? "—" : Number(item.value).toLocaleString("es-AR")}
                 </dd>
               </div>
             ))}
