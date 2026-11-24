@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
 
@@ -15,6 +15,8 @@ export interface FixtureData {
   suspicious_accounts?: SuspiciousAccount[];
   ai_answers?: AiAnswer[];
   meta_ads?: MetaAd[];
+  crisis_alerts?: CrisisAlert[];
+  crisis_briefs?: CrisisBrief[];
 }
 
 /** Repositorio en memoria: usado por el modo fixture y los tests. */
@@ -95,6 +97,37 @@ export class MemoryRepo implements PulsoRepo {
         const bStart = b.ad_delivery_start_time ?? b.fetched_at;
         return bStart.localeCompare(aStart) || a.ad_id.localeCompare(b.ad_id);
       });
+  }
+  async listCrisisAlerts(candidateId: string) {
+    const briefs = this.data.crisis_briefs ?? [];
+    return (this.data.crisis_alerts ?? [])
+      .filter((a) => a.candidate_id === candidateId)
+      .slice()
+      .sort((a, b) => b.last_detected_at.localeCompare(a.last_detected_at))
+      .map((alert) => ({
+        ...alert,
+        latest_brief: briefs
+          .filter((b) => b.alert_id === alert.id)
+          .slice()
+          .sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null,
+      }));
+  }
+  async getCrisisAlert(candidateId: string, id: string) {
+    const alerts = await this.listCrisisAlerts(candidateId);
+    return alerts.find((a) => a.id === id) ?? null;
+  }
+  async listCrisisBriefs(candidateId: string, alertId: string) {
+    return (this.data.crisis_briefs ?? [])
+      .filter((b) => b.candidate_id === candidateId && b.alert_id === alertId)
+      .slice()
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+  async updateCrisisAlertStatus(candidateId: string, id: string, status: CrisisStatus, note: string | null) {
+    const alert = (this.data.crisis_alerts ?? []).find((a) => a.candidate_id === candidateId && a.id === id);
+    if (!alert) throw new Error("Alerta no encontrada");
+    alert.status = status;
+    alert.status_note = note;
+    alert.status_updated_at = new Date().toISOString();
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;

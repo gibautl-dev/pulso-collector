@@ -49,3 +49,57 @@ describe("MemoryRepo con varios candidatos", () => {
     expect(await multi.getCandidate("inexistente")).toBeNull();
   });
 });
+
+describe("MemoryRepo Acción", () => {
+  const crisis = new MemoryRepo({
+    candidate: { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+    topics: [],
+    mentions: [],
+    source_runs: [],
+    candidate_sources: [],
+    crisis_alerts: [
+      {
+        id: "a1",
+        candidate_id: "c1",
+        trigger_type: "rising_topic",
+        trigger_key: "rising_topic:demo",
+        cluster_label: "Control laboral",
+        window_start: "2026-11-22T00:00:00-03:00",
+        window_end: "2026-11-24T12:00:00-03:00",
+        severity: "medio_alto",
+        metrics: { media_count: 4 },
+        status: "new",
+        status_note: null,
+        status_updated_at: null,
+        first_detected_at: "2026-11-24T10:00:00-03:00",
+        last_detected_at: "2026-11-24T10:00:00-03:00",
+      },
+    ],
+    crisis_briefs: [
+      {
+        id: "b1",
+        alert_id: "a1",
+        candidate_id: "c1",
+        prompt_version: "crisis-v1",
+        model: "gpt-6-luna",
+        risk_level: "medio_alto",
+        title: "La Sociedad Rural",
+        input_ref: {},
+        output: { title: "La Sociedad Rural", summary: "Un tema emergente." },
+        cost_usd: 0.002,
+        created_at: "2026-11-24T10:05:00-03:00",
+      },
+    ],
+  });
+
+  it("lista la alerta con el último brief y solo deja cambiar el estado", async () => {
+    const rows = await crisis.listCrisisAlerts("c1");
+    expect(rows).toHaveLength(1);
+    expect(rows[0].latest_brief?.title).toBe("La Sociedad Rural");
+    await crisis.updateCrisisAlertStatus("c1", "a1", "approved", "vamos");
+    const again = await crisis.getCrisisAlert("c1", "a1");
+    expect(again?.status).toBe("approved");
+    expect(again?.status_note).toBe("vamos");
+    expect(again?.cluster_label).toBe("Control laboral");
+  });
+});

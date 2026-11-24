@@ -104,6 +104,7 @@ def main():
                 run_ai_visibility(args)
                 run_meta_ads(args)
                 run_meta_ads_classify(args)
+                run_crisis_agent(args)
             return code
         finished = []
         timed_out = False
@@ -143,6 +144,7 @@ def main():
             else:
                 log(event='meta_ads_skipped', reason='region_disabled', candidate=slug)
                 log(event='meta_ads_classify_skipped', reason='region_disabled', candidate=slug)
+            run_crisis_agent(child_args)
     # El resultado del clasificador, el detector, la visibilidad en IA, Meta Ads
     # o la clasificación de anuncios nunca cambia el código de salida del cron.
     if cancelled:
@@ -264,6 +266,30 @@ def run_meta_ads_classify(collector_args):
                            env=child_env(COLLECTOR_ONLY, META_ADS_ONLY), prefix='meta_ads_classify')
     except Exception as exc:
         log(event='meta_ads_classify_error', error_type=type(exc).__name__)
+        return None
+
+
+
+def run_crisis_agent(collector_args):
+    """Equipo de agentes de crisis. Apagado por defecto; no publica ni cambia estados."""
+    try:
+        if os.getenv('PULSO_CRISIS_AGENT_ENABLED', 'false').lower() != 'true':
+            log(event='crisis_agent_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_CRISIS_AGENT_TIMEOUT_SECONDS', '300'))
+        if not 30 <= timeout <= 900:
+            raise ValueError('Invalid crisis-agent timeout')
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_CRISIS_AGENT_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
+        # Misma clave LLM y rol del clasificador; no ve al recolector ni el token de Meta.
+        return run_command([sys.executable, '-m', 'pulso.crisis', *args], timeout,
+                           env=child_env(COLLECTOR_ONLY, META_ADS_ONLY), prefix='crisis_agent')
+    except Exception as exc:
+        log(event='crisis_agent_error', error_type=type(exc).__name__)
         return None
 
 

@@ -1,5 +1,5 @@
 -- Agente de crisis / sección Acción.
--- Propuesta: aplicar una vez en pulso-demo cuando se apruebe. NO APLICAR todavía.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-24. No volver a aplicar tal cual si ya está.
 -- No contiene secretos. El job queda en PULSO_CRISIS_AGENT_ENABLED (apagado por defecto).
 --
 -- Un Coordinador reparte el trabajo entre agentes con roles (Vigilante, Analista,

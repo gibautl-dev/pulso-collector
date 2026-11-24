@@ -1,6 +1,6 @@
 # Acción: equipo de agentes de crisis
 
-Propuesta y diseño técnico. **No está aplicada ni publicada.** La migración está en `deploy/crisis_agent.sql` y queda sin correr hasta que se apruebe.
+La migración `deploy/crisis_agent.sql` se aplicó en pulso-demo el 2026-11-24. El job (`python -m pulso.crisis`) y la sección web Acción viven en `feature/crisis-agent`. **Todavía no está mergeada a main ni desplegada** (ni web ni cron): Leandro tiene que ver las capturas antes. El agente está prendido solo para axel-kicillof; pedro-sanchez sigue apagado. El tope por corrida es USD 0.50. El estado (approved/discarded) lo cambia una persona; nada se publica ni se postea solo.
 
 La novedad no es un reporte más: es un **equipo de agentes que se coordinan hacia un solo objetivo**, que el equipo del candidato pueda actuar. El agente de crisis es la primera pieza de esa mesa. Una persona aprueba al final. Nada se publica solo. No usamos cuentas falsas ni respuestas en masa.
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 
 export interface MentionPage {
   items: Mention[];
@@ -29,6 +29,15 @@ export interface PulsoRepo {
   ): Promise<void>;
   listAiAnswers(candidateId: string): Promise<AiAnswer[]>;
   listMetaAds(candidateId: string): Promise<MetaAd[]>;
+  listCrisisAlerts(candidateId: string): Promise<CrisisAlert[]>;
+  getCrisisAlert(candidateId: string, id: string): Promise<CrisisAlert | null>;
+  listCrisisBriefs(candidateId: string, alertId: string): Promise<CrisisBrief[]>;
+  updateCrisisAlertStatus(
+    candidateId: string,
+    id: string,
+    status: CrisisStatus,
+    note: string | null,
+  ): Promise<void>;
   /** Momento de los datos (fixture: exportación; supabase: ahora). */
   dataTimestamp(): Promise<string | null>;
 }

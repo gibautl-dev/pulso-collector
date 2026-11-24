@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateSource, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -177,6 +177,66 @@ export class SupabaseRepo implements PulsoRepo {
     const classified = await this.mergeAdClassifications(candidateId, rows);
     return classified.map(normalizeMetaAd);
   }
+
+  async listCrisisAlerts(candidateId: string) {
+    const alerts = check<CrisisAlert[]>(
+      await this.db
+        .from("crisis_alerts")
+        .select("id,candidate_id,trigger_type,trigger_key,cluster_label,topic_id,window_start,window_end,severity,metrics,status,status_note,status_updated_at,status_updated_by,first_detected_at,last_detected_at,created_at")
+        .eq("candidate_id", candidateId)
+        .order("last_detected_at", { ascending: false })
+        .limit(200),
+      "alertas de acción",
+    );
+    if (alerts.length === 0) return alerts;
+    const briefs = check<CrisisBrief[]>(
+      await this.db
+        .from("crisis_briefs")
+        .select("id,alert_id,candidate_id,prompt_version,model,risk_level,title,input_ref,output,cost_usd,usage,created_at")
+        .eq("candidate_id", candidateId)
+        .in("alert_id", alerts.map((a) => a.id))
+        .order("created_at", { ascending: false })
+        .limit(500),
+      "briefs de acción",
+    );
+    const latest = new Map<string, CrisisBrief>();
+    for (const brief of briefs) {
+      if (!latest.has(brief.alert_id)) latest.set(brief.alert_id, brief);
+    }
+    return alerts.map((alert) => ({ ...alert, latest_brief: latest.get(alert.id) ?? null }));
+  }
+  async getCrisisAlert(candidateId: string, id: string) {
+    const alerts = await this.listCrisisAlerts(candidateId);
+    return alerts.find((a) => a.id === id) ?? null;
+  }
+  async listCrisisBriefs(candidateId: string, alertId: string) {
+    return check<CrisisBrief[]>(
+      await this.db
+        .from("crisis_briefs")
+        .select("id,alert_id,candidate_id,prompt_version,model,risk_level,title,input_ref,output,cost_usd,usage,created_at")
+        .eq("candidate_id", candidateId)
+        .eq("alert_id", alertId)
+        .order("created_at", { ascending: false }),
+      "versiones del brief",
+    );
+  }
+  async updateCrisisAlertStatus(candidateId: string, id: string, status: CrisisStatus, note: string | null) {
+    const { data: session } = await this.db.auth.getUser();
+    const res = await this.db
+      .from("crisis_alerts")
+      .update({
+        status,
+        status_note: note,
+        status_updated_at: new Date().toISOString(),
+        status_updated_by: session.user?.id ?? null,
+      })
+      .eq("candidate_id", candidateId)
+      .eq("id", id)
+      .select("id");
+    if (res.error) throw new Error(`Error actualizando el estado: ${res.error.message}`);
+    if (!res.data?.length) throw new Error("No se pudo actualizar la alerta");
+  }
+
   async dataTimestamp() {
     return null;
   }

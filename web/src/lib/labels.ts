@@ -154,3 +154,40 @@ export function suspiciousAccountLabel(a: {
   if (a.handle) return `@${a.handle.replace(/^@/, "")}`;
   return a.display_name || a.account_key;
 }
+
+export const CRISIS_STATUS_LABEL: Record<string, string> = {
+  new: "Nueva",
+  in_review: "En revisión",
+  approved: "Aprobada",
+  discarded: "Descartada",
+};
+export const CRISIS_STATUS_BADGE: Record<string, string> = {
+  new: "bg-amber-50 text-amber-800 ring-amber-200",
+  in_review: "bg-indigo-50 text-indigo-800 ring-indigo-200",
+  approved: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  discarded: "bg-slate-100 text-slate-600 ring-slate-200",
+};
+export const CRISIS_TRIGGER_LABEL: Record<string, string> = {
+  negative_spike: "Pico negativo",
+  rising_topic: "Tema emergente",
+  suspicious_campaign: "Campaña sospechosa",
+  attack_ads: "Anuncios en contra",
+  ai_shift: "Caída en la IA",
+};
+export const CRISIS_RISK_LABEL: Record<string, string> = {
+  bajo: "Riesgo bajo",
+  medio: "Riesgo medio",
+  medio_alto: "Riesgo medio-alto",
+  alto: "Riesgo alto",
+};
+export const CRISIS_RISK_BADGE: Record<string, string> = {
+  bajo: "bg-slate-50 text-slate-700 ring-slate-200",
+  medio: "bg-amber-50 text-amber-800 ring-amber-200",
+  medio_alto: "bg-orange-50 text-orange-800 ring-orange-200",
+  alto: "bg-rose-50 text-rose-800 ring-rose-200",
+};
+export const CRISIS_CHANNEL_LABEL: Record<string, string> = {
+  x: "Borrador para X",
+  comunicado: "Comunicado",
+  argumento_oral: "Argumento oral",
+};

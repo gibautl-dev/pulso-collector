@@ -54,6 +54,13 @@ describe("hrefForCandidate", () => {
     );
   });
 
+  it("conserva Acción en el otro candidato (la bandeja puede estar vacía)", () => {
+    expect(sectionAvailable("accion", "pedro-sanchez")).toBe(true);
+    expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/accion/abc-123")).toBe(
+      "/c/pedro-sanchez/accion",
+    );
+  });
+
   it("vuelve al tablero si la pestaña no existe", () => {
     expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/no-existe")).toBe("/c/pedro-sanchez");
   });

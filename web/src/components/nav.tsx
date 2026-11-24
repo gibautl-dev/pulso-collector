@@ -11,6 +11,7 @@ const ICONS: Record<string, string> = {
   ia: "M12 3a4 4 0 0 1 4 4c0 1.5-.8 2.8-2 3.5V13h-4v-2.5C8.8 9.8 8 8.5 8 7a4 4 0 0 1 4-4zM8 16h8v2H8z",
   x: "M4.5 4.5l15 15M19.5 4.5l-15 15",
   anuncios: "M3 7h13v11H3zM16 10l5-2v11l-5-2",
+  accion: "M12 3l3 6 6 .9-4.5 4.4 1 6.2L12 17.8 6.5 20.5l1-6.2L3 9.9 9 9z",
 };
 
 export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean }) {
@@ -21,6 +22,7 @@ export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean 
     { href: `${base}/menciones`, label: "Menciones", icon: "menciones", active: pathname.startsWith(`${base}/menciones`) },
     { href: `${base}/fuentes`, label: "Salud de fuentes", icon: "fuentes", active: pathname.startsWith(`${base}/fuentes`) },
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },
+    { href: `${base}/accion`, label: "Acción", icon: "accion", active: pathname.startsWith(`${base}/accion`) },
     { href: `${base}/ia`, label: "En la IA", icon: "ia", active: pathname.startsWith(`${base}/ia`) },
     { href: `${base}/x`, label: "En X", icon: "x", active: pathname.startsWith(`${base}/x`) },
     ...(showAds
