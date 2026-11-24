@@ -28,3 +28,24 @@ describe("MemoryRepo", () => {
     expect(await repo.getCandidate("otro")).toBeNull();
   });
 });
+
+describe("MemoryRepo con varios candidatos", () => {
+  const multi = new MemoryRepo({
+    candidate: { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+    candidates: [
+      { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+      { id: "c2", slug: "pedro-sanchez", name: "Pedro Sánchez" },
+    ],
+    topics: [],
+    mentions: [],
+    source_runs: [],
+    candidate_sources: [],
+  });
+
+  it("lista por nombre y encuentra a ambos", async () => {
+    const list = await multi.listCandidates();
+    expect(list.map((c) => c.slug)).toEqual(["axel-kicillof", "pedro-sanchez"]);
+    expect(await multi.getCandidate("pedro-sanchez")).toMatchObject({ slug: "pedro-sanchez" });
+    expect(await multi.getCandidate("inexistente")).toBeNull();
+  });
+});
