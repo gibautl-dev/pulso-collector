@@ -37,6 +37,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 export default async function MentionDetail({ params }: PageProps<"/c/[slug]/menciones/[id]">) {
   const { slug, id } = await params;
+  const clock = clockFor(slug);
   if (!UUID_RE.test(id)) notFound();
   const { repo, candidate } = await loadCandidate(slug);
   const [m, topics] = await Promise.all([repo.getMention(candidate.id, id), repo.listTopics(candidate.id)]);
