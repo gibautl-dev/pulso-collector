@@ -1,10 +1,10 @@
 # Temas a medida y analista por tema
 
-Migración: `deploy/custom_topics.sql`. **No aplicada** en pulso-demo.
+Migración: `deploy/custom_topics.sql`. **Aplicada** en pulso-demo el 2026-11-24 (hora de Argentina).
 
 Renombre visible: la bandeja de crisis pasa a llamarse **Equipo de acción**. La ruta sigue siendo `/c/[slug]/accion`.
 
-## Qué crearía
+## Qué creó
 
 - Tabla `public.custom_topics`: una temática definida a mano por candidato (nombre, descripción, palabras clave, inclusiones, exclusiones, fuentes opcionales). **No es** `public.topics`, que sigue siendo el clasificador automático de menciones.
 - Tabla `public.custom_topic_summaries`: resumen del analista de ese tema (qué está pasando, riesgos, oportunidades, ángulos de contenido propio). Estado `draft` / `approved` / `discarded`. Una persona aprueba; Pulso no publica ni postea.

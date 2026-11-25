@@ -1,5 +1,5 @@
 -- Temas a medida por candidato, con analista especializado (resúmenes para revisión humana).
--- ESTE ARCHIVO NO SE EJECUTÓ. No aplicarlo hasta que Leandro lo apruebe.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-24 (hora de Argentina). No volver a aplicar tal cual si ya está.
 -- No contiene secretos. No cambia roles de collector/classifier. No invita usuarios.
 -- No enciende recolección nueva: el recorte usa menciones que ya están en public.mentions.
 -- No modifica el job ni los umbrales del agente de crisis.
