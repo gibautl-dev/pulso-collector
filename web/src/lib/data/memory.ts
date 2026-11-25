@@ -1,5 +1,6 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, RivalLevel, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import { slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
 
@@ -20,7 +21,11 @@ export interface FixtureData {
   /** En el modo local, el usuario se trata como equipo de Active. */
   staff?: boolean;
   candidate_rivals?: CandidateRival[];
+  recorded_daily_costs?: RecordedDailyCost[];
+  rival_suggestion_runs?: RivalSuggestionRun[];
+  pending_candidates?: PendingCandidate[];
 }
+
 
 
 /** Repositorio en memoria: usado por el modo fixture y los tests. */
@@ -164,5 +169,67 @@ export class MemoryRepo implements PulsoRepo {
       ...(this.data.candidate_rivals ?? []).filter((r) => r.candidate_id !== candidateId),
       ...next,
     ];
+  }
+  async listRecordedDailyCosts() {
+    return this.data.recorded_daily_costs ?? [];
+  }
+  async latestSuggestionRun(candidateId: string) {
+    return (
+      (this.data.rival_suggestion_runs ?? [])
+        .filter((r) => r.candidate_id === candidateId)
+        .slice()
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null
+    );
+  }
+  async saveSuggestionRun(run: Omit<RivalSuggestionRun, "id" | "created_at"> & { id?: string; created_at?: string }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede pedir sugerencias");
+    const saved: RivalSuggestionRun = {
+      ...run,
+      id: run.id ?? crypto.randomUUID(),
+      created_at: run.created_at ?? new Date().toISOString(),
+    };
+    this.data.rival_suggestion_runs = [...(this.data.rival_suggestion_runs ?? []), saved];
+    return saved;
+  }
+  async listPendingCandidates(candidateId: string) {
+    return (this.data.pending_candidates ?? [])
+      .filter((p) => p.requested_for_candidate_id === candidateId)
+      .slice()
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+  async addPendingCandidate(row: {
+    name: string;
+    slug?: string | null;
+    arena?: string | null;
+    requested_for_candidate_id: string;
+    requested_level: RivalLevel;
+    source: PendingCandidateSource;
+    reason?: string | null;
+  }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede pedir un alta");
+    const name = row.name.trim();
+    if (!name) throw new Error("Falta el nombre");
+    const existing = this.visibleCandidates().some(
+      (c) => c.name.toLowerCase() === name.toLowerCase() || c.slug === (row.slug || slugifyName(name)),
+    );
+    if (existing) throw new Error("Ese candidato ya está en Pulso: sumalo con la lista de arriba, no como un alta nueva.");
+    const pending = this.data.pending_candidates ?? [];
+    if (pending.some((p) => p.requested_for_candidate_id === row.requested_for_candidate_id && p.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error("Ese nombre ya está pedido como pendiente de alta para este candidato.");
+    }
+    const rec: PendingCandidate = {
+      id: crypto.randomUUID(),
+      name,
+      slug: row.slug ?? slugifyName(name) ?? null,
+      arena: row.arena ?? null,
+      status: "pendiente_de_alta",
+      requested_for_candidate_id: row.requested_for_candidate_id,
+      requested_level: row.requested_level,
+      source: row.source,
+      reason: row.reason ?? null,
+      created_at: new Date().toISOString(),
+    };
+    this.data.pending_candidates = [...pending, rec];
+    return rec;
   }
 }

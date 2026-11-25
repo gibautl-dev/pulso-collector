@@ -1,5 +1,5 @@
 -- Comparación de rivales por candidato (panel Active + vista del cliente).
--- ESTE ARCHIVO NO SE EJECUTÓ. No aplicarlo hasta que Leandro lo apruebe.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-24. No volver a aplicar tal cual si ya está.
 -- No contiene secretos. No cambia roles de collector/classifier. No invita usuarios.
 --
 -- Qué crea:

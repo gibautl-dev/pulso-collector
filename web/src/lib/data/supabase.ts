@@ -3,8 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, RivalLevel, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 import { isRivalLevel } from "@/lib/types";
+import { slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -23,6 +24,35 @@ const META_AD_COLS =
 const SUSPICIOUS_COLS =
   "id,candidate_id,platform,account_key,handle,display_name,profile_url,score,signals,mention_count,first_seen_at,last_seen_at,account_created_at,status,status_note,status_updated_at,detected_at";
 
+
+
+function asSuggestionRun(row: {
+  id: string;
+  candidate_id: string;
+  prompt_version: string;
+  model?: string | null;
+  suggestions?: unknown;
+  cost_usd?: number | string | null;
+  usage?: Record<string, unknown> | null;
+  created_at: string;
+  origin?: RivalSuggestionOrigin | null;
+  note?: string | null;
+}): RivalSuggestionRun {
+  const suggestions = Array.isArray(row.suggestions) ? (row.suggestions as RivalSuggestion[]) : [];
+  const cost = row.cost_usd == null || row.cost_usd === "" ? null : Number(row.cost_usd);
+  return {
+    id: row.id,
+    candidate_id: row.candidate_id,
+    prompt_version: row.prompt_version,
+    model: row.model ?? null,
+    suggestions,
+    cost_usd: cost != null && Number.isFinite(cost) ? cost : null,
+    usage: row.usage ?? null,
+    created_at: row.created_at,
+    origin: row.origin === "fixture_example" ? "fixture_example" : "ai",
+    note: row.note ?? null,
+  };
+}
 
 function isMissingRelation(error: { message?: string; code?: string } | null): boolean {
   if (!error) return false;
@@ -324,6 +354,111 @@ export class SupabaseRepo implements PulsoRepo {
       );
       if (up.error) throw new Error(`Error guardando rivales: ${up.error.message}`);
     }
+  }
+
+
+  async listRecordedDailyCosts(): Promise<RecordedDailyCost[]> {
+    const res = await this.db
+      .from("ai_answers")
+      .select("candidate_id,asked_on,cost")
+      .limit(5000);
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo costos de En la IA: ${res.error.message}`);
+    }
+    const rows: RecordedDailyCost[] = [];
+    for (const row of res.data ?? []) {
+      const rec = row as { candidate_id?: string; asked_on?: string; cost?: number | string | null };
+      const cost = rec.cost == null || rec.cost === "" ? NaN : Number(rec.cost);
+      if (!rec.candidate_id || !rec.asked_on || !Number.isFinite(cost)) continue;
+      rows.push({ candidate_id: rec.candidate_id, source: "ia", date: rec.asked_on, cost_usd: cost });
+    }
+    return rows;
+  }
+
+  async latestSuggestionRun(candidateId: string): Promise<RivalSuggestionRun | null> {
+    const res = await this.db
+      .from("rival_suggestion_runs")
+      .select("id,candidate_id,prompt_version,model,suggestions,cost_usd,usage,created_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (res.error) {
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo sugerencias: ${res.error.message}`);
+    }
+    if (!res.data) return null;
+    return asSuggestionRun(res.data);
+  }
+
+  async saveSuggestionRun(run: Omit<RivalSuggestionRun, "id" | "created_at"> & { id?: string; created_at?: string }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede pedir sugerencias");
+    const { data: session } = await this.db.auth.getUser();
+    const res = await this.db
+      .from("rival_suggestion_runs")
+      .insert({
+        candidate_id: run.candidate_id,
+        prompt_version: run.prompt_version,
+        model: run.model,
+        suggestions: run.suggestions,
+        cost_usd: run.cost_usd,
+        usage: run.usage ?? {},
+        created_by: session.user?.id ?? null,
+      })
+      .select("id,candidate_id,prompt_version,model,suggestions,cost_usd,usage,created_at")
+      .single();
+    if (res.error) {
+      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de sugerencias de rivales");
+      throw new Error(`Error guardando sugerencias: ${res.error.message}`);
+    }
+    return asSuggestionRun({ ...res.data, origin: run.origin, note: run.note });
+  }
+
+  async listPendingCandidates(candidateId: string) {
+    const res = await this.db
+      .from("pending_candidates")
+      .select("id,name,slug,arena,status,requested_for_candidate_id,requested_level,source,reason,created_at")
+      .eq("requested_for_candidate_id", candidateId)
+      .order("created_at", { ascending: false });
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo altas pendientes: ${res.error.message}`);
+    }
+    return (res.data ?? []) as PendingCandidate[];
+  }
+
+  async addPendingCandidate(row: {
+    name: string;
+    slug?: string | null;
+    arena?: string | null;
+    requested_for_candidate_id: string;
+    requested_level: RivalLevel;
+    source: PendingCandidateSource;
+    reason?: string | null;
+  }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede pedir un alta");
+    const { data: session } = await this.db.auth.getUser();
+    const res = await this.db
+      .from("pending_candidates")
+      .insert({
+        name: row.name.trim(),
+        slug: row.slug ?? slugifyName(row.name),
+        arena: row.arena ?? null,
+        status: "pendiente_de_alta",
+        requested_for_candidate_id: row.requested_for_candidate_id,
+        requested_level: row.requested_level,
+        source: row.source,
+        reason: row.reason ?? null,
+        created_by: session.user?.id ?? null,
+      })
+      .select("id,name,slug,arena,status,requested_for_candidate_id,requested_level,source,reason,created_at")
+      .single();
+    if (res.error) {
+      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de altas pendientes");
+      throw new Error(`Error guardando el alta pendiente: ${res.error.message}`);
+    }
+    return res.data as PendingCandidate;
   }
 
   /**

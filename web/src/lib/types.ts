@@ -350,3 +350,53 @@ export interface CandidateRival {
   level: RivalLevel;
   created_at?: string;
 }
+
+export const PENDING_CANDIDATE_STATUS = "pendiente_de_alta" as const;
+export type PendingCandidateStatus = typeof PENDING_CANDIDATE_STATUS;
+
+export type PendingCandidateSource = "manual" | "ai_suggestion";
+
+export interface PendingCandidate {
+  id: string;
+  name: string;
+  slug: string | null;
+  arena: string | null;
+  status: PendingCandidateStatus;
+  requested_for_candidate_id: string;
+  requested_level: RivalLevel;
+  source: PendingCandidateSource;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface RivalSuggestion {
+  name: string;
+  reason: string;
+  arena: string;
+  already_in_pulso: boolean;
+  matched_candidate_id: string | null;
+  matched_candidate_slug: string | null;
+}
+
+export type RivalSuggestionOrigin = "ai" | "fixture_example";
+
+export interface RivalSuggestionRun {
+  id: string;
+  candidate_id: string;
+  prompt_version: string;
+  model: string | null;
+  suggestions: RivalSuggestion[];
+  cost_usd: number | null;
+  usage?: Record<string, unknown> | null;
+  created_at: string;
+  origin: RivalSuggestionOrigin;
+  note?: string | null;
+}
+
+/** Costo diario ya registrado en Pulso, para estimar un alta. */
+export interface RecordedDailyCost {
+  candidate_id: string;
+  source: string;
+  date: string;
+  cost_usd: number;
+}

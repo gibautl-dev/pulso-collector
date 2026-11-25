@@ -202,3 +202,5 @@ export const RIVAL_LEVEL_HINT: Record<string, string> = {
   comparativo: "Volumen, balance y anuncios: ranking y curvas frente al candidato.",
   completo: "Medios, X, IA, anuncios y cuentas sospechosas.",
 };
+
+export const PENDING_CANDIDATE_STATUS_LABEL = "Pendiente de alta";

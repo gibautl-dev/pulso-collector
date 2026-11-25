@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, RivalLevel, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
 
 export interface MentionPage {
   items: Mention[];
@@ -46,7 +46,21 @@ export interface PulsoRepo {
   listAssignableCandidates(): Promise<Candidate[]>;
   listRivals(candidateId: string): Promise<CandidateRival[]>;
   replaceRivals(candidateId: string, rows: { rival_id: string; level: RivalLevel }[]): Promise<void>;
+  listRecordedDailyCosts(): Promise<RecordedDailyCost[]>;
+  latestSuggestionRun(candidateId: string): Promise<RivalSuggestionRun | null>;
+  saveSuggestionRun(run: Omit<RivalSuggestionRun, "id" | "created_at"> & { id?: string; created_at?: string }): Promise<RivalSuggestionRun>;
+  listPendingCandidates(candidateId: string): Promise<PendingCandidate[]>;
+  addPendingCandidate(row: {
+    name: string;
+    slug?: string | null;
+    arena?: string | null;
+    requested_for_candidate_id: string;
+    requested_level: RivalLevel;
+    source: PendingCandidateSource;
+    reason?: string | null;
+  }): Promise<PendingCandidate>;
 }
+
 
 
 export async function getRepo(): Promise<PulsoRepo> {

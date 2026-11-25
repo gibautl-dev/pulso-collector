@@ -1,8 +1,8 @@
 # Comparación de rivales
 
-Migración: `deploy/candidate_rivals.sql`. **No aplicada** en pulso-demo.
+Migración: `deploy/candidate_rivals.sql`. **Aplicada** en pulso-demo el 2026-11-24.
 
-## Qué crearía
+## Qué creó
 
 - Tabla `public.pulso_staff` (`user_id` → `auth.users`). Quién del equipo de Active puede asignar rivales. La primera fila se inserta a mano en el SQL editor; la app no da de alta usuarios ni invita.
 - Tabla `public.candidate_rivals` (`candidate_id`, `rival_id`, `level` en `radar` | `comparativo` | `completo`). El rival tiene que ser otro candidato ya existente en Pulso.
@@ -18,4 +18,4 @@ Migración: `deploy/candidate_rivals.sql`. **No aplicada** en pulso-demo.
 - Si el rival **ya es un candidato de Pulso** con recolección andando (como los que hoy están en la base): **USD 0 extra**. La comparación usa los datos que ya se juntan. Esta rama no agrega fuentes, no sube el tope de X ni prende más llamadas de IA.
 - Si más adelante se quisiera sumar un rival que **todavía no se recolecta**, eso sería dar de alta un candidato nuevo, con el mismo costo de recolección que cualquier otro (tope diario de X, clasificación, anuncios de Meta si la región lo permite, y visibilidad en IA si está prendida, que es la parte más cara cuando usa búsqueda web). Esta rama no implementa ni enciende esa recolección. Habría que pedirle aprobación a Leandro antes de sumar fuentes pagas.
 
-El panel no propone rivales: solo lista los candidatos que ya existen para que Active elija.
+El panel de esta migración lista los candidatos que ya existen para que Active elija. Las sugerencias de IA y las altas pendientes están en una migración posterior, `deploy/rival_suggestions.sql` (ver `RIVAL_SUGGESTIONS.md`), todavía no aplicada.

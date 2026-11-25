@@ -145,3 +145,48 @@ describe("MemoryRepo sin staff", () => {
     expect(await plain.isStaff()).toBe(false);
   });
 });
+
+describe("MemoryRepo sugerencias y altas pendientes", () => {
+  const repo = new MemoryRepo({
+    candidate: { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+    candidates: [
+      { id: "c1", slug: "axel-kicillof", name: "Axel Kicillof" },
+      { id: "c2", slug: "pedro-sanchez", name: "Pedro Sánchez" },
+    ],
+    topics: [],
+    mentions: [],
+    source_runs: [],
+    candidate_sources: [],
+    staff: true,
+    recorded_daily_costs: [{ candidate_id: "c1", source: "ia", date: "2026-11-18", cost_usd: 0.8 }],
+  });
+
+  it("guarda una corrida y un pendiente, y rechaza un nombre que ya se mide", async () => {
+    expect((await repo.listRecordedDailyCosts())[0].cost_usd).toBe(0.8);
+    const run = await repo.saveSuggestionRun({
+      candidate_id: "c1",
+      prompt_version: "test",
+      model: "gpt-6-luna",
+      suggestions: [],
+      cost_usd: 0.001,
+      origin: "ai",
+    });
+    expect((await repo.latestSuggestionRun("c1"))?.id).toBe(run.id);
+    const pending = await repo.addPendingCandidate({
+      name: "Néstor Grindetti",
+      requested_for_candidate_id: "c1",
+      requested_level: "radar",
+      source: "manual",
+    });
+    expect(pending.status).toBe("pendiente_de_alta");
+    expect((await repo.listPendingCandidates("c1"))[0].name).toBe("Néstor Grindetti");
+    await expect(
+      repo.addPendingCandidate({
+        name: "Pedro Sánchez",
+        requested_for_candidate_id: "c1",
+        requested_level: "comparativo",
+        source: "manual",
+      }),
+    ).rejects.toThrow(/ya está en Pulso/);
+  });
+});
