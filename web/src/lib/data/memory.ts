@@ -1,5 +1,7 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish } from "@/lib/types";
+import { SIMULATOR_LIMITS_DEFAULT, checkQuota, type SimulatorLimits } from "@/lib/response-simulator";
+import { dayKey, startOfDay } from "@/lib/time";
 import { hasDuplicatePending, matchExistingCandidate, slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -32,7 +34,14 @@ export interface FixtureData {
   daily_briefs?: DailyBrief[];
   inconsistency_alerts?: InconsistencyAlert[];
   inconsistency_scans?: InconsistencyScan[];
+  response_simulations?: ResponseSimulation[];
+  /** Topes del simulador. undefined = valores por defecto; null = migración sin aplicar. */
+  simulator_limits?: SimulatorLimits | null;
 }
+
+/** Usuario del modo local (sin login). */
+export const LOCAL_USER_ID = "00000000-0000-4000-8000-000000000001";
+
 
 
 
@@ -447,6 +456,80 @@ export class MemoryRepo implements PulsoRepo {
     if (idx < 0) throw new Error("No está ese resumen");
     this.data.custom_topic_summaries = list.map((s, i) =>
       i === idx ? { ...s, status, reviewed_at: new Date().toISOString() } : s,
+    );
+  }
+
+  async getSimulatorLimits() {
+    if (this.data.simulator_limits === null) return null;
+    return this.data.simulator_limits ?? { ...SIMULATOR_LIMITS_DEFAULT };
+  }
+  async listResponseSimulations(candidateId: string, limit: number) {
+    return (this.data.response_simulations ?? [])
+      .filter((r) => r.candidate_id === candidateId && r.user_id === LOCAL_USER_ID)
+      .slice()
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, limit);
+  }
+  async getResponseSimulation(candidateId: string, id: string) {
+    return (
+      (this.data.response_simulations ?? []).find(
+        (r) => r.id === id && r.candidate_id === candidateId && r.user_id === LOCAL_USER_ID,
+      ) ?? null
+    );
+  }
+  async startResponseSimulation(candidateId: string, draft: string, reserveUsd: number) {
+    const limits = await this.getSimulatorLimits();
+    if (!limits) throw new Error("pulso:disabled");
+    if (!this.visibleCandidates().some((c) => c.id === candidateId)) throw new Error("pulso:forbidden");
+    const now = new Date();
+    const reserve = Math.max(reserveUsd, limits.maxRequestUsd / 10);
+    const err = checkQuota({
+      rows: this.data.response_simulations ?? [],
+      userId: LOCAL_USER_ID,
+      now,
+      reserveUsd: reserve,
+      limits,
+      dayStart: new Date(startOfDay(dayKey(now))),
+    });
+    if (err) throw new Error(`pulso:${err}`);
+    const rec: ResponseSimulation = {
+      id: crypto.randomUUID(),
+      candidate_id: candidateId,
+      user_id: LOCAL_USER_ID,
+      draft,
+      status: "running",
+      output: {},
+      context: {},
+      model: null,
+      prompt_version: null,
+      reserved_usd: reserve,
+      cost_usd: null,
+      error: null,
+      origin: "ai",
+      created_at: now.toISOString(),
+      finished_at: null,
+    };
+    this.data.response_simulations = [...(this.data.response_simulations ?? []), rec];
+    return rec.id;
+  }
+  async finishResponseSimulation(id: string, row: ResponseSimulationFinish) {
+    const list = this.data.response_simulations ?? [];
+    const idx = list.findIndex((r) => r.id === id && r.user_id === LOCAL_USER_ID && r.status === "running");
+    if (idx < 0) throw new Error("pulso:not_found");
+    this.data.response_simulations = list.map((r, i) =>
+      i === idx
+        ? {
+            ...r,
+            status: row.status,
+            output: row.status === "ok" ? row.output : {},
+            context: row.context,
+            model: row.model,
+            prompt_version: row.prompt_version,
+            cost_usd: row.cost_usd,
+            error: row.error,
+            finished_at: new Date().toISOString(),
+          }
+        : r,
     );
   }
 }

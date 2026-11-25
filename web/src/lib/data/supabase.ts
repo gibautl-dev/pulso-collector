@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish } from "@/lib/types";
+import type { SimulatorLimits } from "@/lib/response-simulator";
 import { isRivalLevel } from "@/lib/types";
 import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
@@ -51,6 +52,31 @@ function asSuggestionRun(row: {
     created_at: row.created_at,
     origin: row.origin === "fixture_example" ? "fixture_example" : "ai",
     note: row.note ?? null,
+  };
+}
+
+const SIMULATION_COLS =
+  "id,candidate_id,user_id,draft,status,output,context,model,prompt_version,reserved_usd,cost_usd,error,origin,created_at,finished_at";
+
+function asSimulation(row: Record<string, unknown>): ResponseSimulation {
+  const num = (v: unknown) => (v == null || v === "" ? null : Number(v));
+  const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
+  return {
+    id: String(row.id),
+    candidate_id: String(row.candidate_id),
+    user_id: String(row.user_id),
+    draft: String(row.draft ?? ""),
+    status: row.status === "ok" || row.status === "error" ? row.status : "running",
+    output: obj(row.output),
+    context: obj(row.context),
+    model: (row.model as string | null) ?? null,
+    prompt_version: (row.prompt_version as string | null) ?? null,
+    reserved_usd: num(row.reserved_usd) ?? 0,
+    cost_usd: num(row.cost_usd),
+    error: (row.error as string | null) ?? null,
+    origin: row.origin === "fixture_example" ? "fixture_example" : "ai",
+    created_at: String(row.created_at),
+    finished_at: (row.finished_at as string | null) ?? null,
   };
 }
 
@@ -759,6 +785,87 @@ export class SupabaseRepo implements PulsoRepo {
    * Une la clasificación si la tabla existe. Si la migración todavía no se
    * aplicó, PostgREST responde error y devolvemos los anuncios sin etiqueta.
    */
+  async getSimulatorLimits(): Promise<SimulatorLimits | null> {
+    const res = await this.db
+      .from("response_simulator_settings")
+      .select("enabled,max_request_usd,daily_budget_usd,per_user_window,window_minutes,per_user_daily")
+      .maybeSingle();
+    if (res.error) {
+      // La tabla llega con deploy/response_simulator.sql.
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo los topes del simulador: ${res.error.message}`);
+    }
+    const row = res.data as Record<string, unknown> | null;
+    if (!row || row.enabled === false) return null;
+    return {
+      maxRequestUsd: Number(row.max_request_usd),
+      dailyBudgetUsd: Number(row.daily_budget_usd),
+      perUserWindow: Number(row.per_user_window),
+      windowMinutes: Number(row.window_minutes),
+      perUserDaily: Number(row.per_user_daily),
+    };
+  }
+
+  async listResponseSimulations(candidateId: string, limit: number): Promise<ResponseSimulation[]> {
+    const res = await this.db
+      .from("response_simulations")
+      .select(SIMULATION_COLS)
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo simulaciones: ${res.error.message}`);
+    }
+    return ((res.data as Record<string, unknown>[]) ?? []).map(asSimulation);
+  }
+
+  async getResponseSimulation(candidateId: string, id: string): Promise<ResponseSimulation | null> {
+    const res = await this.db
+      .from("response_simulations")
+      .select(SIMULATION_COLS)
+      .eq("candidate_id", candidateId)
+      .eq("id", id)
+      .maybeSingle();
+    if (res.error) {
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo la simulación: ${res.error.message}`);
+    }
+    return res.data ? asSimulation(res.data as Record<string, unknown>) : null;
+  }
+
+  async startResponseSimulation(candidateId: string, draft: string, reserveUsd: number): Promise<string> {
+    const res = await this.db.rpc("start_response_simulation", {
+      p_candidate_id: candidateId,
+      p_draft: draft,
+      p_reserve_usd: reserveUsd,
+    });
+    if (res.error) {
+      const msg = res.error.message ?? "";
+      if (/pulso:/.test(msg)) throw new Error(msg);
+      if (isMissingRelation(res.error) || /start_response_simulation|could not find the function/i.test(msg)) {
+        throw new Error("pulso:disabled");
+      }
+      throw new Error("No se pudo iniciar la simulación");
+    }
+    return String(res.data);
+  }
+
+  async finishResponseSimulation(id: string, row: ResponseSimulationFinish): Promise<void> {
+    const res = await this.db.rpc("finish_response_simulation", {
+      p_id: id,
+      p_status: row.status,
+      p_output: row.output,
+      p_context: row.context,
+      p_model: row.model,
+      p_prompt_version: row.prompt_version,
+      p_cost_usd: row.cost_usd,
+      p_usage: row.usage,
+      p_error: row.error,
+    });
+    if (res.error) throw new Error("No se pudo guardar la simulación");
+  }
+
   private async mergeAdClassifications(candidateId: string, rows: MetaAd[]): Promise<MetaAd[]> {
     if (rows.length === 0) return rows;
     const res = await this.db

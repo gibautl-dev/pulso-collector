@@ -7,6 +7,7 @@ export const LAST_CANDIDATE_COOKIE = "pulso_last_candidate";
 export const CANDIDATE_SECTIONS = [
   "resumen",
   "contradicciones",
+  "simulador",
   "menciones",
   "fuentes",
   "sospechosas",

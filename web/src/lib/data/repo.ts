@@ -1,7 +1,8 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish } from "@/lib/types";
+import type { SimulatorLimits } from "@/lib/response-simulator";
 
 export interface MentionPage {
   items: Mention[];
@@ -100,6 +101,14 @@ export interface PulsoRepo {
     summaryId: string,
     status: CustomTopicSummaryStatus,
   ): Promise<void>;
+  /** Topes del simulador; null si todavía no se aplicó deploy/response_simulator.sql. */
+  getSimulatorLimits(): Promise<SimulatorLimits | null>;
+  /** Simulaciones propias (RLS: solo el autor), de la más nueva a la más vieja. */
+  listResponseSimulations(candidateId: string, limit: number): Promise<ResponseSimulation[]>;
+  getResponseSimulation(candidateId: string, id: string): Promise<ResponseSimulation | null>;
+  /** Chequea acceso y cupos y reserva el costo. Error "pulso:<motivo>" si no se puede. */
+  startResponseSimulation(candidateId: string, draft: string, reserveUsd: number): Promise<string>;
+  finishResponseSimulation(id: string, row: ResponseSimulationFinish): Promise<void>;
 }
 
 

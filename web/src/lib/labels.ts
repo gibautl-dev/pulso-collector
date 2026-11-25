@@ -225,3 +225,5 @@ export const CUSTOM_TOPIC_SUMMARY_STATUS_LABEL: Record<string, string> = {
   approved: "Aprobado",
   discarded: "Descartado",
 };
+
+export const SIMULATOR_SECTION_LABEL = "Simulador de respuesta";
