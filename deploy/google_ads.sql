@@ -1,7 +1,9 @@
 -- Anuncios de Google (rutas oficiales: Political Ads Transparency Report y
 -- Ads Transparency Center en BigQuery / GCS).
--- Propuesta: aplicar una vez en pulso-demo cuando se apruebe. NO APLICAR todavía.
--- No contiene secretos. El job queda apagado por defecto y NO está cableado al cron.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-24 (hora de Argentina),
+-- versión 20261125025210. No volver a aplicar tal cual si ya está.
+-- No contiene secretos. Kicillof usa el reporte político (ZIP público, sin
+-- credenciales). El ATC de España sigue apagado; no se creó un proyecto de GCP.
 --
 -- Por qué una tabla propia y no mentions: el gasto y las impresiones llegan en
 -- rangos, hay región, targeting y un vínculo a la ficha oficial; no encajan en

@@ -1,4 +1,4 @@
-"""Orquesta una corrida de anuncios de Google, sin cablearla al cron."""
+"""Orquesta una corrida de anuncios de Google."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -40,6 +40,15 @@ def resolve_query(slug: str, stored: dict | None = None) -> GoogleAdsQuery:
     )
 
 
+def already_ran_today(last_run_on: date | datetime | None, today: date) -> bool:
+    """True si ya hubo una corrida exitosa hoy (reloj America/Argentina/Buenos_Aires)."""
+    if last_run_on is None:
+        return False
+    if isinstance(last_run_on, datetime):
+        last_run_on = last_run_on.date()
+    return last_run_on == today
+
+
 def resolve_run(
     slug: str,
     settings: GoogleAdsSettings,
@@ -49,8 +58,10 @@ def resolve_run(
         return resolve_query(slug, stored), "disabled"
     query = resolve_query(slug, stored)
     if query.source == "ads_transparency_center":
+        # España/ATC queda apagado salvo flag explícito; el dry-run con --from-json sí pasa.
+        if not settings.atc_enabled and not settings.dry_run:
+            return query, "atc_disabled"
         reason = atc_skip_reason(gcp_project=settings.gcp_project)
-        # En dry-run con --from-json no hace falta el proyecto.
         return query, None if settings.dry_run else reason
     return query, None
 

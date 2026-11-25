@@ -147,6 +147,7 @@ def main():
                 run_ai_visibility(args)
                 run_meta_ads(args)
                 run_meta_ads_classify(args)
+                run_google_ads(args, remaining=timeout - (time.monotonic() - started))
                 run_crisis_agent(args)
             return code
         finished = []
@@ -192,9 +193,11 @@ def main():
             else:
                 log(event='meta_ads_skipped', reason='region_disabled', candidate=slug)
                 log(event='meta_ads_classify_skipped', reason='region_disabled', candidate=slug)
+            run_google_ads(child_args, remaining=timeout - (time.monotonic() - started))
             run_crisis_agent(child_args)
-    # El resultado del clasificador, el detector, la visibilidad en IA, Meta Ads
-    # o la clasificación de anuncios nunca cambia el código de salida del cron.
+    # El resultado del clasificador, el detector, la visibilidad en IA, Meta Ads,
+    # los anuncios de Google o la clasificación de anuncios nunca cambia el
+    # código de salida del cron.
     if cancelled:
         return 143
     if timed_out:
@@ -316,6 +319,35 @@ def run_meta_ads_classify(collector_args):
         log(event='meta_ads_classify_error', error_type=type(exc).__name__)
         return None
 
+
+
+def run_google_ads(collector_args, remaining=None):
+    """Anuncios de Google (ZIP político, como máximo una vez al día). No pide env nuevo.
+    El job se salta solo si no hay settings habilitados, si ya corrió hoy o si es ATC."""
+    try:
+        if remaining is not None and remaining < 90:
+            log(event='google_ads_skipped', reason='insufficient_time',
+                remaining_seconds=round(remaining, 1))
+            return None
+        timeout = int(os.getenv('PULSO_GOOGLE_ADS_TIMEOUT_SECONDS', '480'))
+        if not 30 <= timeout <= 900:
+            raise ValueError('Invalid google-ads timeout')
+        if remaining is not None:
+            timeout = min(timeout, max(30, int(remaining)))
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_GOOGLE_ADS_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
+        elif '--dry-run' in collector_args:
+            args.append('--dry-run')
+        # Misma conexión del recolector; no ve la clave del LLM ni el token de Meta.
+        return run_command([sys.executable, '-m', 'pulso.google_ads', *args], timeout,
+                           env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY), prefix='google_ads')
+    except Exception as exc:
+        log(event='google_ads_error', error_type=type(exc).__name__)
+        return None
 
 
 def run_crisis_agent(collector_args):

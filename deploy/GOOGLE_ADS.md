@@ -4,9 +4,13 @@ Propuesta para mostrar anuncios de Google junto a la Biblioteca de Meta, con
 **rutas oficiales solamente**. No se scrapea [Ads Transparency Center](https://adstransparency.google.com/).
 No hay una API pública del Centro de Transparencia (respuesta del equipo de Google Ads API, julio 2024; no aparece un anuncio posterior de una API).
 
-**La migración `deploy/google_ads.sql` no está aplicada.** El job
-`python -m pulso.google_ads` **no está cableado al cron**. No crear un proyecto
-de GCP ni un recurso pago hasta que se apruebe.
+**Kicillof (reporte político) está publicado.** La migración `deploy/google_ads.sql`
+quedó aplicada en pulso-demo el 24/11/2026 (hora de Argentina), versión
+`20261125025210`, con `google_ads_settings` habilitado para `axel-kicillof`
+(`political_report`, AR). El job entra en el cron `pulso-rss`, como máximo una vez por día
+(si `last_run_on` ya es hoy en hora de Argentina, no se vuelve a bajar el ZIP
+de ~316 MB). **España / Ads Transparency Center sigue apagado.** No hay
+proyecto de GCP ni se setea `PULSO_GOOGLE_ADS_ATC_ENABLED`.
 
 ## Dos datasets oficiales, cobertura distinta
 
@@ -75,18 +79,18 @@ Capa gratuita de BigQuery: **1 TB de procesamiento por mes** y por cuenta de fac
 
 ## Credenciales y aprobaciones que faltan
 
-1. **Aplicar `deploy/google_ads.sql`** en pulso-demo (Leandro tiene que dar el ok). Hasta entonces no se escribe en la base.
-2. **Kicillof / reporte político:** ninguna credencial. El ZIP es público.
-3. **Sánchez / ATC:** un **proyecto de GCP** (alcance: BigQuery Job User sobre ese proyecto; el dataset público ya es consultable). El sandbox oficial no pide tarjeta, dentro de la capa gratuita. Para un cron, más adelante, una cuenta de servicio con ese rol. **No crear el proyecto ni la cuenta hasta que se apruebe.**
-4. **No cablear el job al cron** ni setear env en Render hasta probar en una rama y ver capturas.
-5. Confirmar la lista de anunciantes de Kicillof (por defecto solo IDs/patrones de coaliciones de la provincia, no el UP nacional de 2023).
+1. **Kicillof / reporte político:** ninguna credencial nueva. El ZIP es público. No hace falta `PULSO_GOOGLE_ADS_ENABLED` (si no está, manda `google_ads_settings.enabled` en la base). `=false` apaga el job.
+2. **Sánchez / ATC:** sigue haciendo falta un **proyecto de GCP** (sandbox, sin tarjeta). **No se creó.** El job corta con `atc_disabled` aunque exista un proyecto.
+3. Lista de anunciantes de Kicillof: por defecto solo IDs/patrones de coaliciones de la provincia, no el UP nacional de 2023.
 
-## Cómo corre (propuesta, apagado)
+## Cómo corre
 
-- Adaptador: `python -m pulso.google_ads --candidate axel-kicillof --dry-run`.
-- Apagado por defecto (`PULSO_GOOGLE_ADS_ENABLED`). No está en `deploy_run` ni en el cron.
-- Dry-run local: `--from-csv tests/fixtures/google_political_ads_creatives.csv` o `--from-json` (ATC de ejemplo).
-- Variables opcionales: `PULSO_GOOGLE_ADS_ENABLED`, `PULSO_GOOGLE_ADS_DRY_RUN`, `GOOGLE_CLOUD_PROJECT` / `GOOGLE_APPLICATION_CREDENTIALS` (solo ATC), `PULSO_GOOGLE_ADS_MAX_BYTES`.
+- El cron (`pulso.deploy_run`) llama `python -m pulso.google_ads --candidate <slug>` después de Meta y antes del agente de crisis. El código de salida de este job no cambia el del cron.
+- Como máximo una vez por día: si `google_ads_settings.last_run_on` ya es el día de hoy (America/Argentina/Buenos_Aires), se sale con `already_ran_today` y **no se descarga el ZIP**. El ZIP se cachea en `/tmp/pulso-google-political-ads-YYYY-MM-DD.zip` por si hay otro candidato el mismo proceso.
+- España (`ads_transparency_center`) se salta con `atc_disabled` sin consultar BigQuery.
+- Si el cron ya llevó más de su presupuesto y quedan menos de 90 s, se salta con `insufficient_time` y prueba en el tick siguiente (~20 min). Timeout propio: `PULSO_GOOGLE_ADS_TIMEOUT_SECONDS` (default 480, no se setea en Render salvo que haga falta).
+- Dry-run local: `--from-csv tests/fixtures/google_political_ads_creatives.csv` o `--from-json` (ATC de ejemplo, etiquetado).
+- Variables opcionales (ninguna es obligatoria para Kicillof): `PULSO_GOOGLE_ADS_ENABLED` (kill switch), `PULSO_GOOGLE_ADS_DRY_RUN`, `PULSO_GOOGLE_ADS_ATC_ENABLED` (sigue en false), `GOOGLE_CLOUD_PROJECT` (solo ATC, no usado), `PULSO_GOOGLE_ADS_MAX_BYTES`.
 
 ## Campos útiles en la UI
 

@@ -4,11 +4,13 @@ from __future__ import annotations
 import csv
 import io
 import sys
+import tempfile
 import zipfile
 from collections.abc import Iterable, Iterator
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 from pulso.google_ads.parse import GoogleAd, matches_advertiser, parse_political_row
 
@@ -25,19 +27,34 @@ class GoogleAdsSourceError(RuntimeError):
     """Error al leer una fuente oficial de anuncios de Google."""
 
 
+PT = ZoneInfo("America/Los_Angeles")
+
+
 def parse_report_updated_at(raw: str) -> datetime | None:
-    """El CSV oficial declara la hora en PT, sin offset."""
+    """El CSV oficial declara la hora en PT, sin offset. Devuelve naive."""
     text = (raw or "").strip()
     if not text or text.lower().startswith("report_data_updated"):
         return None
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            # PT: en este reporte el campo no trae zona; se guarda como naive UTC label
-            # solo si el caller la interpreta. Devolvemos naive y el caller lo anota.
             return datetime.strptime(text, fmt)
         except ValueError:
             continue
     return None
+
+
+def report_stamp_to_timestamptz(raw: str | None) -> datetime | None:
+    """Interpreta el sello oficial en America/Los_Angeles (PT/PST/PDT) y lo pasa a UTC."""
+    if not raw:
+        return None
+    naive = parse_report_updated_at(raw)
+    if naive is None:
+        return None
+    return naive.replace(tzinfo=PT).astimezone(timezone.utc)
+
+
+def official_zip_cache_path(today: date) -> Path:
+    return Path(tempfile.gettempdir()) / f"pulso-google-political-ads-{today.isoformat()}.zip"
 
 
 def iter_political_csv(
@@ -101,13 +118,15 @@ def ads_from_zip(
     return ads, updated
 
 
-def download_official_zip(dest: Path, *, url: str = OFFICIAL_ZIP_URL, timeout: int = 120) -> Path:
+def download_official_zip(dest: Path, *, url: str = OFFICIAL_ZIP_URL, timeout: int = 300) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    req = Request(url, headers={"User-Agent": "PulsoCollector/1.0 (official dataset download)"})
-    with urlopen(req, timeout=timeout) as resp, dest.open("wb") as out:
+    part = dest.with_suffix(dest.suffix + ".part")
+    req = Request(url, headers={"User-Agent": "PulsoCollector/0.3 (official political ads dataset)"})
+    with urlopen(req, timeout=timeout) as resp, part.open("wb") as out:
         while True:
             chunk = resp.read(1024 * 1024)
             if not chunk:
                 break
             out.write(chunk)
+    part.replace(dest)
     return dest

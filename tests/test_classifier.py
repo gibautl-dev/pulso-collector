@@ -229,23 +229,28 @@ class CronIsolationTests(unittest.TestCase):
         return code, calls, out.getvalue()
 
     def test_disabled_by_default(self):
-        code, calls, out = self._main({"DATABASE_URL": "d"}, [0])
-        self.assertEqual(code, 0); self.assertEqual(len(calls), 1); self.assertIn("classifier_skipped", out)
+        code, calls, out = self._main({"DATABASE_URL": "d"}, [0, 0])
+        self.assertEqual(code, 0); self.assertEqual(len(calls), 2)
+        self.assertIn("pulso.google_ads", calls[1][0])
+        self.assertIn("classifier_skipped", out)
 
     def test_classifier_failure_does_not_change_exit_code(self):
         env = {"DATABASE_URL": "d", "PGPASSWORD": "p", "LLM_API_KEY": "k",
                "CLASSIFIER_DATABASE_URL": "c", "PULSO_CLASSIFY_ENABLED": "true"}
-        code, calls, _ = self._main(env, [0, 1])
+        code, calls, _ = self._main(env, [0, 1, 0])
         self.assertEqual(code, 0)
-        (collector, cenv, _), (classifier, kenv, prefix) = calls
+        (collector, cenv, _), (classifier, kenv, prefix), (google, _genv, gprefix) = calls
+        self.assertIn("pulso.google_ads", google)
+        self.assertEqual(gprefix, "google_ads")
         self.assertIn("pulso.ai.classify", classifier); self.assertEqual(prefix, "classifier")
         self.assertNotIn("LLM_API_KEY", cenv); self.assertNotIn("CLASSIFIER_DATABASE_URL", cenv)
         self.assertNotIn("DATABASE_URL", kenv); self.assertNotIn("PGPASSWORD", kenv)
 
     def test_collector_failure_kept_and_classifier_still_runs(self):
         env = {"PULSO_CLASSIFY_ENABLED": "true"}
-        code, calls, _ = self._main(env, [1, 0])
-        self.assertEqual(code, 1); self.assertEqual(len(calls), 2)
+        code, calls, _ = self._main(env, [1, 0, 0])
+        self.assertEqual(code, 1); self.assertEqual(len(calls), 3)
+        self.assertIn("pulso.google_ads", calls[2][0])
 
     def test_skipped_after_timeout(self):
         code, calls, _ = self._main({"PULSO_CLASSIFY_ENABLED": "true"}, [124])
@@ -253,8 +258,9 @@ class CronIsolationTests(unittest.TestCase):
 
     def test_classifier_crash_isolated(self):
         env = {"PULSO_CLASSIFY_ENABLED": "true", "PULSO_CLASSIFY_TIMEOUT_SECONDS": "abc"}
-        code, calls, out = self._main(env, [0])
+        code, calls, out = self._main(env, [0, 0])
         self.assertEqual(code, 0); self.assertIn("classifier_error", out)
+        self.assertIn("pulso.google_ads", calls[1][0])
 
 
 if __name__ == "__main__":

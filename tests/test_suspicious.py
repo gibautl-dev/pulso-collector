@@ -293,21 +293,23 @@ class SuspiciousCronIsolationTests(unittest.TestCase):
         return code, calls, out.getvalue()
 
     def test_disabled_by_default(self):
-        code, calls, out = self._main({"DATABASE_URL": "d"}, [0])
+        code, calls, out = self._main({"DATABASE_URL": "d"}, [0, 0])
         self.assertEqual(code, 0)
-        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("pulso.google_ads", calls[1][0])
         self.assertIn("suspicious_skipped", out)
 
     def test_runs_after_classifier_and_does_not_change_exit_code(self):
         env = {"DATABASE_URL": "d", "PGPASSWORD": "p", "LLM_API_KEY": "k",
                "CLASSIFIER_DATABASE_URL": "c", "PULSO_CLASSIFY_ENABLED": "true",
                "PULSO_SUSPICIOUS_ENABLED": "true"}
-        code, calls, _ = self._main(env, [1, 0, 1])
+        code, calls, _ = self._main(env, [1, 0, 1, 0])
         self.assertEqual(code, 1)
-        self.assertEqual(len(calls), 3)
+        self.assertEqual(len(calls), 4)
         self.assertIn("pulso.ai.classify", calls[1][0])
         self.assertIn("pulso.suspicious", calls[2][0])
         self.assertEqual(calls[2][2], "suspicious")
+        self.assertIn("pulso.google_ads", calls[3][0])
         suspicious_env = calls[2][1]
         self.assertIn("DATABASE_URL", suspicious_env)
         self.assertNotIn("LLM_API_KEY", suspicious_env)

@@ -1,4 +1,4 @@
-"""Acceso a google_ads / google_ads_settings. No se usa hasta aplicar la SQL."""
+"""Acceso a google_ads / google_ads_settings."""
 from __future__ import annotations
 
 import os
@@ -60,7 +60,6 @@ class GoogleAdsDB:
         }
 
     def upsert_ads(self, candidate_id, ads: list[GoogleAd], *, fetched_on) -> int:
-        # Placeholder: no se llama en esta rama (la SQL no está aplicada).
         written = 0
         with psycopg.connect(self.url) as conn:
             for ad in ads:
@@ -102,3 +101,17 @@ class GoogleAdsDB:
                 written += 1
             conn.commit()
         return written
+
+    def mark_success(self, candidate_id, *, run_on, report_updated_at=None) -> None:
+        with psycopg.connect(self.url) as conn:
+            conn.execute(
+                """
+                update public.google_ads_settings
+                   set last_run_on = %s,
+                       report_updated_at = coalesce(%s, report_updated_at),
+                       updated_at = now()
+                 where candidate_id = %s
+                """,
+                (run_on, report_updated_at, candidate_id),
+            )
+            conn.commit()

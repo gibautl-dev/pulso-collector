@@ -72,6 +72,8 @@ class CronDiscoversDbRivalsTests(unittest.TestCase):
         self.assertEqual(count_for("milei", "pulso.meta_ads"), 0)
         self.assertEqual(count_for("milei", "pulso.suspicious"), 0)
         self.assertEqual(count_for("milei", "pulso.crisis"), 0)
+        self.assertEqual(count_for("milei", "pulso.google_ads"), 0)
+        self.assertGreaterEqual(count_for("axel-kicillof", "pulso.google_ads"), 1)
         self.assertGreaterEqual(count_for("axel-kicillof", "pulso.ai_visibility"), 1)
         self.assertIn("cron_post_steps_skipped", out.getvalue())
         self.assertIn("db_rival_media_only", out.getvalue())

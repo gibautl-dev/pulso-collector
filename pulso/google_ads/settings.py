@@ -51,20 +51,31 @@ def _int_env(name: str, default: int) -> int:
     return int(raw)
 
 
+def env_explicitly_disabled() -> bool:
+    """True solo si PULSO_GOOGLE_ADS_ENABLED está en false. Si no está, manda la fila en la base."""
+    raw = os.environ.get("PULSO_GOOGLE_ADS_ENABLED")
+    if raw is None:
+        return False
+    return raw.strip().lower() in {"0", "false", "no", "off"}
+
+
 @dataclass(frozen=True)
 class GoogleAdsSettings:
     enabled: bool
     dry_run: bool
     max_bytes: int
     gcp_project: str | None
+    # El ATC (España) queda apagado hasta que haya proyecto GCP aprobado.
+    atc_enabled: bool = False
 
     @classmethod
     def from_env(cls, *, dry_run: bool | None = None) -> "GoogleAdsSettings":
         return cls(
-            enabled=_flag("PULSO_GOOGLE_ADS_ENABLED", False),
+            enabled=not env_explicitly_disabled(),
             dry_run=bool(dry_run) if dry_run is not None else _flag("PULSO_GOOGLE_ADS_DRY_RUN", False),
             max_bytes=_int_env("PULSO_GOOGLE_ADS_MAX_BYTES", DEFAULT_MAX_BYTES),
             gcp_project=(os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCLOUD_PROJECT") or "").strip() or None,
+            atc_enabled=_flag("PULSO_GOOGLE_ADS_ATC_ENABLED", False),
         )
 
 

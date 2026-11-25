@@ -9,9 +9,14 @@ from unittest.mock import patch
 
 from pulso.google_ads.atc import ads_from_atc_rows, atc_skip_reason, estimated_bytes_ok
 from pulso.google_ads.parse import matches_advertiser, parse_atc_row, parse_bucket, parse_political_row
-from pulso.google_ads.political_csv import ads_from_csv_path, ads_from_zip
-from pulso.google_ads.run import resolve_query, resolve_run, run_google_ads
-from pulso.google_ads.settings import GoogleAdsSettings, defaults_for_slug
+from pulso.google_ads.political_csv import (
+    ads_from_csv_path,
+    ads_from_zip,
+    report_stamp_to_timestamptz,
+)
+from pulso.google_ads.run import already_ran_today, resolve_query, resolve_run, run_google_ads
+from pulso.google_ads.settings import GoogleAdsSettings, defaults_for_slug, env_explicitly_disabled
+from pulso.deploy_run import run_google_ads as cron_run_google_ads
 from pulso.google_ads.__main__ import main as google_main
 
 ROOT = Path(__file__).resolve().parent
@@ -127,12 +132,28 @@ class ZipAndRunTests(unittest.TestCase):
         self.assertGreaterEqual(result["items_found"], 1)
         self.assertTrue(all(ad.source == "political_report" for ad in result["ads"]))
 
-    def test_atc_skips_without_gcp_project(self):
+    def test_already_ran_today(self):
+        self.assertFalse(already_ran_today(None, date(2026, 11, 24)))
+        self.assertTrue(already_ran_today(date(2026, 11, 24), date(2026, 11, 24)))
+        self.assertFalse(already_ran_today(date(2026, 11, 23), date(2026, 11, 24)))
+
+    def test_report_stamp_pt_to_utc(self):
+        ts = report_stamp_to_timestamptz("2026-11-24 16:04:21")
+        self.assertIsNotNone(ts)
+        self.assertEqual(ts.strftime("%Y-%m-%dT%H:%M:%S%z"), "2026-11-25T00:04:21+0000")
+
+    def test_atc_stays_disabled_even_with_gcp_project(self):
         self.assertIsNotNone(atc_skip_reason(gcp_project=None))
         self.assertIsNone(atc_skip_reason(gcp_project="pulso-demo"))
-        settings = GoogleAdsSettings(enabled=True, dry_run=False, max_bytes=1, gcp_project=None)
+        settings = GoogleAdsSettings(enabled=True, dry_run=False, max_bytes=1, gcp_project="pulso-demo")
         query, reason = resolve_run("pedro-sanchez", settings)
         self.assertEqual(query.source, "ads_transparency_center")
+        self.assertEqual(reason, "atc_disabled")
+        # Solo un flag explícito (no usado en prod) deja pasar hasta el chequeo de GCP.
+        on = GoogleAdsSettings(
+            enabled=True, dry_run=False, max_bytes=1, gcp_project=None, atc_enabled=True,
+        )
+        _query, reason = resolve_run("pedro-sanchez", on)
         self.assertIn("proyecto de Google Cloud", reason or "")
 
     def test_atc_example_rows_via_run(self):
@@ -168,6 +189,49 @@ class ZipAndRunTests(unittest.TestCase):
             os.environ.pop("GCLOUD_PROJECT", None)
             code = google_main(["--candidate", "pedro-sanchez"])
         self.assertEqual(code, 0)
+
+    def test_cli_skips_when_already_ran_today(self):
+        class FakeDB:
+            def __init__(self, url):
+                pass
+            def candidate(self, slug):
+                return {"id": "cid", "slug": slug, "name": "Axel"}
+            def settings(self, _cid):
+                return {
+                    "source": "political_report",
+                    "region": "AR",
+                    "advertiser_ids": ["AR03608428782462959617"],
+                    "advertiser_name_patterns": [],
+                    "enabled": True,
+                    "last_run_on": date(2026, 11, 24),
+                }
+        from datetime import datetime as real_datetime
+        from zoneinfo import ZoneInfo
+
+        class FakeDateTime:
+            @classmethod
+            def now(cls, tz=None):
+                return real_datetime(2026, 11, 24, 15, 0, tzinfo=tz or ZoneInfo("America/Argentina/Buenos_Aires"))
+
+        with patch.dict(os.environ, {}, clear=False),              patch("pulso.google_ads.__main__.database_url_from_env", return_value=("postgresql://pulso@localhost/db", None)),              patch("pulso.google_ads.__main__.GoogleAdsDB", FakeDB),              patch("pulso.google_ads.__main__.datetime", FakeDateTime),              patch("pulso.google_ads.__main__.download_official_zip", side_effect=AssertionError("no hay que bajar el ZIP")):
+            os.environ.pop("PULSO_GOOGLE_ADS_ENABLED", None)
+            code = google_main(["--candidate", "axel-kicillof", "--write"])
+        self.assertEqual(code, 0)
+
+    def test_cron_skips_google_ads_if_little_time_left(self):
+        import contextlib, io
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = cron_run_google_ads(["--candidate", "axel-kicillof"], remaining=10)
+        self.assertIsNone(code)
+        self.assertIn("insufficient_time", output.getvalue())
+
+    def test_env_kill_switch(self):
+        with patch.dict(os.environ, {"PULSO_GOOGLE_ADS_ENABLED": "false"}):
+            self.assertTrue(env_explicitly_disabled())
+        with patch.dict(os.environ, {}, clear=True):
+            os.environ.pop("PULSO_GOOGLE_ADS_ENABLED", None)
+            self.assertFalse(env_explicitly_disabled())
 
 
 if __name__ == "__main__":
