@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan } from "@/lib/types";
 import { isRivalLevel } from "@/lib/types";
 import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
@@ -349,6 +349,51 @@ export class SupabaseRepo implements PulsoRepo {
     if (!res.data?.length) throw new Error("No se pudo actualizar la alerta");
   }
 
+
+  async listInconsistencyAlerts(candidateId: string): Promise<InconsistencyAlert[]> {
+    const res = await this.db
+      .from("inconsistency_alerts")
+      .select("id,candidate_id,alert_key,origin,kind,severity,topic_label,topic_id,earlier,later,days_between,explanation,next_step,mention_ids,detected_at,status,status_note,status_updated_at,created_at")
+      .eq("candidate_id", candidateId)
+      .order("detected_at", { ascending: false })
+      .limit(200);
+    if (res.error) {
+      // La tabla llega con deploy/inconsistency_alerts.sql; hasta entonces la sección queda vacía.
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo las contradicciones: ${res.error.message}`);
+    }
+    return (res.data as InconsistencyAlert[]) ?? [];
+  }
+
+  async getInconsistencyScan(candidateId: string): Promise<InconsistencyScan | null> {
+    const res = await this.db
+      .from("inconsistency_scans")
+      .select("candidate_id,status,last_scan_at,reason,stats,updated_at")
+      .eq("candidate_id", candidateId)
+      .maybeSingle();
+    if (res.error) {
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo el estado de las contradicciones: ${res.error.message}`);
+    }
+    return (res.data as InconsistencyScan | null) ?? null;
+  }
+
+  async updateInconsistencyAlertStatus(candidateId: string, id: string, status: CrisisStatus, note: string | null) {
+    const { data: session } = await this.db.auth.getUser();
+    const res = await this.db
+      .from("inconsistency_alerts")
+      .update({
+        status,
+        status_note: note,
+        status_updated_at: new Date().toISOString(),
+        status_updated_by: session.user?.id ?? null,
+      })
+      .eq("candidate_id", candidateId)
+      .eq("id", id)
+      .select("id");
+    if (res.error) throw new Error(`Error actualizando el estado: ${res.error.message}`);
+    if (!res.data?.length) throw new Error("No se pudo actualizar la alerta");
+  }
 
   async dataTimestamp() {
     return null;

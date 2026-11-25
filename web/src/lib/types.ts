@@ -578,3 +578,66 @@ export interface DailyBrief {
   created_at: string;
   updated_at?: string;
 }
+
+/** Alertas de contradicciones (deploy/inconsistency_alerts.sql). */
+export type InconsistencyKind = "contradiccion" | "cambio_de_postura" | "promesa_incumplida" | "tension";
+export type InconsistencySeverity = "alto" | "medio" | "bajo";
+
+/** Una de las dos piezas del lado a lado. El texto sale de la mención, nunca del modelo. */
+export interface InconsistencyPiece {
+  id: string;
+  kind: "own" | "attributed" | "flag" | "context";
+  text: string;
+  quote?: string;
+  published_at: string;
+  local_date?: string;
+  source: string;
+  outlet: string | null;
+  url: string;
+  topic?: string | null;
+  copies?: number;
+  outlets?: string[];
+}
+
+export interface InconsistencyAlert {
+  id: string;
+  candidate_id: string;
+  alert_key: string;
+  origin: "par" | "senalamiento";
+  kind: InconsistencyKind;
+  severity: InconsistencySeverity;
+  topic_label: string | null;
+  topic_id: string | null;
+  earlier: InconsistencyPiece | null;
+  later: InconsistencyPiece;
+  days_between: number | null;
+  explanation: string;
+  next_step: string;
+  mention_ids: string[];
+  detected_at: string;
+  status: CrisisStatus;
+  status_note: string | null;
+  status_updated_at: string | null;
+  created_at?: string;
+}
+
+export interface InconsistencyScanStats {
+  statements_30d?: number;
+  own_30d?: number;
+  attributed_30d?: number;
+  flags_30d?: number;
+  days_with_statements?: number;
+  first_statement_at?: string | null;
+  pairs_checked?: number;
+  flags_checked?: number;
+  alerts_new?: number;
+}
+
+export interface InconsistencyScan {
+  candidate_id: string;
+  status: "ok" | "insufficient";
+  last_scan_at: string;
+  reason: string | null;
+  stats: InconsistencyScanStats;
+  updated_at?: string;
+}

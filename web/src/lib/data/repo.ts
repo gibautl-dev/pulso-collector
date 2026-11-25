@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan } from "@/lib/types";
 
 export interface MentionPage {
   items: Mention[];
@@ -45,6 +45,16 @@ export interface PulsoRepo {
   ): Promise<void>;
   /** Resúmenes diarios del candidato, del más reciente al más viejo. */
   listDailyBriefs(candidateId: string, limit: number): Promise<DailyBrief[]>;
+  /** Alertas de contradicciones del candidato, de la más nueva a la más vieja. */
+  listInconsistencyAlerts(candidateId: string): Promise<InconsistencyAlert[]>;
+  /** Última revisión de contradicciones (datos suficientes o no). */
+  getInconsistencyScan(candidateId: string): Promise<InconsistencyScan | null>;
+  updateInconsistencyAlertStatus(
+    candidateId: string,
+    id: string,
+    status: CrisisStatus,
+    note: string | null,
+  ): Promise<void>;
   /** Momento de los datos (fixture: exportación; supabase: ahora). */
   dataTimestamp(): Promise<string | null>;
   isStaff(): Promise<boolean>;

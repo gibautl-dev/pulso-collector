@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan } from "@/lib/types";
 import { hasDuplicatePending, matchExistingCandidate, slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -30,6 +30,8 @@ export interface FixtureData {
   custom_topics?: CustomTopic[];
   custom_topic_summaries?: CustomTopicSummary[];
   daily_briefs?: DailyBrief[];
+  inconsistency_alerts?: InconsistencyAlert[];
+  inconsistency_scans?: InconsistencyScan[];
 }
 
 
@@ -181,6 +183,22 @@ export class MemoryRepo implements PulsoRepo {
       .slice()
       .sort((a, b) => b.brief_date.localeCompare(a.brief_date))
       .slice(0, limit);
+  }
+  async listInconsistencyAlerts(candidateId: string) {
+    return (this.data.inconsistency_alerts ?? [])
+      .filter((a) => a.candidate_id === candidateId)
+      .slice()
+      .sort((a, b) => b.detected_at.localeCompare(a.detected_at) || b.later.published_at.localeCompare(a.later.published_at));
+  }
+  async getInconsistencyScan(candidateId: string) {
+    return (this.data.inconsistency_scans ?? []).find((s) => s.candidate_id === candidateId) ?? null;
+  }
+  async updateInconsistencyAlertStatus(candidateId: string, id: string, status: CrisisStatus, note: string | null) {
+    const alert = (this.data.inconsistency_alerts ?? []).find((a) => a.candidate_id === candidateId && a.id === id);
+    if (!alert) throw new Error("Alerta no encontrada");
+    alert.status = status;
+    alert.status_note = note;
+    alert.status_updated_at = new Date().toISOString();
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;
