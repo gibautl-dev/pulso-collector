@@ -3,7 +3,8 @@
 -- del candidato padre si al rival le faltan, por etiqueta. Idempotente.
 -- No pisa temas que el rival ya tenga. No toca custom_topics ni menciones.
 -- No cambia grants de la función. La IA sigue apagada salvo p_enable_ia.
--- NO APLICADA en pulso-demo. No mergear ni desplegar hasta revisión.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-25 (hora de Argentina).
+-- No volver a aplicar tal cual si ya está.
 -- No contiene secretos. No cambia env ni el cron. No invita usuarios.
 --
 -- Costo de aplicar el SQL: USD 0.
