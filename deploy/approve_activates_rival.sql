@@ -1,6 +1,8 @@
 -- Aprobar un alta pendiente crea (o reusa) el candidato, enciende solo medios/RSS
 -- y lo vincula en candidate_rivals con el nivel pedido. La IA queda apagada
--- salvo p_enable_ia = true. Idempotente. No se aplicó en pulso-demo.
+-- salvo p_enable_ia = true. Idempotente.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-24 (hora de Argentina),
+-- versión 20261125021010. No volver a aplicar tal cual si ya está.
 -- No contiene secretos. No cambia env ni el cron. No invita usuarios.
 --
 -- Costo de aplicar el SQL: USD 0.
