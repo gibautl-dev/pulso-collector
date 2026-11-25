@@ -1,5 +1,6 @@
 import "server-only";
 import { ASSISTANT_DEFAULT_MODEL, LIMITS } from "./prompt";
+import { postChatCompletion } from "@/lib/llm-compat";
 import type { ChatRequest, ChatResponse, LlmClient } from "./agent";
 
 /** La clave vive solo en el servidor (Render). Nunca en el navegador ni en el repo. */
@@ -25,25 +26,14 @@ export function createLlmClient(): LlmClient {
   return {
     model,
     async chat(req: ChatRequest): Promise<ChatResponse> {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 25000);
-      try {
-        const res = await fetch(`${base}/chat/completions`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model, ...req }),
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error(`El modelo devolvió HTTP ${res.status}.`);
-        const raw = (await res.json()) as {
-          model?: string;
-          usage?: Record<string, number>;
-          choices?: { message?: ChatResponse["message"] }[];
-        };
-        return { model: String(raw.model || model), usage: raw.usage ?? {}, message: raw.choices?.[0]?.message ?? { role: "assistant", content: "" } };
-      } finally {
-        clearTimeout(timer);
-      }
+      const res = await postChatCompletion({ base, key, body: { model, ...req }, timeoutMs: 25000, label: "assistant" });
+      if (!res.ok) throw new Error(`El modelo devolvió HTTP ${res.status}.`);
+      const raw = (await res.json()) as {
+        model?: string;
+        usage?: Record<string, number>;
+        choices?: { message?: ChatResponse["message"] }[];
+      };
+      return { model: String(raw.model || model), usage: raw.usage ?? {}, message: raw.choices?.[0]?.message ?? { role: "assistant", content: "" } };
     },
   };
 }

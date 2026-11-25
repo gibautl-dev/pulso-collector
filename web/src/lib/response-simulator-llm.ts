@@ -11,6 +11,7 @@ import {
   type SimulationOutput,
   type SimulatorContext,
 } from "@/lib/response-simulator";
+import { postChatCompletion } from "@/lib/llm-compat";
 
 /** Misma configuración del proveedor que el resto de la web (solo servidor). */
 export function simulatorLlmConfigured(): boolean {
@@ -72,19 +73,7 @@ export async function requestSimulation(
     max_completion_tokens: MAX_OUTPUT_TOKENS,
   };
   if (cfg.effort) body.reasoning_effort = cfg.effort;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60_000);
-  let res: Response;
-  try {
-    res = await fetch(`${cfg.base}/chat/completions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${cfg.key}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  const res = await postChatCompletion({ base: cfg.base, key: cfg.key, body, timeoutMs: 60_000, label: "simulator" });
   if (!res.ok) throw new Error(`El modelo no respondió (${res.status}).`);
   const raw = (await res.json()) as {
     model?: string;
