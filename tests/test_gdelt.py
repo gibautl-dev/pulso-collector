@@ -20,7 +20,9 @@ from pulso.sources.gdelt import (
     reset_throttle,
     source_country_for,
     timespan_for,
+    is_transient_gdelt_error,
     wait_for_slot,
+    Retryable,
 )
 from pulso.urls import url_hash
 
@@ -88,6 +90,15 @@ class QueryTests(unittest.TestCase):
 
     def test_adapter_registration(self):
         self.assertIsInstance(adapter_for(SourceName.GDELT, settings()), GdeltSource)
+
+    def test_transient_error_helper(self):
+        self.assertTrue(is_transient_gdelt_error(Retryable("rate_limited", status=429)))
+        self.assertTrue(is_transient_gdelt_error(Retryable("upstream_5xx", status=502)))
+        self.assertTrue(is_transient_gdelt_error(httpx.ConnectTimeout("timed out")))
+        self.assertTrue(is_transient_gdelt_error(httpx.ReadTimeout("timed out")))
+        self.assertTrue(is_transient_gdelt_error(httpx.ConnectError("connection refused")))
+        self.assertFalse(is_transient_gdelt_error(ValueError("gdelt_query_vacia")))
+        self.assertFalse(is_transient_gdelt_error(Retryable("other")))
 
     def test_attribution_url(self):
         self.assertEqual(ATTRIBUTION_URL, "https://www.gdeltproject.org/")
@@ -243,3 +254,39 @@ class FetchTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.soft_failure)
         self.assertTrue(any("429" in e and "rate_limited" in e for e in result.errors))
         self.assertGreaterEqual(len(self.calls), 3)
+
+    async def test_persistent_connect_timeout_is_soft_failure(self):
+        def payload(request):
+            raise httpx.ConnectTimeout("timed out", request=request)
+
+        result = await self.fetch_with(payload)
+        self.assertEqual(result.feeds_ok, 0)
+        self.assertEqual(result.mentions, [])
+        self.assertTrue(result.soft_failure)
+        self.assertTrue(any("ConnectTimeout" in e for e in result.errors))
+        self.assertGreaterEqual(len(self.calls), 3)
+
+    async def test_persistent_connect_error_is_soft_failure(self):
+        def payload(request):
+            raise httpx.ConnectError("connection refused", request=request)
+
+        result = await self.fetch_with(payload)
+        self.assertEqual(result.feeds_ok, 0)
+        self.assertTrue(result.soft_failure)
+        self.assertTrue(any("ConnectError" in e for e in result.errors))
+
+    async def test_persistent_502_is_soft_failure(self):
+        def payload(request):
+            return httpx.Response(502, content=b"bad gateway")
+
+        result = await self.fetch_with(payload)
+        self.assertEqual(result.feeds_ok, 0)
+        self.assertTrue(result.soft_failure)
+        self.assertTrue(any("upstream_5xx" in e for e in result.errors))
+        self.assertGreaterEqual(len(self.calls), 3)
+
+    async def test_invalid_response_is_hard_failure(self):
+        result = await self.fetch_with((200, b"not a rate limit and not json"))
+        self.assertEqual(result.feeds_ok, 0)
+        self.assertFalse(result.soft_failure)
+        self.assertTrue(result.errors)

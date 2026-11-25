@@ -46,6 +46,13 @@ class Retryable(Exception):
         super().__init__(reason)
 
 
+def is_transient_gdelt_error(exc: BaseException) -> bool:
+    """429, 5xx y errores de red/timeout: el próximo tick reintenta; no tumbar el cron."""
+    if isinstance(exc, (httpx.TimeoutException, httpx.NetworkError)):
+        return True
+    return isinstance(exc, Retryable) and exc.reason in {"rate_limited", "upstream_5xx"}
+
+
 def source_country_for(slug: str | None, settings: dict | None = None) -> str:
     """Código para sourcecountry: de settings, si no el país del perfil regional."""
     raw = (settings or {}).get("sourcecountry") or (settings or {}).get("source_country")
@@ -204,7 +211,7 @@ class GdeltSource(Source):
             if typ == "Retryable" and reason:
                 parts.append(reason)
             result.errors.append(" ".join(parts))
-            if typ == "Retryable" and reason == "rate_limited":
+            if is_transient_gdelt_error(exc):
                 # No tumbar el cron: el próximo tick reintenta.
                 result.soft_failure = True
             return result

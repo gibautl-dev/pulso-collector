@@ -31,9 +31,10 @@ El cron necesita `PULSO_WIKIPEDIA_ENABLED=true` y redespliegue (web + pulso-rss)
 
 - Adaptador: `pulso/sources/gdelt.py`. Un pedido cada 8 segundos (con sello
   compartido entre procesos del cron), User-Agent honesto, `sourcecountry:AR`
-  en Argentina y `sourcecountry:ES` en Sánchez. Un 429 se registra como falla
-  blanda (warning, `soft_failure`) y no hace salir al cron con código 1; el
-  próximo tick reintenta.
+  en Argentina y `sourcecountry:ES` en Sánchez. Un 429, un 5xx o un error
+  de red/timeout se registran como falla blanda (warning, `soft_failure`) y
+  no hacen salir al cron con código 1; el próximo tick reintenta. Un error
+  de configuración o de respuesta inválida sigue siendo duro.
 - Dedupe por URL canónica entre sí y, al guardar, contra menciones ya
   existentes de cualquier fuente (`save_result`).
 - Atribución en la interfaz: “Proyecto GDELT” con enlace a

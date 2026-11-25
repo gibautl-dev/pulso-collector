@@ -5,7 +5,7 @@ Alerts, YouTube, X, GDELT DOC 2.0 y visitas de Wikipedia. En pulso-demo, el
 2026-11-25 se aplicaron Radio Nacional, GDELT y las tablas de Wikipedia
 (ver `deploy/NEW_SOURCES.md`). InfoCielo y Qué Digital se habilitaron y
 después se sacaron del RSS (403 desde Render; siguen llegando por Google
-News). Un 429 de GDELT no tumba el cron. Wikipedia también corre para
+News). Un 429, un 5xx o un error de red/timeout de GDELT no tumba el cron. Wikipedia también corre para
 rivales de la DB (p. ej. Milei). El cron prende Wikipedia con
 `PULSO_WIKIPEDIA_ENABLED=true`. Google Alerts sigue apagado (ver
 `deploy/GOOGLE_ALERTS.md`). GDELT y Wikipedia no tienen costo de API.
