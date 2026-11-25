@@ -91,7 +91,7 @@ MIN_RESERVE_USD = 0.02
 
 @dataclass
 class DailyBudget:
-    """Tope diario total (todos los candidatos, día de Buenos Aires).
+    """Tope diario de UN candidato (día de Buenos Aires): solo cuenta su propio gasto.
 
     Antes de cada pregunta se reserva el costo máximo reciente de una respuesta
     (o USD 0,15 si no hay historia): si lo gastado hoy + lo de esta corrida +

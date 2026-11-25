@@ -42,3 +42,18 @@ Pruebas: `tests/spend-panel-permissions.sql.test.ts` (PGlite) y `tests/spend.tes
   (09:00 de Madrid = 05:00 de Buenos Aires), hace sus 10 preguntas (~USD 0,86) y a Kicillof (09:00 de Buenos Aires)
   no le alcanza para ninguna: 0,86 + 0,128 > 1. Para que entren los dos hace falta ~USD 1,85/día.
 - Aplicada en pulso-demo el 25/11 junto con spend_panel.sql. Requiere deploy del cron (el corte vive en `pulso/ai_visibility`). Aplicar antes que `spend_panel.sql`.
+
+## Tope de "En la IA" POR CANDIDATO (deploy/ai_visibility_cap_per_candidate.sql) — vigente desde el 25/11
+Leandro eligió un tope separado por candidato en lugar del total de USD 1/día (que dejaba a Kicillof sin preguntas).
+- Tabla `ai_visibility_candidate_budget`: una fila por candidato, default USD 1,00 (día de Buenos Aires).
+  Los candidatos nuevos reciben su fila por trigger. La migración es aditiva: copia el valor del tope total
+  como default de cada candidato y deja `ai_visibility_budget` sin uso (no se borra nada).
+- Cada corrida cuenta solo el gasto de hoy de ESE candidato + la reserva (máx. de las últimas 50 respuestas,
+  hoy USD 0,128) contra su propio tope. Sánchez ya no puede dejar sin cupo a Kicillof.
+- Permisos iguales que antes: solo `pulso_staff` ve y edita (una fila por candidato en /admin/gasto); el job
+  (`pulso_classifier`) lee y solo escribe `last_reached_on` de su candidato; demo@ y anon bloqueados.
+- Aviso al cliente por candidato: `ai_visibility_cap_reached_today(p_candidate_id)` devuelve solo un booleano y
+  solo a quien ve ese candidato (miembro, rival asignado o staff).
+- Impacto CALC con la corrida de hoy: Sánchez ~USD 0,86 y Kicillof ~USD 0,9 (10 preguntas cada uno), o sea
+  ~USD 1,85/día en total, ~USD 55/mes si siguen los dos. Con USD 1,00 por candidato entran las 10 preguntas
+  de cada uno; el corte solo actúa si una respuesta sale más cara de lo habitual (lo gastado + 0,128 > 1).

@@ -31,7 +31,7 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
   const { repo, candidate } = await loadCandidate(slug);
   const [answers, capReached] = await Promise.all([
     repo.listAiAnswers(candidate.id),
-    repo.aiVisibilityCapReachedToday(),
+    repo.aiVisibilityCapReachedToday(candidate.id),
   ]);
   const view = computeAiDashboard(answers);
   const latest = view.latestDay ? answersOnDay(answers, view.latestDay) : [];

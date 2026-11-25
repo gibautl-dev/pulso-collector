@@ -65,24 +65,33 @@ class VisibilityDB:
             (candidate_id,),
         ).fetchone()
 
-    def budget_state(self) -> dict | None:
-        """Tope diario total de En la IA y lo gastado hoy (día de Buenos Aires).
+    def budget_state(self, candidate_id) -> dict | None:
+        """Tope diario de En la IA de ESTE candidato y lo que gastó hoy (día de Buenos Aires).
 
-        None si la tabla del tope no existe (migración sin aplicar): sin tope.
+        Sin fila para el candidato se usa el default de la tabla (USD 1,00).
+        None si la tabla del tope por candidato no existe (migración sin aplicar): sin tope.
         """
         import psycopg
         try:
             row = self.connection.execute(
-                """select b.daily_budget_usd, b.timezone,
+                """with b as (
+                     select coalesce(cb.daily_budget_usd, 1.00) as daily_budget_usd,
+                            coalesce(cb.timezone, 'America/Argentina/Buenos_Aires') as timezone
+                       from (select %(cid)s::uuid as candidate_id) x
+                       left join public.ai_visibility_candidate_budget cb on cb.candidate_id = x.candidate_id
+                   )
+                   select b.daily_budget_usd, b.timezone,
                           (select coalesce(sum(a.cost), 0) from public.ai_answers a
-                            where a.asked_at >= date_trunc('day', now() at time zone b.timezone) at time zone b.timezone
+                            where a.candidate_id = %(cid)s::uuid
+                              and a.asked_at >= date_trunc('day', now() at time zone b.timezone) at time zone b.timezone
                               and a.asked_at < (date_trunc('day', now() at time zone b.timezone) + interval '1 day') at time zone b.timezone
                           ) as spent_today,
                           (select max(c) from (select a.cost as c from public.ai_answers a
                                                 where a.cost is not null
                                                 order by a.asked_at desc limit 50) t) as recent_max,
                           (now() at time zone b.timezone)::date as today
-                     from public.ai_visibility_budget b where b.id"""
+                     from b""",
+                {"cid": str(candidate_id)},
             ).fetchone()
         except psycopg.errors.UndefinedTable:
             return None
@@ -95,9 +104,10 @@ class VisibilityDB:
             "today": row["today"],
         }
 
-    def mark_budget_reached(self, day) -> None:
+    def mark_budget_reached(self, candidate_id, day) -> None:
         self.connection.execute(
-            "update public.ai_visibility_budget set last_reached_on=%s where id", (day,)
+            "update public.ai_visibility_candidate_budget set last_reached_on=%s where candidate_id=%s",
+            (day, str(candidate_id)),
         )
 
     def save_answers(self, rows: list[dict], asked_at: datetime, asked_on: date) -> int:

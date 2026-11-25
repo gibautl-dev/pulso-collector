@@ -41,8 +41,10 @@ export interface SpendCaps {
   simulator?: { enabled: boolean; daily_budget_usd: number; max_request_usd: number } | null;
   crisis?: { candidate_id: string; enabled: boolean; max_cost_usd: number }[];
   ai_visibility?: { candidate_id: string; enabled: boolean; model: string; web_search: boolean; prompts: number }[];
-  /** Tope diario total de En la IA (deploy/ai_visibility_cap.sql). */
+  /** Tope total anterior (obsoleto desde el 25/11, se ignora). */
   ai_visibility_budget?: { daily_budget_usd: number; last_reached_on: string | null; updated_at: string } | null;
+  /** Tope diario de En la IA por candidato (deploy/ai_visibility_cap_per_candidate.sql). */
+  ai_visibility_candidate_budgets?: { candidate_id: string; daily_budget_usd: number; last_reached_on: string | null; updated_at: string }[];
 }
 
 export interface SpendReport {
@@ -82,7 +84,7 @@ export const FEATURES: Record<string, FeatureInfo> = {
     label: "En la IA",
     dailyCapUsd: null,
     capText: "Sin tope diario en la base",
-    info: "Preguntas a ChatGPT con búsqueda web sobre el candidato (ai_answers). Costo guardado por respuesta, con tokens y búsquedas. El tope diario es el total de todos los candidatos, día de Buenos Aires.",
+    info: "Preguntas a ChatGPT con búsqueda web sobre el candidato (ai_answers). Costo guardado por respuesta, con tokens y búsquedas. Tope diario por candidato, día de Buenos Aires.",
   },
   equipo_accion: {
     label: "Equipo de acción",
@@ -238,8 +240,16 @@ export interface SpendSummary {
   xPostsTotal: number;
   xRequestsTotal: number;
   simulatorCapUsd: number | null;
-  aiVisibilityCapUsd: number | null;
-  aiVisibilityCapReachedOn: string | null;
+  /** Topes de En la IA por candidato, con lo gastado hoy por cada uno. */
+  aiCaps: AiCandidateCap[];
+}
+
+export interface AiCandidateCap {
+  candidate_id: string;
+  name: string;
+  capUsd: number;
+  todayUsd: number;
+  reachedOn: string | null;
 }
 
 /** Valida el tope de En la IA que carga el equipo (USD, 0 a 50, hasta 2 decimales). */
@@ -329,11 +339,12 @@ export function summarizeSpend(report: SpendReport): SpendSummary {
     f.capText = sim.enabled ? `USD ${fmtNum(Number(sim.daily_budget_usd), 2)} por día` : "Apagado";
   }
 
-  const aiBudget = report.caps?.ai_visibility_budget;
-  if (aiBudget) {
+  const aiBudgets = report.caps?.ai_visibility_candidate_budgets ?? [];
+  if (aiBudgets.length) {
     const f = feat.get("ia_visibilidad")!;
-    f.dailyCapUsd = Number(aiBudget.daily_budget_usd);
-    f.capText = `USD ${fmtNum(Number(aiBudget.daily_budget_usd), 2)} por día (total)`;
+    f.dailyCapUsd = null;
+    const values = [...new Set(aiBudgets.map((b) => Number(b.daily_budget_usd)))];
+    f.capText = values.length === 1 ? `USD ${fmtNum(values[0], 2)} por candidato y día` : "Por candidato (ver abajo)";
   }
 
   for (const row of report.rows) {
@@ -427,8 +438,19 @@ export function summarizeSpend(report: SpendReport): SpendSummary {
     xPostsTotal,
     xRequestsTotal,
     simulatorCapUsd: sim ? Number(sim.daily_budget_usd) : null,
-    aiVisibilityCapUsd: aiBudget ? Number(aiBudget.daily_budget_usd) : null,
-    aiVisibilityCapReachedOn: aiBudget?.last_reached_on ?? null,
+    aiCaps: aiBudgets
+      .map((b) => ({
+        candidate_id: b.candidate_id,
+        name: names.get(b.candidate_id) ?? "Otro candidato",
+        capUsd: Number(b.daily_budget_usd),
+        todayUsd: round6(
+          report.rows
+            .filter((r) => r.feature === "ia_visibilidad" && r.candidate_id === b.candidate_id && r.day === today)
+            .reduce((acc, r) => acc + Number(r.cost_usd ?? 0), 0),
+        ),
+        reachedOn: b.last_reached_on ?? null,
+      }))
+      .sort((x, y) => x.name.localeCompare(y.name, "es")),
   };
 }
 

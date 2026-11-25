@@ -104,7 +104,72 @@ class RunWithBudgetTest(unittest.TestCase):
         self.assertEqual(marked, [])
 
 
+class MainPerCandidateTest(unittest.TestCase):
+    def test_uses_this_candidate_budget_and_marks_it(self):
+        from datetime import date
+        from unittest.mock import patch
+        import pulso.ai_visibility.__main__ as cli
+
+        calls = {}
+
+        class FakeDB:
+            def __init__(self, *a, **k):
+                pass
+
+            def candidate(self, slug):
+                return {"id": "cid-k", "slug": slug, "name": "Axel Kicillof"}
+
+            def already_ran_on(self, *a):
+                return False
+
+            def budget_state(self, candidate_id):
+                calls["state_for"] = candidate_id
+                return {"daily_budget_usd": 1.0, "spent_today_usd": 0.2, "recent_max_usd": 0.128,
+                        "today": date(2026, 11, 26)}
+
+            def mark_budget_reached(self, candidate_id, day):
+                calls["marked"] = (candidate_id, day)
+
+            def close(self):
+                pass
+
+        def fake_run(*a, **kw):
+            calls["budget"] = kw["budget"]
+            kw["on_budget_reached"]()
+            return {"skipped": False, "answers": [], "errors": []}
+
+        with patch.object(cli, "api_key_from_env", return_value="k"), \
+             patch.object(cli.VisibilitySettings, "from_env", return_value=_settings(dry_run=False)), \
+             patch.object(cli, "database_url_from_env", return_value=("postgresql://x", None)), \
+             patch.object(cli, "VisibilityDB", FakeDB), \
+             patch.object(cli, "run_visibility", fake_run), \
+             patch.object(cli, "log", lambda **k: None):
+            self.assertEqual(cli.main(["--candidate", "axel-kicillof", "--write"]), 0)
+        self.assertEqual(calls["state_for"], "cid-k")
+        self.assertAlmostEqual(calls["budget"].spent_today_usd, 0.2)
+        self.assertAlmostEqual(calls["budget"].reserve_usd, 0.128)
+        self.assertEqual(calls["marked"], ("cid-k", date(2026, 11, 26)))
+
+    def test_other_candidate_spend_does_not_block(self):
+        # Sánchez ya gastó 0,86 hoy, pero el estado de Kicillof solo trae su propio gasto (0).
+        b = DailyBudget.from_state({"daily_budget_usd": 1.0, "spent_today_usd": 0.0, "recent_max_usd": 0.128})
+        self.assertTrue(b.allows(0.86))
+        self.assertFalse(b.allows(0.88))
+
+
 class MigrationTest(unittest.TestCase):
+    def test_per_candidate_migration_is_additive(self):
+        sql = Path(__file__).resolve().parents[1].joinpath("deploy/ai_visibility_cap_per_candidate.sql").read_text()
+        low = sql.lower()
+        self.assertNotIn("drop table", low)
+        self.assertNotIn("delete from", low)
+        self.assertNotIn("truncate", low)
+        self.assertIn("references public.candidates(id) on delete cascade", sql)
+        self.assertIn("grant update (last_reached_on) on table public.ai_visibility_candidate_budget to pulso_classifier", sql)
+        self.assertIn("revoke all on table public.ai_visibility_candidate_budget from public, anon, authenticated", sql)
+        self.assertIn("after insert on public.candidates", sql)
+        self.assertNotIn("to anon", sql)
+
     def test_migration_staff_only_and_no_anon(self):
         sql = Path(__file__).resolve().parents[1].joinpath("deploy/ai_visibility_cap.sql").read_text()
         self.assertIn("daily_budget_usd numeric(10, 4) not null default 1.00", sql)

@@ -54,16 +54,34 @@ describe("summarizeSpend", () => {
     expect(s.features.find((f) => f.feature === "ia_visibilidad")!.dailyCapUsd).toBeNull();
   });
 
-  it("tope de En la IA desde la base: hoy contra el tope total", () => {
+  it("topes de En la IA por candidato: cada uno con su gasto de hoy", () => {
     const c = summarizeSpend(report({
-      caps: { ai_visibility_budget: { daily_budget_usd: 1, last_reached_on: "2026-11-25", updated_at: "2026-11-25T20:00:00Z" } },
+      caps: {
+        ai_visibility_candidate_budgets: [
+          { candidate_id: K, daily_budget_usd: 1, last_reached_on: null, updated_at: "2026-11-25T20:00:00Z" },
+          { candidate_id: S, daily_budget_usd: 1, last_reached_on: "2026-11-25", updated_at: "2026-11-25T20:00:00Z" },
+        ],
+      },
     }));
     const ia = c.features.find((f) => f.feature === "ia_visibilidad")!;
-    expect(ia.dailyCapUsd).toBe(1);
-    expect(ia.todayUsd).toBeCloseTo(0.5, 6);
-    expect(ia.capText).toContain("1,00");
-    expect(c.aiVisibilityCapUsd).toBe(1);
-    expect(c.aiVisibilityCapReachedOn).toBe("2026-11-25");
+    expect(ia.dailyCapUsd).toBeNull();
+    expect(ia.capText).toBe("USD 1,00 por candidato y día");
+    expect(c.aiCaps.map((x) => [x.name, x.capUsd, x.todayUsd, x.reachedOn])).toEqual([
+      ["Axel Kicillof", 1, 0, null], // su gasto de IA fue el 24, no hoy
+      ["Pedro Sánchez", 1, 0.5, "2026-11-25"],
+    ]);
+  });
+
+  it("topes distintos por candidato", () => {
+    const c = summarizeSpend(report({
+      caps: {
+        ai_visibility_candidate_budgets: [
+          { candidate_id: K, daily_budget_usd: 1.5, last_reached_on: null, updated_at: "x" },
+          { candidate_id: S, daily_budget_usd: 1, last_reached_on: null, updated_at: "x" },
+        ],
+      },
+    }));
+    expect(c.features.find((f) => f.feature === "ia_visibilidad")!.capText).toBe("Por candidato (ver abajo)");
   });
 
   it("X: posts × precio de lista y cupo sumado por día", () => {

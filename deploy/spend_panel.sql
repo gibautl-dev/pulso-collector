@@ -1,6 +1,6 @@
 -- Panel "Gasto" (solo equipo de Active): una función de lectura que agrega el
 -- gasto registrado de la app por función, candidato y día.
--- Aplicada en pulso-demo el 2026-11-25 (aprobada por Leandro). Requiere deploy/ai_visibility_cap.sql aplicado antes.
+-- Aplicada en pulso-demo el 2026-11-25 (aprobada por Leandro). Requiere deploy/ai_visibility_cap.sql y deploy/ai_visibility_cap_per_candidate.sql aplicados antes.
 -- Idempotente. No crea tablas, no cambia RLS existentes, no toca roles ni datos.
 -- Costo de aplicar el SQL: USD 0.
 --
@@ -139,7 +139,11 @@ begin
       'ai_visibility_budget', (select jsonb_build_object('daily_budget_usd', daily_budget_usd,
                                                          'last_reached_on', last_reached_on,
                                                          'updated_at', updated_at)
-                                 from public.ai_visibility_budget where id))
+                                 from public.ai_visibility_budget where id),
+      'ai_visibility_candidate_budgets', (select coalesce(jsonb_agg(jsonb_build_object(
+                                             'candidate_id', candidate_id, 'daily_budget_usd', daily_budget_usd,
+                                             'last_reached_on', last_reached_on, 'updated_at', updated_at)), '[]'::jsonb)
+                                            from public.ai_visibility_candidate_budget))
     into v_caps;
 
   return jsonb_build_object(

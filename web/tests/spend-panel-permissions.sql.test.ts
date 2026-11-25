@@ -30,6 +30,7 @@ const FILES = [
   "deploy/response_simulator.sql",
   "deploy/data_assistant.sql",
   "deploy/ai_visibility_cap.sql",
+  "deploy/ai_visibility_cap_per_candidate.sql",
 ];
 
 beforeAll(async () => {
@@ -109,7 +110,9 @@ describe("spend_panel.sql", () => {
     expect(cls?.basis).toBe("sin_costo");
     expect(r.x_usage).toEqual([expect.objectContaining({ quota_date: "2026-11-25", posts: 150, requests: 6 })]);
     expect(r.x_caps.length).toBe(2);
-    expect((r as unknown as { caps: { ai_visibility_budget: { daily_budget_usd: number } } }).caps.ai_visibility_budget.daily_budget_usd).toBe(1);
+    const caps = (r as unknown as { caps: { ai_visibility_candidate_budgets: { candidate_id: string; daily_budget_usd: number }[] } }).caps;
+    // Los candidatos se insertan después de la migración: el trigger les crea la fila con USD 1.
+    expect(caps.ai_visibility_candidate_budgets.map((b) => [b.candidate_id, b.daily_budget_usd]).sort()).toEqual([[C1, 1], [C2, 1]]);
   });
 
   it("no devuelve textos ni ids de usuario", async () => {

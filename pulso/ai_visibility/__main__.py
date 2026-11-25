@@ -73,13 +73,13 @@ def main(argv: list[str] | None = None) -> int:
             candidate_id = str(row["id"])
             candidate_name = row["name"]
             already = database.already_ran_on(row["id"], datetime.now(profile_for(slug).zone).date())
-            state = database.budget_state()
+            state = database.budget_state(row["id"])
             budget = DailyBudget.from_state(state)
             if budget is None:
                 log(event="ai_visibility_budget_missing")
             else:
-                db_ref, today = database, state["today"]
-                on_reached = lambda: db_ref.mark_budget_reached(today)  # noqa: E731
+                db_ref, today, cid = database, state["today"], row["id"]
+                on_reached = lambda: db_ref.mark_budget_reached(cid, today)  # noqa: E731
         else:
             if slug == DEFAULT_SLUG:
                 candidate_id = candidate_id or CANDIDATE_ID_KICILLOF

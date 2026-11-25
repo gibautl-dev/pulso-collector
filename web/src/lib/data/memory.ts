@@ -43,7 +43,7 @@ export interface FixtureData {
   /** Panel Gasto exportado de la base (solo lectura). undefined/null = sin datos. */
   spend_report?: SpendReport | null;
   /** Modo local: simula que hoy se alcanzó el tope de En la IA. */
-  ai_visibility_cap_reached_today?: boolean;
+  ai_visibility_cap_reached_today?: boolean | string[];
 }
 
 /** Usuario del modo local (sin login). */
@@ -300,23 +300,23 @@ export class MemoryRepo implements PulsoRepo {
       x_usage: r.x_usage.filter((x) => x.quota_date >= from && x.quota_date <= to),
     };
   }
-  async updateAiVisibilityDailyCap(usd: number) {
+  async updateAiVisibilityDailyCap(candidateId: string, usd: number) {
     if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede cambiar el tope");
     if (!Number.isFinite(usd) || usd < 0 || usd > 50) throw new Error("Tope inválido");
+    if (!this.visibleCandidates().some((c) => c.id === candidateId)) throw new Error("Candidato no válido");
     const r = this.data.spend_report;
     if (r) {
-      r.caps = {
-        ...r.caps,
-        ai_visibility_budget: {
-          daily_budget_usd: usd,
-          last_reached_on: r.caps?.ai_visibility_budget?.last_reached_on ?? null,
-          updated_at: new Date().toISOString(),
-        },
-      };
+      const list = [...(r.caps?.ai_visibility_candidate_budgets ?? [])];
+      const i = list.findIndex((x) => x.candidate_id === candidateId);
+      const row = { candidate_id: candidateId, daily_budget_usd: usd, last_reached_on: i >= 0 ? list[i].last_reached_on : null, updated_at: new Date().toISOString() };
+      if (i >= 0) list[i] = row;
+      else list.push(row);
+      r.caps = { ...r.caps, ai_visibility_candidate_budgets: list };
     }
   }
-  async aiVisibilityCapReachedToday() {
-    return this.data.ai_visibility_cap_reached_today === true;
+  async aiVisibilityCapReachedToday(candidateId: string) {
+    const v = this.data.ai_visibility_cap_reached_today;
+    return v === true || (Array.isArray(v) && v.includes(candidateId));
   }
   async listRecordedDailyCosts() {
     return this.data.recorded_daily_costs ?? [];

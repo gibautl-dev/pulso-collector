@@ -229,14 +229,43 @@ export default async function AdminGastoPage() {
             </tbody>
           </table>
         </div>
-        {s.aiVisibilityCapUsd != null ? (
-          <div className="border-t border-slate-100 bg-slate-50 px-5 py-4">
-            <AiCapForm action={saveAiVisibilityCapAction} current={s.aiVisibilityCapUsd} />
-            <p className="mt-2 text-xs text-slate-500">
-              Suma de todos los candidatos, día de Buenos Aires. Antes de cada pregunta se reserva el costo de una
-              respuesta: si no entra, ese día no se pregunta más y el cliente ve un aviso amable en En la IA.
-              {s.aiVisibilityCapReachedOn ? ` Último día en que se alcanzó: ${shortDay(s.aiVisibilityCapReachedOn)}.` : ""}
+        {s.aiCaps.length ? (
+          <div className="border-t border-slate-100 bg-slate-50 px-5 py-4" data-testid="ai-caps">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+              Tope diario de En la IA por candidato
+              <InfoTip text="Cada candidato cuenta solo su propio gasto del día (hora de Buenos Aires). Antes de cada pregunta se reserva el costo de una respuesta; si no entra, ese candidato no pregunta más ese día y su cliente ve un aviso amable en En la IA." />
             </p>
+            <ul className="mt-3 divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+              {s.aiCaps.map((c) => {
+                const pct = c.capUsd > 0 ? Math.min(100, (c.todayUsd / c.capUsd) * 100) : 100;
+                const color = pct >= 90 ? "bg-rose-500" : pct >= 60 ? "bg-amber-400" : "bg-emerald-500";
+                return (
+                  <li key={c.candidate_id} className="grid items-center gap-3 px-4 py-3 sm:grid-cols-[minmax(0,12rem)_1fr_auto]">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800">{c.name}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {c.reachedOn ? `Tope alcanzado por última vez: ${shortDay(c.reachedOn)}` : "Todavía no alcanzó el tope"}
+                      </p>
+                    </div>
+                    <div>
+                      <div className="mb-1 flex justify-between gap-2 text-[11px] text-slate-500">
+                        <span>Hoy {fmtUsd(c.todayUsd)}</span>
+                        <span>de {fmtUsd(c.capUsd)}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-slate-100">
+                        <div className={`h-1.5 rounded-full ${color}`} style={{ width: c.todayUsd > 0 ? `${Math.max(3, pct)}%` : 0 }} />
+                      </div>
+                    </div>
+                    <AiCapForm
+                      action={saveAiVisibilityCapAction}
+                      current={c.capUsd}
+                      candidateId={c.candidate_id}
+                      candidateName={c.name}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         ) : null}
         <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">

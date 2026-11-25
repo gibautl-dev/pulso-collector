@@ -575,22 +575,22 @@ export class SupabaseRepo implements PulsoRepo {
     return (res.data as SpendReport | null) ?? null;
   }
 
-  async updateAiVisibilityDailyCap(usd: number): Promise<void> {
+  async updateAiVisibilityDailyCap(candidateId: string, usd: number): Promise<void> {
     if (!Number.isFinite(usd) || usd < 0 || usd > 50) throw new Error("Tope inválido");
     const { data } = await this.db.auth.getClaims();
     const sub = typeof data?.claims?.sub === "string" ? data.claims.sub : null;
     const res = await this.db
-      .from("ai_visibility_budget")
+      .from("ai_visibility_candidate_budget")
       .update({ daily_budget_usd: usd, updated_at: new Date().toISOString(), updated_by: sub })
-      .eq("id", true)
-      .select("id");
+      .eq("candidate_id", candidateId)
+      .select("candidate_id");
     if (res.error) throw new Error(`Error guardando el tope: ${res.error.message}`);
     // Con RLS, un no-staff no actualiza filas: no lo damos por guardado.
     if (!res.data?.length) throw new Error("Solo el equipo de Active puede cambiar el tope");
   }
 
-  async aiVisibilityCapReachedToday(): Promise<boolean> {
-    const res = await this.db.rpc("ai_visibility_cap_reached_today");
+  async aiVisibilityCapReachedToday(candidateId: string): Promise<boolean> {
+    const res = await this.db.rpc("ai_visibility_cap_reached_today", { p_candidate_id: candidateId });
     if (res.error) return false; // sin la migración: no se muestra el aviso
     return res.data === true;
   }

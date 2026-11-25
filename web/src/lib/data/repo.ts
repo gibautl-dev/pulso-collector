@@ -71,10 +71,10 @@ export interface PulsoRepo {
    * null = la función pulso_spend_report todavía no está en la base.
    */
   getSpendReport(from: string, to: string): Promise<SpendReport | null>;
-  /** Tope diario de En la IA (solo staff). Lanza error si no es staff o falta la tabla. */
-  updateAiVisibilityDailyCap(usd: number): Promise<void>;
-  /** true si hoy (Buenos Aires) se alcanzó el tope de En la IA. Sin montos. */
-  aiVisibilityCapReachedToday(): Promise<boolean>;
+  /** Tope diario de En la IA de un candidato (solo staff). Lanza error si no es staff. */
+  updateAiVisibilityDailyCap(candidateId: string, usd: number): Promise<void>;
+  /** true si hoy (Buenos Aires) ese candidato alcanzó su tope de En la IA. Sin montos. */
+  aiVisibilityCapReachedToday(candidateId: string): Promise<boolean>;
   latestSuggestionRun(candidateId: string): Promise<RivalSuggestionRun | null>;
   saveSuggestionRun(run: Omit<RivalSuggestionRun, "id" | "created_at"> & { id?: string; created_at?: string }): Promise<RivalSuggestionRun>;
   listPendingCandidates(candidateId: string): Promise<PendingCandidate[]>;
