@@ -2,6 +2,8 @@ import { Card, EmptyState, PageHeader, RunStatusBadge } from "@/components/ui";
 import { computeSourceHealth } from "@/lib/analytics";
 import { loadCandidate } from "@/lib/context";
 import { sourceLabel } from "@/lib/labels";
+import { computeMetaAdsHealth } from "@/lib/meta-ads-health";
+import { regionFor } from "@/lib/region";
 import { clockFor, durationSeconds, formatDateTime, relativeTime } from "@/lib/time";
 
 export const metadata = { title: "Salud de fuentes · Pulso" };
@@ -12,15 +14,21 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
   const { slug } = await params;
   const clock = clockFor(slug);
   const { repo, candidate } = await loadCandidate(slug);
-  const [runs, sources, ts] = await Promise.all([
+  const [runs, sources, ads, adsSettings, ts] = await Promise.all([
     repo.listSourceRuns(candidate.id, 40),
     repo.listCandidateSources(candidate.id),
+    repo.listMetaAds(candidate.id),
+    repo.listMetaAdsSettings(candidate.id),
     repo.dataTimestamp(),
   ]);
   const now = ts ? new Date(ts) : new Date();
   const health = computeSourceHealth(runs, now);
   const enabled = sources.filter((s) => s.enabled);
   const disabled = sources.filter((s) => !s.enabled);
+  const metaHealth = computeMetaAdsHealth(ads, adsSettings, {
+    now,
+    showMetaAds: regionFor(slug).showMetaAds,
+  });
 
   return (
     <>
@@ -68,6 +76,64 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
             </Card>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        <Card>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">{sourceLabel("meta_ads")}</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {metaHealth.applicable
+                  ? "Job propio, no pasa por source_runs del recolector de 20 minutos."
+                  : "Anuncios políticos de Meta."}
+              </p>
+            </div>
+            {metaHealth.applicable ? (
+              metaHealth.lastSuccessAt ? (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">OK</span>
+              ) : (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">Sin corrida</span>
+              )
+            ) : (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">No aplica</span>
+            )}
+          </div>
+          {metaHealth.applicable ? (
+            <>
+              <dl className="mt-4 grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <dt className="text-xs text-slate-500">Último éxito</dt>
+                  <dd className="mt-0.5 font-medium text-slate-900">
+                    {metaHealth.lastSuccessAt
+                      ? formatDateTime(metaHealth.lastSuccessAt, clock)
+                      : "Sin dato"}
+                  </dd>
+                  {metaHealth.lastSuccessAt ? (
+                    <p className="mt-0.5 text-xs text-slate-500">{clock.tzLabel}</p>
+                  ) : null}
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">Anuncios última corrida</dt>
+                  <dd className="mt-0.5 font-medium text-slate-900">{metaHealth.adsLastRun ?? "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">Anuncios 7 días</dt>
+                  <dd className="mt-0.5 font-medium text-slate-900">{metaHealth.adsLast7d ?? "—"}</dd>
+                </div>
+              </dl>
+              {metaHealth.lastError ? (
+                <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 font-mono text-xs text-amber-900">Último aviso: {metaHealth.lastError}</p>
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">
+                  No hay un registro de error en la base: el job no guarda fallos en tablas, solo en los logs del cron.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-slate-700">{metaHealth.unavailableReason}</p>
+          )}
+        </Card>
       </div>
 
       <Card title="Últimas corridas" subtitle="Registro de source_runs, más recientes primero." className="mt-6">

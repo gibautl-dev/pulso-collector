@@ -54,8 +54,8 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
 
       {topics.length === 0 ? (
         <EmptyState>
-          Todavía no hay temas a medida para {candidate.name}. El equipo de Active los carga en el panel, con
-          palabras clave. No se abren fuentes nuevas ni consultas extra a X.
+          Todavía no hay temas a medida para {candidate.name}. Cuando el equipo de Active los defina, van a aparecer
+          acá con volumen, balance y un analista por tema. No se abren fuentes nuevas ni consultas extra a X.
         </EmptyState>
       ) : (
         <ul className="space-y-4">

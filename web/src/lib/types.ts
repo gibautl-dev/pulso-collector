@@ -209,6 +209,13 @@ export type MetaAdStance = (typeof META_AD_STANCES)[number];
 
 export type MetaAdStatusFilter = "activo" | "inactivo";
 
+export interface MetaAdsSettings {
+  candidate_id: string;
+  enabled: boolean;
+  last_run_on: string | null;
+  updated_at: string | null;
+}
+
 export interface MetaAdFilters {
   q?: string;
   page?: string;
@@ -351,8 +358,18 @@ export interface CandidateRival {
   created_at?: string;
 }
 
+export const PENDING_CANDIDATE_STATUSES = ["pendiente_de_alta", "aprobado", "borrado"] as const;
+export type PendingCandidateStatus = (typeof PENDING_CANDIDATE_STATUSES)[number];
 export const PENDING_CANDIDATE_STATUS = "pendiente_de_alta" as const;
-export type PendingCandidateStatus = typeof PENDING_CANDIDATE_STATUS;
+export const ACTIVE_PENDING_STATUSES: PendingCandidateStatus[] = ["pendiente_de_alta", "aprobado"];
+
+export function isPendingCandidateStatus(value: string): value is PendingCandidateStatus {
+  return (PENDING_CANDIDATE_STATUSES as readonly string[]).includes(value);
+}
+
+export function isActivePendingStatus(status: string): boolean {
+  return status === "pendiente_de_alta" || status === "aprobado";
+}
 
 export type PendingCandidateSource = "manual" | "ai_suggestion";
 
@@ -367,6 +384,9 @@ export interface PendingCandidate {
   source: PendingCandidateSource;
   reason: string | null;
   created_at: string;
+  created_by?: string | null;
+  approved_at?: string | null;
+  approved_by?: string | null;
 }
 
 export interface RivalSuggestion {

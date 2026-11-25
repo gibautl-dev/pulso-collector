@@ -27,7 +27,7 @@ export function slugifyName(name: string): string {
     .slice(0, 60);
 }
 
-function normName(value: string): string {
+export function normalizePendingName(value: string): string {
   return value
     .normalize("NFD")
     .replace(/\p{Diacritic}/gu, "")
@@ -36,16 +36,35 @@ function normName(value: string): string {
     .trim();
 }
 
+
+export function namesMatchPending(a: string, b: string): boolean {
+  const left = normalizePendingName(a);
+  return Boolean(left) && left === normalizePendingName(b);
+}
+
+export function hasDuplicatePending(
+  name: string,
+  rows: { name: string; status: string; requested_for_candidate_id: string }[],
+  candidateId: string,
+): boolean {
+  return rows.some(
+    (row) =>
+      row.requested_for_candidate_id === candidateId &&
+      (row.status === "pendiente_de_alta" || row.status === "aprobado") &&
+      namesMatchPending(row.name, name),
+  );
+}
+
 export function matchExistingCandidate(
   name: string,
   candidates: Candidate[],
 ): Candidate | null {
-  const want = normName(name);
+  const want = normalizePendingName(name);
   if (!want) return null;
   const slug = slugifyName(name);
   return (
     candidates.find((c) => c.slug === slug) ??
-    candidates.find((c) => normName(c.name) === want) ??
+    candidates.find((c) => normalizePendingName(c.name) === want) ??
     null
   );
 }
@@ -115,8 +134,8 @@ export function parseSuggestions(
     if (!item || typeof item !== "object") continue;
     const rec = item as Record<string, unknown>;
     const name = String(rec.name ?? "").trim();
-    if (!name || seen.has(normName(name))) continue;
-    seen.add(normName(name));
+    if (!name || seen.has(normalizePendingName(name))) continue;
+    seen.add(normalizePendingName(name));
     const matched = matchExistingCandidate(name, measured);
     out.push({
       name,
@@ -167,61 +186,69 @@ export function projectMonthly(days: { date: string; cost_usd: number }[]): Cost
   };
 }
 
-function formatUsd(value: number): string {
-  return `USD ${value.toFixed(2)}`;
+/**
+ * Cifras del informe de costos (noviembre 2026).
+ * En la IA: promedio de 7 días reales de visibilidad para un Completo en Argentina
+ * (USD 5.98 en total → ≈ 25.64/mes), redondeado a USD 25.6. No se reutiliza para otra arena.
+ * X: USD 63/mes CALC si se suma X. Medios/RSS: USD 1–2 EST.
+ */
+export const COST_REPORT = {
+  iaVisibilityUsdMonth: 25.6,
+  iaVisibilityCountry: "AR",
+  xUsdMonthIfAdded: 63,
+  mediaRssUsdMonthMin: 1,
+  mediaRssUsdMonthMax: 2,
+} as const;
+
+export const COST_TABLE_FOOTNOTE =
+  "EST = estimación. CALC = cálculo con tarifas conocidas, no un gasto ya anotado en Pulso.";
+
+export interface CostTableRow {
+  level: RivalLevel;
+  amount: string;
+  note: string;
 }
 
-/**
- * Estimación honesta por nivel, con costos ya registrados.
- * Medios, X y anuncios se declaran desconocidos si no hay filas de costo.
- * En la IA se proyecta solo si hay días con `source === "ia"`.
- */
-export function estimateOnboardingCosts(
-  region: RegionProfile,
-  costs: RecordedDailyCost[],
-  opts?: { measured?: Candidate[] },
-): LevelCostEstimate[] {
-  const sameIds = new Set(
-    (opts?.measured ?? [])
-      .filter((c) => regionFor(c.slug).country === region.country)
-      .map((c) => c.id),
-  );
-  const scoped = sameIds.size ? costs.filter((r) => sameIds.has(r.candidate_id)) : [];
-  const iaRows = scoped.filter((r) => r.source === "ia");
-  const ia = projectMonthly(iaRows);
-  const iaText = ia
-    ? ia.days === 1
-      ? `En la IA hay un solo día registrado (${formatUsd(ia.total_usd)}). Si se repitiera ese ritmo serían unos ${formatUsd(ia.monthly_usd)} al mes; es una proyección frágil.`
-      : `En la IA, el promedio de ${ia.days} días registrados es ${formatUsd(ia.daily_avg_usd)} por día, unos ${formatUsd(ia.monthly_usd)} al mes si se mantiene ese ritmo.`
-    : "En la IA no hay costos registrados comparables; el monto mensual se informa como desconocido.";
-
-  const mediaUnknown =
-    "Para medios (RSS / Google News) Pulso no tiene un costo de API registrado; se informa como desconocido.";
-  const xUnknown = "Para X no hay un costo en dólares registrado en Pulso; se informa como desconocido.";
-  const adsUnknown = region.showMetaAds
-    ? "Para anuncios de Meta no hay un costo en dólares registrado en Pulso; se informa como desconocido."
-    : "En esta región los anuncios de Meta no están activos, así que no se suma ese costo.";
-
+export function buildOnboardingCostTable(region: RegionProfile): CostTableRow[] {
+  const media = `USD ${COST_REPORT.mediaRssUsdMonthMin}–${COST_REPORT.mediaRssUsdMonthMax} EST`;
+  const x = `USD ${COST_REPORT.xUsdMonthIfAdded} CALC`;
+  const ia =
+    region.country === COST_REPORT.iaVisibilityCountry
+      ? `USD ${COST_REPORT.iaVisibilityUsdMonth}`
+      : null;
   return [
     {
       level: "radar",
-      monthly_usd: null,
-      complete: false,
-      detail: `Radar usa solo menciones en medios. ${mediaUnknown}`,
+      amount: media,
+      note: "Solo medios/RSS (EST).",
     },
     {
       level: "comparativo",
-      monthly_usd: null,
-      complete: false,
-      detail: `Comparativo suma volumen, balance y anuncios. ${mediaUnknown} ${xUnknown} ${adsUnknown}`,
+      amount: media,
+      note: "Medios/RSS (EST). Anuncios: sin dato.",
     },
     {
       level: "completo",
-      monthly_usd: ia ? ia.monthly_usd : null,
-      complete: false,
-      detail: `Completo suma medios, X, En la IA, anuncios y cuentas sospechosas (estas últimas no tienen costo de API registrado). ${iaText} ${mediaUnknown} ${xUnknown} ${adsUnknown} El total mensual no se cierra porque falta parte de los costos.`,
+      amount: ia ? `${ia} · ${x} · ${media}` : `${x} · ${media}`,
+      note: ia
+        ? `En la IA ${ia} (dato del informe). X ${x} si se suma X. Medios/RSS ${media}. Anuncios y cuentas sospechosas: sin dato.`
+        : `En la IA: sin dato. X ${x} si se suma X. Medios/RSS ${media}. Anuncios y cuentas sospechosas: sin dato.`,
     },
   ];
+}
+
+/** @deprecated Preferir buildOnboardingCostTable. Se mantiene para tests de proyección diaria. */
+export function estimateOnboardingCosts(
+  region: RegionProfile,
+  _costs?: RecordedDailyCost[],
+  _opts?: { measured?: Candidate[] },
+): LevelCostEstimate[] {
+  return buildOnboardingCostTable(region).map((row) => ({
+    level: row.level,
+    monthly_usd: null,
+    complete: false,
+    detail: `${row.amount}. ${row.note}`,
+  }));
 }
 
 export function regionForCandidate(slug: string): RegionProfile {

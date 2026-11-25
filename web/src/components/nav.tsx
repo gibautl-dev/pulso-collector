@@ -17,6 +17,7 @@ const ICONS: Record<string, string> = {
   temas: "M4 6h7v5H4V6zm9 0h7v5h-7V6zM4 13h7v5H4v-5zm9 0h7v5h-7v-5z",
 };
 
+/** Menú del cliente (escritorio y móvil). Temas a medida es permanente, aunque no haya temas todavía. */
 export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean }) {
   const pathname = usePathname();
   const base = `/c/${slug}`;

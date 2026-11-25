@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  estimateOnboardingCosts,
+  buildOnboardingCostTable,
+  COST_REPORT,
+  hasDuplicatePending,
   matchExistingCandidate,
+  namesMatchPending,
   parseSuggestions,
   projectMonthly,
   slugifyName,
@@ -41,28 +44,29 @@ describe("parseSuggestions", () => {
   });
 });
 
-describe("estimación de costo", () => {
-  it("no inventa un total si no hay costos de medios o X, y proyecta solo En la IA", () => {
-    const rows = [
-      { candidate_id: "c1", source: "ia", date: "2026-11-18", cost_usd: 0.88 },
-      { candidate_id: "c1", source: "ia", date: "2026-11-19", cost_usd: 0.88 },
-    ];
-    const estimates = estimateOnboardingCosts(regionFor("axel-kicillof"), rows, { measured: [kici, pedro] });
-    expect(estimates[0].level).toBe("radar");
-    expect(estimates[0].monthly_usd).toBeNull();
-    expect(estimates[0].detail.toLowerCase()).toContain("desconocido");
-    expect(estimates[1].monthly_usd).toBeNull();
-    expect(estimates[2].level).toBe("completo");
-    expect(estimates[2].monthly_usd).toBeCloseTo(0.88 * 30, 5);
-    expect(estimates[2].complete).toBe(false);
-    expect(estimates[2].detail.toLowerCase()).toContain("en la ia");
+describe("tabla de costo de un alta", () => {
+  it("usa las cifras del informe, con EST/CALC, y no aplica En la IA de Argentina a España", () => {
+    const ar = buildOnboardingCostTable(regionFor("axel-kicillof"));
+    expect(ar.map((r) => r.level)).toEqual(["radar", "comparativo", "completo"]);
+    expect(ar[0].amount).toContain("1–2 EST");
+    expect(ar[1].note.toLowerCase()).toContain("sin dato");
+    expect(ar[2].amount).toContain(`USD ${COST_REPORT.iaVisibilityUsdMonth}`);
+    expect(ar[2].amount).toContain("63 CALC");
+    const es = buildOnboardingCostTable(regionFor("pedro-sanchez"));
+    expect(es[2].amount).not.toContain(`USD ${COST_REPORT.iaVisibilityUsdMonth}`);
+    expect(es[2].note.toLowerCase()).toContain("sin dato");
+    expect(es[2].amount).toContain("63 CALC");
   });
 
-  it("no usa costos de otra arena", () => {
-    const rows = [{ candidate_id: "c1", source: "ia", date: "2026-11-18", cost_usd: 0.88 }];
-    const estimates = estimateOnboardingCosts(regionFor("pedro-sanchez"), rows, { measured: [kici, pedro] });
-    expect(estimates[2].monthly_usd).toBeNull();
-    expect(estimates[2].detail.toLowerCase()).toContain("no hay costos registrados comparables");
+  it("trata Milei y mileí como el mismo pedido de alta", () => {
+    expect(namesMatchPending("Milei", "mileí")).toBe(true);
+    expect(namesMatchPending("Javier Milei", "javier   milei")).toBe(true);
+    expect(
+      hasDuplicatePending("MILEÍ", [{ name: "Milei", status: "pendiente_de_alta", requested_for_candidate_id: "c1" }], "c1"),
+    ).toBe(true);
+    expect(
+      hasDuplicatePending("Milei", [{ name: "Milei", status: "borrado", requested_for_candidate_id: "c1" }], "c1"),
+    ).toBe(false);
   });
 
   it("admite que un solo día es una proyección frágil", () => {

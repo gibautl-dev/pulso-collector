@@ -69,6 +69,7 @@ const SOURCE_LABELS: Record<string, string> = {
   instagram: "Instagram",
   serp: "Buscador (SERP)",
   llm: "Clasificador IA",
+  meta_ads: "Biblioteca de anuncios de Meta",
 };
 export function sourceLabel(source: string): string {
   return SOURCE_LABELS[source] ?? source;
@@ -204,6 +205,14 @@ export const RIVAL_LEVEL_HINT: Record<string, string> = {
 };
 
 export const PENDING_CANDIDATE_STATUS_LABEL = "Pendiente de alta";
+export const PENDING_CANDIDATE_STATUS_LABELS: Record<string, string> = {
+  pendiente_de_alta: "Pendiente de alta",
+  aprobado: "Aprobado, listo para recolectar",
+  borrado: "Borrado",
+};
+
+export const META_ADS_EU_UNAVAILABLE =
+  "No aplica en la UE (anuncios políticos bloqueados)";
 
 /** Nombre visible de la bandeja de crisis. La ruta sigue siendo /accion. */
 export const ACCION_SECTION_LABEL = "Equipo de acción";

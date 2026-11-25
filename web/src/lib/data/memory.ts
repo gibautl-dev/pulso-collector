@@ -1,6 +1,6 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
-import { slugifyName } from "@/lib/rival-suggest";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
 
@@ -16,6 +16,7 @@ export interface FixtureData {
   suspicious_accounts?: SuspiciousAccount[];
   ai_answers?: AiAnswer[];
   meta_ads?: MetaAd[];
+  meta_ads_settings?: MetaAdsSettings[];
   crisis_alerts?: CrisisAlert[];
   crisis_briefs?: CrisisBrief[];
   /** En el modo local, el usuario se trata como equipo de Active. */
@@ -109,6 +110,10 @@ export class MemoryRepo implements PulsoRepo {
         return bStart.localeCompare(aStart) || a.ad_id.localeCompare(b.ad_id);
       });
   }
+  async listMetaAdsSettings(candidateId: string) {
+    return (this.data.meta_ads_settings ?? []).find((s) => s.candidate_id === candidateId) ?? null;
+  }
+
   async listCrisisAlerts(candidateId: string) {
     const briefs = this.data.crisis_briefs ?? [];
     return (this.data.crisis_alerts ?? [])
@@ -195,9 +200,12 @@ export class MemoryRepo implements PulsoRepo {
   }
   async listPendingCandidates(candidateId: string) {
     return (this.data.pending_candidates ?? [])
-      .filter((p) => p.requested_for_candidate_id === candidateId)
+      .filter((p) => p.requested_for_candidate_id === candidateId && p.status !== "borrado")
       .slice()
-      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === "pendiente_de_alta" ? -1 : 1;
+        return b.created_at.localeCompare(a.created_at);
+      });
   }
   async addPendingCandidate(row: {
     name: string;
@@ -216,8 +224,8 @@ export class MemoryRepo implements PulsoRepo {
     );
     if (existing) throw new Error("Ese candidato ya está en Pulso: sumalo con la lista de arriba, no como un alta nueva.");
     const pending = this.data.pending_candidates ?? [];
-    if (pending.some((p) => p.requested_for_candidate_id === row.requested_for_candidate_id && p.name.toLowerCase() === name.toLowerCase())) {
-      throw new Error("Ese nombre ya está pedido como pendiente de alta para este candidato.");
+    if (hasDuplicatePending(name, pending, row.requested_for_candidate_id)) {
+      throw new Error(`Ya hay un pedido de alta para ${name} en este candidato.`);
     }
     const rec: PendingCandidate = {
       id: crypto.randomUUID(),
@@ -233,6 +241,22 @@ export class MemoryRepo implements PulsoRepo {
     };
     this.data.pending_candidates = [...pending, rec];
     return rec;
+  }
+
+  async approvePendingCandidate(id: string, approvedBy?: string | null) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede aprobar un alta");
+    const rec = (this.data.pending_candidates ?? []).find((p) => p.id === id);
+    if (!rec || rec.status === "borrado") throw new Error("No está ese pedido de alta");
+    rec.status = "aprobado";
+    rec.approved_at = new Date().toISOString();
+    rec.approved_by = approvedBy ?? null;
+    return rec;
+  }
+  async deletePendingCandidate(id: string) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede borrar un alta");
+    const rec = (this.data.pending_candidates ?? []).find((p) => p.id === id);
+    if (!rec) throw new Error("No está ese pedido de alta");
+    rec.status = "borrado";
   }
 
   async listCustomTopics(candidateId: string) {

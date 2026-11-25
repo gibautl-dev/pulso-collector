@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 
 export interface MentionPage {
   items: Mention[];
@@ -29,6 +29,7 @@ export interface PulsoRepo {
   ): Promise<void>;
   listAiAnswers(candidateId: string): Promise<AiAnswer[]>;
   listMetaAds(candidateId: string): Promise<MetaAd[]>;
+  listMetaAdsSettings(candidateId: string): Promise<MetaAdsSettings | null>;
   listCrisisAlerts(candidateId: string): Promise<CrisisAlert[]>;
   getCrisisAlert(candidateId: string, id: string): Promise<CrisisAlert | null>;
   listCrisisBriefs(candidateId: string, alertId: string): Promise<CrisisBrief[]>;
@@ -59,6 +60,8 @@ export interface PulsoRepo {
     source: PendingCandidateSource;
     reason?: string | null;
   }): Promise<PendingCandidate>;
+  approvePendingCandidate(id: string, approvedBy?: string | null): Promise<PendingCandidate>;
+  deletePendingCandidate(id: string): Promise<void>;
   listCustomTopics(candidateId: string): Promise<CustomTopic[]>;
   getCustomTopic(candidateId: string, id: string): Promise<CustomTopic | null>;
   upsertCustomTopic(row: {

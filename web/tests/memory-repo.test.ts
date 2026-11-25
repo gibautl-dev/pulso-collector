@@ -189,4 +189,44 @@ describe("MemoryRepo sugerencias y altas pendientes", () => {
       }),
     ).rejects.toThrow(/ya está en Pulso/);
   });
+
+  it("rechaza un duplicado sin importar tildes y permite aprobar o borrar", async () => {
+    await repo.addPendingCandidate({
+      name: "Milei",
+      requested_for_candidate_id: "c1",
+      requested_level: "comparativo",
+      source: "manual",
+    });
+    await expect(
+      repo.addPendingCandidate({
+        name: "mileí",
+        requested_for_candidate_id: "c1",
+        requested_level: "comparativo",
+        source: "manual",
+      }),
+    ).rejects.toThrow(/Ya hay un pedido de alta para mileí/);
+    const row = (await repo.listPendingCandidates("c1")).find((p) => p.name === "Milei");
+    expect(row).toBeTruthy();
+    const approved = await repo.approvePendingCandidate(row!.id, "staff");
+    expect(approved.status).toBe("aprobado");
+    expect(approved.approved_by).toBe("staff");
+    expect(approved.approved_at).toBeTruthy();
+    await expect(
+      repo.addPendingCandidate({
+        name: "Milei",
+        requested_for_candidate_id: "c1",
+        requested_level: "radar",
+        source: "manual",
+      }),
+    ).rejects.toThrow(/Ya hay un pedido/);
+    await repo.deletePendingCandidate(row!.id);
+    expect((await repo.listPendingCandidates("c1")).some((p) => p.name === "Milei")).toBe(false);
+    const again = await repo.addPendingCandidate({
+      name: "Milei",
+      requested_for_candidate_id: "c1",
+      requested_level: "radar",
+      source: "manual",
+    });
+    expect(again.status).toBe("pendiente_de_alta");
+  });
 });

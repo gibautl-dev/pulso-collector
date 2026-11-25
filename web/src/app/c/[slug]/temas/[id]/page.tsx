@@ -3,11 +3,11 @@ import { notFound } from "next/navigation";
 import { MentionRow } from "@/components/mention-row";
 import { VolumeChart } from "@/components/volume-chart";
 import { Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui";
-import { requestTopicSummaryAction, updateTopicSummaryStatusAction } from "@/app/c/[slug]/temas/actions";
+import { updateTopicSummaryStatusAction } from "@/app/c/[slug]/temas/actions";
+import { TopicSummaryForm } from "@/components/topic-summary-form";
 import { loadCandidate } from "@/lib/context";
 import {
   CUSTOM_TOPIC_CLASSIFY_USD_PER_MENTION,
-  CUSTOM_TOPIC_SUMMARY_MAX_COST_USD,
   computeTopicStats,
   estimateClassificationCost,
 } from "@/lib/custom-topics";
@@ -85,19 +85,7 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
           title="Analista del tema"
           subtitle="Un bot especializado en esta temática. Escribe un resumen para revisar. Pulso no publica ni postea nada."
         >
-          <form action={requestTopicSummaryAction} className="mb-4">
-            <input type="hidden" name="slug" value={slug} />
-            <input type="hidden" name="topic_id" value={topic.id} />
-            <button
-              type="submit"
-              className="rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-50"
-            >
-              {latest ? "Pedir un resumen nuevo" : "Pedir resumen al analista"}
-            </button>
-            <p className="mt-2 text-xs text-slate-500">
-              On demand, gpt-6-luna, sin búsqueda web, tope USD {CUSTOM_TOPIC_SUMMARY_MAX_COST_USD.toFixed(2)} por llamada.
-            </p>
-          </form>
+          <TopicSummaryForm slug={slug} topicId={topic.id} hasLatest={Boolean(latest)} />
           {latest ? (
             <div>
               <p className="rounded-md border border-amber-100 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">

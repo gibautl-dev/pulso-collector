@@ -3,9 +3,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 import { isRivalLevel } from "@/lib/types";
-import { slugifyName } from "@/lib/rival-suggest";
+import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -216,6 +216,19 @@ export class SupabaseRepo implements PulsoRepo {
     return classified.map(normalizeMetaAd);
   }
 
+  async listMetaAdsSettings(candidateId: string): Promise<MetaAdsSettings | null> {
+    const res = await this.db
+      .from("meta_ads_settings")
+      .select("candidate_id,enabled,last_run_on,updated_at")
+      .eq("candidate_id", candidateId)
+      .maybeSingle();
+    if (res.error) {
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo la configuración de anuncios: ${res.error.message}`);
+    }
+    return (res.data as MetaAdsSettings | null) ?? null;
+  }
+
   async listCrisisAlerts(candidateId: string) {
     const alerts = check<CrisisAlert[]>(
       await this.db
@@ -418,14 +431,25 @@ export class SupabaseRepo implements PulsoRepo {
   async listPendingCandidates(candidateId: string) {
     const res = await this.db
       .from("pending_candidates")
-      .select("id,name,slug,arena,status,requested_for_candidate_id,requested_level,source,reason,created_at")
+      .select("id,name,slug,arena,status,requested_for_candidate_id,requested_level,source,reason,created_at,created_by,approved_at,approved_by")
       .eq("requested_for_candidate_id", candidateId)
+      .neq("status", "borrado")
       .order("created_at", { ascending: false });
     if (res.error) {
       if (isMissingRelation(res.error)) return [];
+      // Si la migración de UX todavía no se aplicó, approved_at no existe: reintentar el select corto.
+      if ((res.error.message + (res.error.details ?? "")).includes("approved_at")) {
+        const fallback = await this.db
+          .from("pending_candidates")
+          .select("id,name,slug,arena,status,requested_for_candidate_id,requested_level,source,reason,created_at")
+          .eq("requested_for_candidate_id", candidateId)
+          .order("created_at", { ascending: false });
+        if (fallback.error) throw new Error(`Error leyendo altas pendientes: ${fallback.error.message}`);
+        return (fallback.data ?? []) as PendingCandidate[];
+      }
       throw new Error(`Error leyendo altas pendientes: ${res.error.message}`);
     }
-    return (res.data ?? []) as PendingCandidate[];
+    return (res.data ?? []).filter((row) => row.status !== "borrado") as PendingCandidate[];
   }
 
   async addPendingCandidate(row: {
@@ -438,6 +462,10 @@ export class SupabaseRepo implements PulsoRepo {
     reason?: string | null;
   }) {
     if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede pedir un alta");
+    const existing = await this.listPendingCandidates(row.requested_for_candidate_id);
+    if (hasDuplicatePending(row.name, existing, row.requested_for_candidate_id)) {
+      throw new Error(`Ya hay un pedido de alta para ${row.name.trim()} en este candidato.`);
+    }
     const { data: session } = await this.db.auth.getUser();
     const res = await this.db
       .from("pending_candidates")
@@ -461,6 +489,38 @@ export class SupabaseRepo implements PulsoRepo {
     return res.data as PendingCandidate;
   }
 
+  async approvePendingCandidate(id: string, approvedBy?: string | null) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede aprobar un alta");
+    const { data: session } = await this.db.auth.getUser();
+    const res = await this.db
+      .from("pending_candidates")
+      .update({
+        status: "aprobado",
+        approved_at: new Date().toISOString(),
+        approved_by: approvedBy ?? session.user?.id ?? null,
+      })
+      .eq("id", id)
+      .neq("status", "borrado")
+      .select("id,name,slug,arena,status,requested_for_candidate_id,requested_level,source,reason,created_at,created_by,approved_at,approved_by")
+      .single();
+    if (res.error) {
+      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de altas pendientes");
+      throw new Error(`Error aprobando el alta: ${res.error.message}`);
+    }
+    return res.data as PendingCandidate;
+  }
+
+  async deletePendingCandidate(id: string) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede borrar un alta");
+    const res = await this.db
+      .from("pending_candidates")
+      .update({ status: "borrado" })
+      .eq("id", id);
+    if (res.error) {
+      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de altas pendientes");
+      throw new Error(`Error borrando el alta: ${res.error.message}`);
+    }
+  }
 
   async listCustomTopics(candidateId: string) {
     const res = await this.db
