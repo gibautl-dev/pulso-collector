@@ -43,6 +43,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             settings = SimpleNamespace(  # type: ignore[assignment]
                 database_url="",
+                database_password=None,
                 llm_api_key=key,
                 llm_base_url=(os.environ.get("LLM_BASE_URL") or "https://api.openai.com/v1").rstrip("/"),
                 model=(os.environ.get("LLM_MODEL") or "gpt-6-luna").strip(),
@@ -80,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     except CrisisSettingsError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    with connect(settings.database_url) as conn:
+    with connect(settings.database_url, settings.database_password) as conn:
         store = PostgresStore(conn)
         outcome = run_crisis(
             store=store,

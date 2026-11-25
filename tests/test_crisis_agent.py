@@ -221,6 +221,7 @@ class FakeLLM:
 def settings(**kw):
     return SimpleNamespace(
         database_url="postgresql://pulso_classifier@h/db",
+        database_password=None,
         llm_api_key="sk-test",
         llm_base_url="https://api.openai.com/v1",
         model="gpt-6-luna",
@@ -333,6 +334,48 @@ class CoordinatorTests(unittest.TestCase):
         self.assertNotIn("s3cret", text)
         self.assertFalse(s.enabled)
         self.assertEqual(s.max_cost_usd, 0.50)
+        self.assertIsNone(s.database_password)
+
+        env["CLASSIFIER_PGPASSWORD"] = "pw-del-clasificador"
+        env["CLASSIFIER_DATABASE_URL"] = "postgresql://pulso_classifier@host:5432/postgres?sslmode=require"
+        s = CrisisSettings.from_env(env)
+        self.assertEqual(s.database_password, "pw-del-clasificador")
+        text = repr(s)
+        self.assertNotIn("pw-del-clasificador", text)
+
+    def test_connect_passes_classifier_password(self):
+        import pulso.crisis.db as crisis_db
+
+        captured = {}
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+        class FakePsycopg:
+            @staticmethod
+            def connect(url, **kwargs):
+                captured["url"] = url
+                captured["kwargs"] = kwargs
+                return FakeConn()
+
+        def fake_psycopg():
+            return FakePsycopg, object(), object()
+
+        with mock.patch.object(crisis_db, "_psycopg", fake_psycopg):
+            with crisis_db.connect("postgresql://pulso_classifier@host/db", "pw-del-clasificador") as conn:
+                self.assertIsInstance(conn, FakeConn)
+        self.assertEqual(captured["url"], "postgresql://pulso_classifier@host/db")
+        self.assertEqual(captured["kwargs"].get("password"), "pw-del-clasificador")
+
+        captured.clear()
+        with mock.patch.object(crisis_db, "_psycopg", fake_psycopg):
+            with crisis_db.connect("postgresql://pulso_classifier:inurl@host/db") as conn:
+                self.assertIsInstance(conn, FakeConn)
+        self.assertNotIn("password", captured["kwargs"])
 
 
 class CronHookTests(unittest.TestCase):
@@ -354,7 +397,15 @@ class CronHookTests(unittest.TestCase):
             calls.append({"command": command, "env": env, "prefix": prefix, "timeout": timeout})
             return 0
 
-        with mock.patch.dict(os.environ, {"PULSO_CRISIS_AGENT_ENABLED": "true", "PULSO_CRISIS_AGENT_TIMEOUT_SECONDS": "180"}, clear=False):
+        cron_env = {
+            "PULSO_CRISIS_AGENT_ENABLED": "true",
+            "PULSO_CRISIS_AGENT_TIMEOUT_SECONDS": "180",
+            "CLASSIFIER_DATABASE_URL": "postgresql://pulso_classifier@host:5432/postgres?sslmode=require",
+            "CLASSIFIER_PGPASSWORD": "pw-del-clasificador",
+            "DATABASE_URL": "postgresql://pulso_collector@host:5432/postgres?sslmode=require",
+            "PGPASSWORD": "pw-del-collector",
+        }
+        with mock.patch.dict(os.environ, cron_env, clear=False):
             with mock.patch.object(deploy_run, "run_command", fake_run):
                 code = deploy_run.run_crisis_agent(["--candidate", "axel-kicillof", "--interval", "20"])
         self.assertEqual(code, 0)
@@ -362,6 +413,11 @@ class CronHookTests(unittest.TestCase):
         self.assertEqual(calls[0]["command"][-2:], ["--candidate", "axel-kicillof"])
         self.assertIn("-m", calls[0]["command"])
         self.assertIn("pulso.crisis", calls[0]["command"])
+        isolated = calls[0]["env"]
+        self.assertIn("CLASSIFIER_DATABASE_URL", isolated)
+        self.assertIn("CLASSIFIER_PGPASSWORD", isolated)
+        self.assertNotIn("DATABASE_URL", isolated)
+        self.assertNotIn("PGPASSWORD", isolated)
 
 
 if __name__ == "__main__":

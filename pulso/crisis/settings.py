@@ -58,6 +58,7 @@ class CrisisSettings:
     """Credenciales del clasificador + LLM. El collector no ve esta URL ni la clave."""
 
     database_url: str
+    database_password: str | None
     llm_api_key: str
     llm_base_url: str
     model: str
@@ -99,6 +100,7 @@ class CrisisSettings:
         model = (env.get("LLM_MODEL") or env.get("PULSO_CRISIS_AGENT_MODEL") or "gpt-6-luna").strip()
         return cls(
             database_url=url,
+            database_password=(env.get("CLASSIFIER_PGPASSWORD") or "").strip() or None,
             llm_api_key=key,
             llm_base_url=base,
             model=model,

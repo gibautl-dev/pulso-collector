@@ -31,9 +31,13 @@ class CrisisStore(Protocol):
 
 
 @contextmanager
-def connect(database_url: str):
+def connect(database_url: str, password: str | None = None):
+    """Misma receta que el clasificador: URL sin clave + CLASSIFIER_PGPASSWORD."""
     psycopg, dict_row, _ = _psycopg()
-    with psycopg.connect(database_url, row_factory=dict_row) as conn:
+    kwargs: dict = {"row_factory": dict_row}
+    if password:
+        kwargs["password"] = password
+    with psycopg.connect(database_url, **kwargs) as conn:
         yield conn
 
 
