@@ -7,6 +7,7 @@ import { updateTopicSummaryStatusAction } from "@/app/c/[slug]/temas/actions";
 import { TopicSummaryForm } from "@/components/topic-summary-form";
 import { loadCandidate } from "@/lib/context";
 import { computeTopicStats } from "@/lib/custom-topics";
+import { loadCoverage } from "@/lib/data/coverage";
 import { balanceTone } from "@/lib/balance";
 import { formatBalance } from "@/lib/x-posts";
 import { CUSTOM_TOPIC_SUMMARY_STATUS_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
@@ -24,11 +25,18 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
   const ts = await repo.dataTimestamp();
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - 30 * 86400000).toISOString();
-  const [mentions, latest] = await Promise.all([
+  const [mentions, latest, coverage] = await Promise.all([
     repo.mentionsSince(candidate.id, since),
     repo.latestCustomTopicSummary(candidate.id, topic.id),
+    loadCoverage(repo, candidate.id),
   ]);
-  const stats = computeTopicStats(topic, mentions, { now, days: 7, timeZone: clock.timeZone, highlightLimit: 10 });
+  const stats = computeTopicStats(topic, mentions, {
+    now,
+    days: 7,
+    timeZone: clock.timeZone,
+    highlightLimit: 10,
+    coverage: coverage.starts,
+  });
   const volumeForChart = stats.volumeByDay.map((d) => ({
     day: d.day,
     total: d.total,

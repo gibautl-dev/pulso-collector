@@ -102,3 +102,17 @@ lado contra horas del otro, y fuentes que solo existen para uno (X, YouTube).
   frente a frente de Rivales y anuncios (menciones, balance, curvas, medios;
   X se oculta si no se mide para los dos).
 - Sin cambios de schema ni de permisos.
+
+### Variaciones de un solo candidato y pauta de rivales
+
+- **Menciones ±% (tablero):** la ventana anterior ahora es [hoy − 2N, hoy − N)
+  (antes no tenía tope y contaba 2N días, para todos los candidatos). Solo se
+  cuentan fuentes activas desde el inicio del período anterior; si no hay
+  ninguna (candidato o rival recién dado de alta), no se muestra la variación.
+  Si se excluyó alguna fuente, un ⓘ dice cuáles se compararon.
+- **Temas a medida:** la tendencia frente al tramo anterior y el pico (3 vs 7
+  días) usan la misma regla; el volumen visible sigue contando todo.
+- **Anuncios en Rivales y anuncios:** si la pauta de un rival no se mide
+  (sin anuncios guardados y sin `meta_ads_settings` activo legible), no se
+  muestra su «Anuncios N activos» ni el ranking frente a frente; un ⓘ en su
+  tarjeta lo explica.

@@ -4,6 +4,7 @@ import { Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import { CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
 import { computeTopicStats } from "@/lib/custom-topics";
+import { loadCoverage } from "@/lib/data/coverage";
 import { balanceTone } from "@/lib/balance";
 import { formatBalance } from "@/lib/x-posts";
 import { regionFor } from "@/lib/region";
@@ -19,14 +20,15 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
   const ts = await repo.dataTimestamp();
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - 30 * 86400000).toISOString();
-  const [topics, mentions] = await Promise.all([
+  const [topics, mentions, coverage] = await Promise.all([
     repo.listCustomTopics(candidate.id),
     repo.mentionsSince(candidate.id, since),
+    loadCoverage(repo, candidate.id),
   ]);
   const staff = await repo.isStaff();
   const rows = topics.map((topic) => ({
     topic,
-    stats: computeTopicStats(topic, mentions, { now, days, timeZone: clock.timeZone, highlightLimit: 3 }),
+    stats: computeTopicStats(topic, mentions, { now, days, timeZone: clock.timeZone, highlightLimit: 3, coverage: coverage.starts }),
   }));
 
   return (

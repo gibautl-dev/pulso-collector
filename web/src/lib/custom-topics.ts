@@ -5,6 +5,7 @@ import type { Mention } from "./types";
 import type { CustomTopic, CustomTopicSummaryOutput } from "./types";
 import { balanceCaption } from "./balance";
 import { dayKey } from "./time";
+import { sourcesCoveredSince, type CoverageStarts } from "./comparison-window";
 
 export const CUSTOM_TOPIC_SUMMARY_PROMPT_VERSION = "custom-topic-summary-v1-2026-11-24";
 export const CUSTOM_TOPIC_CLASSIFY_PROMPT_VERSION = "custom-topic-classify-v1-2026-11-24";
@@ -130,7 +131,14 @@ export function detectTopicSpike(opts: {
 export function computeTopicStats(
   topic: CustomTopic,
   mentions: Mention[],
-  opts: { now: Date; days: number; timeZone?: string; highlightLimit?: number },
+  opts: {
+    now: Date;
+    days: number;
+    timeZone?: string;
+    highlightLimit?: number;
+    /** Inicio de cobertura por fuente: tendencia y pico solo con fuentes activas en ambos tramos. */
+    coverage?: CoverageStarts;
+  },
 ): TopicStats {
   const now = opts.now;
   const days = opts.days;
@@ -143,11 +151,19 @@ export function computeTopicStats(
     return t >= prevSince && t < since;
   });
   const volume = current.length;
-  const previousVolume = previous.length;
+  // Con cobertura: la tendencia solo cuenta fuentes que ya se recolectaban al
+  // inicio del tramo anterior; si no hay ninguna, no hay comparación.
+  const trendSources = opts.coverage ? sourcesCoveredSince(opts.coverage, prevSince.getTime()) : null;
+  const inTrend = (m: Mention) => trendSources == null || trendSources.includes(m.source);
+  const trendCurrent = trendSources ? current.filter(inTrend).length : volume;
+  const previousVolume = previous.filter(inTrend).length;
+  const trendComparable = trendSources == null || trendSources.length > 0;
   let trendPct: number | null = null;
   let trendLabel = "Sin tramo anterior para comparar";
-  if (previousVolume > 0) {
-    trendPct = ((volume - previousVolume) / previousVolume) * 100;
+  if (!trendComparable) {
+    // sin cobertura del tramo anterior
+  } else if (previousVolume > 0) {
+    trendPct = ((trendCurrent - previousVolume) / previousVolume) * 100;
     const rounded = Math.round(trendPct);
     trendLabel =
       rounded === 0
@@ -155,18 +171,20 @@ export function computeTopicStats(
         : rounded > 0
           ? `+${rounded}% frente al tramo anterior`
           : `${rounded}% frente al tramo anterior`;
-  } else if (volume > 0) {
+  } else if (trendCurrent > 0) {
     trendLabel = "Sin base en el tramo anterior";
   }
 
   const recent3dSince = new Date(now.getTime() - 3 * 86400000);
   const prev7dSince = new Date(now.getTime() - 10 * 86400000);
-  const recent3d = all.filter((m) => new Date(m.published_at) >= recent3dSince).length;
+  const spikeSources = opts.coverage ? sourcesCoveredSince(opts.coverage, prev7dSince.getTime()) : null;
+  const inSpike = (m: Mention) => spikeSources == null || spikeSources.includes(m.source);
+  const recent3d = all.filter((m) => inSpike(m) && new Date(m.published_at) >= recent3dSince).length;
   const previous7d = all.filter((m) => {
     const t = new Date(m.published_at);
-    return t >= prev7dSince && t < recent3dSince;
+    return inSpike(m) && t >= prev7dSince && t < recent3dSince;
   }).length;
-  const spike = detectTopicSpike({ recent3d, previous7d });
+  const spike = spikeSources != null && spikeSources.length === 0 ? false : detectTopicSpike({ recent3d, previous7d });
 
   const keys = dayRange(days, now, opts.timeZone);
   const volMap = new Map<string, TopicDayVolume>(keys.map((d) => [d, { day: d, total: 0, negativo: 0 }]));

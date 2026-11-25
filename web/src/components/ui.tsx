@@ -79,18 +79,24 @@ export function RunStatusBadge({ status }: { status: RunStatus }) {
   return <Badge className={RUN_STATUS_BADGE[status]}>{RUN_STATUS_LABEL[status]}</Badge>;
 }
 
-export function Stat({ label, value, hint, tone = "default" }: {
+export function Stat({ label, value, hint, tone = "default", info }: {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
   tone?: "default" | "negative" | "positive";
+  info?: string;
 }) {
   const color = tone === "negative" ? "text-rose-600" : tone === "positive" ? "text-emerald-600" : "text-slate-900";
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500 whitespace-nowrap">{label}</p>
       <p className={`mt-2 text-3xl font-semibold tabular-nums ${color}`}>{value}</p>
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint || info ? (
+        <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+          {hint ? <span>{hint}</span> : null}
+          {info ? <InfoTip label="Cómo se calcula" text={info} /> : null}
+        </p>
+      ) : null}
     </div>
   );
 }

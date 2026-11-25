@@ -4,7 +4,7 @@ import { MentionRow } from "@/components/mention-row";
 import { MentionFeedItem } from "@/components/mention-feed";
 import { VolumeChart } from "@/components/volume-chart";
 import { computeDashboard } from "@/lib/analytics";
-import { formatPeriodChange, periodChange } from "@/lib/volume-peak";
+import { formatPeriodChange } from "@/lib/volume-peak";
 import { loadCandidate } from "@/lib/context";
 import { SOURCE_BAR, SOURCE_BAR_DEFAULT, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
 import { regionFor } from "@/lib/region";
@@ -22,7 +22,13 @@ import {
   pickTopCustomTopic,
 } from "@/lib/home-spotlights";
 import { briefDateLabel, normalizeOutput } from "@/lib/daily-brief";
-import { commonWindow, countThirdPartyInWindow, countThirdPartyPrevious } from "@/lib/comparison-window";
+import {
+  commonWindow,
+  countThirdPartyInWindow,
+  countThirdPartyPrevious,
+  coveredPeriodChange,
+  periodChangeTooltip,
+} from "@/lib/comparison-window";
 import { loadCoverage } from "@/lib/data/coverage";
 import { MEDIA_SOURCES } from "@/lib/rivals";
 import {
@@ -58,17 +64,16 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     repo.listCustomTopics(candidate.id),
     repo.mentionsSince(candidate.id, new Date(now.getTime() - 30 * 86400000).toISOString()),
   ]);
+  const ownCoverage = await loadCoverage(repo, candidate.id);
   const customStats = customTopics.filter((t) => t.enabled).map((topic) => ({
     topic,
-    stats: computeTopicStats(topic, mentionsForTopics, { now, days, timeZone: clock.timeZone }),
+    stats: computeTopicStats(topic, mentionsForTopics, { now, days, timeZone: clock.timeZone, coverage: ownCoverage.starts }),
   }));
   const d = computeDashboard(mentions, topics, { days, now, timeZone: clock.timeZone });
-  const previous = computeDashboard(mentions, topics, {
-    days,
-    now: new Date(now.getTime() - days * 86400000),
-    timeZone: clock.timeZone,
-  });
-  const wow = periodChange(d.total, previous.total);
+  // Variación con tope superior (antes contaba 2N días) y solo con fuentes
+  // activas en los dos períodos; sin cobertura del anterior, no se muestra.
+  const wow = coveredPeriodChange(mentions, ownCoverage.starts, { now, days });
+  const wowTip = periodChangeTooltip(wow, ownCoverage.starts, days);
   const sourceCards = computeHomeCards({
     slug,
     days,
@@ -104,7 +109,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     rivalSubjects.push({ rival, level: row.level, mentions: await repo.mentionsSince(rival.id, sincePrevious) });
   }
   const coverages = await Promise.all([
-    loadCoverage(repo, candidate.id),
+    Promise.resolve(ownCoverage),
     ...rivalSubjects.map((r) => loadCoverage(repo, r.rival.id)),
   ]);
   const cmpWindow = rivalSubjects.length
@@ -184,7 +189,8 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
         <Stat
           label="Menciones"
           value={d.total}
-          hint={`${formatPeriodChange(wow.percent, days)} · ${d.last24h} en las últimas 24 h`}
+          hint={wow.comparable ? `${formatPeriodChange(wow.percent, days)} · ${d.last24h} en las últimas 24 h` : `${d.last24h} en las últimas 24 h`}
+          info={wowTip ?? undefined}
         />
         <Stat label="Sobre él" value={d.aboutCandidate} hint={`${d.aboutOthers} sobre otros · ${d.unclear} poco claras`} />
         <Stat

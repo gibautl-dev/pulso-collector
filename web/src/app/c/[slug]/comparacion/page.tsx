@@ -41,14 +41,16 @@ async function loadPack(
   candidate: Candidate,
   since: string,
 ): Promise<SubjectPack> {
-  const [mentions, topics, ads, answers, suspicious] = await Promise.all([
+  const [mentions, topics, ads, answers, suspicious, adsSettings] = await Promise.all([
     repo.mentionsSince(candidate.id, since),
     repo.listTopics(candidate.id),
     repo.listMetaAds(candidate.id),
     repo.listAiAnswers(candidate.id),
     repo.listSuspiciousAccounts(candidate.id),
+    repo.listMetaAdsSettings(candidate.id),
   ]);
-  return { candidate, mentions, topics, ads, answers, suspicious };
+  const adsCollected = ads.length > 0 || adsSettings?.enabled === true;
+  return { candidate, mentions, topics, ads, answers, suspicious, adsCollected };
 }
 
 export default async function ComparacionPage({
@@ -309,7 +311,7 @@ function ComparisonBody({
   const { candidate, rival, volumeVs, adsRanking } = comparison;
   const leftBal = overallBalance(candidate);
   const rightBal = overallBalance(rival);
-  const showAds = candidate.showMetaAds || rival.showMetaAds;
+  const showAds = candidate.showMetaAds && rival.showMetaAds && candidate.adsCollected && rival.adsCollected;
   return (
     <div data-testid="rivales-par" className="space-y-6">
       <p className="text-sm text-slate-600">
@@ -398,8 +400,14 @@ function SideCard({
   self?: boolean;
 }) {
   const name = snapshot.candidate.name;
+  // Pauta no medida (rival dado de alta solo con medios): no se muestra “0 activos”.
+  const adsHidden = level !== "radar" && snapshot.showMetaAds && !snapshot.adsCollected;
   return (
-    <Card title={name} subtitle={self ? "Este candidato" : `Rival · ${RIVAL_LEVEL_LABEL[level]}`}>
+    <Card
+      title={name}
+      subtitle={self ? "Este candidato" : `Rival · ${RIVAL_LEVEL_LABEL[level]}`}
+      info={adsHidden ? "La pauta de este candidato todavía no se mide en Pulso, por eso no se compara." : undefined}
+    >
       <dl className="grid grid-cols-2 gap-3 text-sm">
         <div>
           <dt className="text-xs uppercase tracking-wide text-slate-500">Medios</dt>
@@ -427,7 +435,7 @@ function SideCard({
             </dd>
           </div>
         ) : null}
-        {level !== "radar" ? (
+        {level !== "radar" && !adsHidden ? (
           <div>
             <dt className="text-xs uppercase tracking-wide text-slate-500">Anuncios</dt>
             <dd className="mt-1 font-semibold tabular-nums">

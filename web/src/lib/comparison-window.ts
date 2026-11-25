@@ -212,3 +212,59 @@ export function windowTooltip(w: CommonWindow, clock: Clock = DEFAULT_CLOCK): st
     : ` Todavía no hay un período anterior completo con datos ${who} para mostrar la variación.`;
   return `Comparado ${range}${since}, período con datos ${who}. Fuentes que se miden para ${w.subjects > 2 ? "todos" : "los dos"}: ${sources}.${prev}`;
 }
+
+/** Fuentes cuya recolección ya estaba activa en `sinceMs` (cubren todo desde ahí). */
+export function sourcesCoveredSince(starts: CoverageStarts, sinceMs: number): string[] {
+  return Object.entries(starts)
+    .filter(([, start]) => new Date(start).getTime() <= sinceMs)
+    .map(([source]) => source)
+    .sort();
+}
+
+export interface CoveredChange {
+  /** false = el período anterior no está cubierto por ninguna fuente: no se muestra variación. */
+  comparable: boolean;
+  percent: number | null;
+  current: number;
+  previous: number;
+  /** Fuentes con datos en los dos períodos (las únicas que se cuentan). */
+  sources: string[];
+}
+
+/**
+ * Variación de menciones de terceros contra el período anterior de la misma
+ * longitud, con tope superior en el inicio del período actual y contando solo
+ * fuentes activas durante los dos períodos.
+ */
+export function coveredPeriodChange(
+  mentions: Mention[],
+  starts: CoverageStarts,
+  opts: { now: Date; days: number },
+): CoveredChange {
+  const end = opts.now.getTime();
+  const curStart = end - opts.days * DAY_MS;
+  const prevStart = end - 2 * opts.days * DAY_MS;
+  const sources = sourcesCoveredSince(starts, prevStart);
+  if (sources.length === 0) return { comparable: false, percent: null, current: 0, previous: 0, sources };
+  let current = 0;
+  let previous = 0;
+  for (const m of mentions) {
+    if (m.account_relation !== "third_party" || !sources.includes(m.source)) continue;
+    const t = new Date(m.published_at).getTime();
+    if (t >= curStart) current++;
+    else if (t >= prevStart) previous++;
+  }
+  const percent = previous > 0 ? Math.round(((current - previous) / previous) * 100) : current === 0 ? 0 : null;
+  return { comparable: true, percent, current, previous, sources };
+}
+
+/** ⓘ de la variación: qué fuentes se compararon. Null si son todas las activas. */
+export function periodChangeTooltip(change: CoveredChange, starts: CoverageStarts, days: number): string | null {
+  const window = days === 7 ? "la semana anterior" : `los ${days} días anteriores`;
+  if (!change.comparable) return null;
+  const all = Object.keys(starts);
+  if (change.sources.length >= all.length) return null;
+  return `La variación compara con ${window} usando solo las fuentes con datos en los dos períodos: ${joinEs(
+    change.sources.map(sourceLabel),
+  )}.`;
+}

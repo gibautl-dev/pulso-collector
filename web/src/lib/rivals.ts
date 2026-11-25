@@ -23,6 +23,12 @@ export interface SubjectPack {
   ads: MetaAd[];
   answers: AiAnswer[];
   suspicious: SuspiciousAccount[];
+  /**
+   * Si Pulso recolecta anuncios de este sujeto. Por defecto: hay anuncios
+   * guardados. Un rival dado de alta solo con medios no tiene pauta medida:
+   * comparar “0 anuncios” sería engañoso.
+   */
+  adsCollected?: boolean;
 }
 
 export interface SubjectSnapshot {
@@ -39,6 +45,7 @@ export interface SubjectSnapshot {
   suspiciousCount: number | null;
   volume: DayVolume[];
   showMetaAds: boolean;
+  adsCollected: boolean;
   showAi: boolean;
   showX: boolean;
   showSuspicious: boolean;
@@ -92,6 +99,7 @@ function snapshot(pack: SubjectPack, rawOpts: CompareOpts): SubjectSnapshot {
     suspiciousCount: susp ? susp.flaggedAuthors : null,
     volume: dashboard.volume,
     showMetaAds,
+    adsCollected: pack.adsCollected ?? pack.ads.length > 0,
     showAi: level === "completo",
     showX: level !== "radar" && xCompared,
     showSuspicious: level === "completo",
@@ -134,7 +142,9 @@ export function buildRivalComparison(
     cur.rival = row.total;
     days.set(row.day, cur);
   }
-  const adsRanking = opts.level === "radar" ? [] : rankAds(candidate.ads, rival.ads, opts.now);
+  // El ranking frente a frente solo tiene sentido si se mide la pauta de los dos.
+  const adsRanking =
+    opts.level === "radar" || !left.adsCollected || !right.adsCollected ? [] : rankAds(candidate.ads, rival.ads, opts.now);
   return {
     level: opts.level,
     window: opts.window ?? null,
