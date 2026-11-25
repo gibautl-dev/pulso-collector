@@ -1,4 +1,4 @@
--- NO APLICAR todavía. Visitas diarias a la ficha de Wikipedia de cada
+-- Aplicado en pulso-demo el 2026-11-25 (hora de Argentina). Visitas diarias a la ficha de Wikipedia de cada
 -- candidato (API oficial de Wikimedia, sin clave).
 --
 -- Por qué una tabla propia y no mentions: es una serie de interés (visitas

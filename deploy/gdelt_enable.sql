@@ -1,4 +1,4 @@
--- NO APLICAR todavía. Habilita GDELT DOC 2.0 para los candidatos actuales.
+-- Aplicado en pulso-demo el 2026-11-25 (hora de Argentina). Habilita GDELT DOC 2.0 para los candidatos actuales.
 -- source_catalog ya tiene la fila 'gdelt' (intervalo 1200 s, apagada por defecto).
 -- NO cambia schema, roles ni políticas: pulso_collector ya puede insertar
 -- menciones con source='gdelt' (FK a source_catalog) y actualizar cursores.

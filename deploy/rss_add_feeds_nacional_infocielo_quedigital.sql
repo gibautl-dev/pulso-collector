@@ -1,4 +1,4 @@
--- NO APLICAR todavía. Suma 3 feeds RSS oficiales a Kicillof y Milei, sin
+-- Aplicado en pulso-demo el 2026-11-25 (hora de Argentina). Suma 3 feeds RSS oficiales a Kicillof y Milei, sin
 -- borrar ni reactivar los que se sacaron (Diputados Bonaerenses, InfoPlatense).
 -- Sánchez no se toca.
 --

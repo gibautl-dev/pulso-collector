@@ -1,9 +1,12 @@
 # Fuentes nuevas (Alerts, RSS, GDELT, Wikipedia)
 
-Rama `feat/new-sources`. **Nada de esto está aplicado ni publicado.** Costo
-esperado de las APIs: 0 (Alerts, RSS, GDELT y Wikimedia no tienen tarifa).
+Rama `feat/new-sources`. RSS (3 feeds nuevos), GDELT y Wikipedia: **aplicados
+en pulso-demo el 2026-11-25** (hora de Argentina). Google Alerts **no** se
+activó (sigue apagado, ver `deploy/GOOGLE_ALERTS.md`). Costo de las APIs: 0.
 
-## Qué hay que aplicar, y en qué orden, cuando se apruebe
+Backup del RSS previo: `backup_candidate_sources_pre_new_rss_2026-11-25.json` (junto a los otros backups de pulso-demo, fuera del repo).
+
+## Qué se aplicó, y en qué orden
 
 1. Backup de `candidate_sources.settings` de `rss_media` para `axel-kicillof`
    y `milei` (consulta en `deploy/rss_add_feeds_nacional_infocielo_quedigital.sql`).
@@ -12,11 +15,10 @@ esperado de las APIs: 0 (Alerts, RSS, GDELT y Wikimedia no tienen tarifa).
 3. Aplicar `deploy/gdelt_enable.sql` (no cambia el esquema; prende GDELT).
 4. Aplicar `deploy/wikipedia_pageviews.sql` (tablas nuevas + semilla de
    artículos). Después, en el cron, `PULSO_WIKIPEDIA_ENABLED=true`.
-5. Crear las alertas de Google a mano y pegar los feeds, según
-   `deploy/GOOGLE_ALERTS.md`. No hace falta migración.
+5. Google Alerts: **pendiente**. Crear las alertas a mano y pegar los feeds,
+   según `deploy/GOOGLE_ALERTS.md`. No hace falta migración.
 
-Hace falta redesplegar el cron (y la web, por la tarjeta de Wikipedia) con
-esta rama, después de ver las capturas.
+El cron necesita `PULSO_WIKIPEDIA_ENABLED=true` y redespliegue (web + pulso-rss).
 
 ## GDELT DOC 2.0
 

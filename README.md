@@ -1,10 +1,11 @@
 # Pulso — recolector, pasos 1 a 3
 
 Python 3.12+, PostgreSQL de Supabase y adaptadores RSS, Google News, Google
-Alerts, YouTube, X, GDELT DOC 2.0 y visitas de Wikipedia. YouTube, X, GDELT y
-Wikipedia quedan apagados hasta habilitar la fila o la migración (ver
-`deploy/NEW_SOURCES.md` y `deploy/GOOGLE_ALERTS.md`). GDELT y Wikipedia no
-tienen costo de API.
+Alerts, YouTube, X, GDELT DOC 2.0 y visitas de Wikipedia. En pulso-demo, el
+2026-11-25 se aplicaron los 3 RSS nuevos, GDELT y las tablas de Wikipedia
+(ver `deploy/NEW_SOURCES.md`). El cron prende Wikipedia con
+`PULSO_WIKIPEDIA_ENABLED=true`. Google Alerts sigue apagado (ver
+`deploy/GOOGLE_ALERTS.md`). GDELT y Wikipedia no tienen costo de API.
 No incluye front, cron, clasificación, agrupación, vistas ni backfill multifuente.
 
 ## Probar contra Supabase real
