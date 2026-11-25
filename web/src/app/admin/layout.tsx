@@ -34,6 +34,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           <Link href="/admin/temas" className="text-sm font-medium text-slate-700 hover:underline">
             Temas a medida
           </Link>
+          <Link href="/admin/gasto" className="text-sm font-medium text-slate-700 hover:underline">
+            Gasto
+          </Link>
         </div>
         <form action={signOut} className="mt-1">
           <button type="submit" className="text-xs font-medium text-indigo-600 hover:text-indigo-500">

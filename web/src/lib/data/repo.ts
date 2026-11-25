@@ -3,6 +3,7 @@ import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
 import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import type { SimulatorLimits } from "@/lib/response-simulator";
+import type { SpendReport } from "@/lib/spend";
 
 export interface MentionPage {
   items: Mention[];
@@ -65,6 +66,11 @@ export interface PulsoRepo {
   listRivals(candidateId: string): Promise<CandidateRival[]>;
   replaceRivals(candidateId: string, rows: { rival_id: string; level: RivalLevel }[]): Promise<void>;
   listRecordedDailyCosts(): Promise<RecordedDailyCost[]>;
+  /**
+   * Panel Gasto (solo staff): agregados por función/candidato/día, uso de X y topes.
+   * null = la función pulso_spend_report todavía no está en la base.
+   */
+  getSpendReport(from: string, to: string): Promise<SpendReport | null>;
   latestSuggestionRun(candidateId: string): Promise<RivalSuggestionRun | null>;
   saveSuggestionRun(run: Omit<RivalSuggestionRun, "id" | "created_at"> & { id?: string; created_at?: string }): Promise<RivalSuggestionRun>;
   listPendingCandidates(candidateId: string): Promise<PendingCandidate[]>;

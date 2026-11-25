@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SpendReport } from "@/lib/spend";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
@@ -563,6 +564,16 @@ export class SupabaseRepo implements PulsoRepo {
     }
   }
 
+
+  async getSpendReport(from: string, to: string): Promise<SpendReport | null> {
+    const res = await this.db.rpc("pulso_spend_report", { p_from: from, p_to: to });
+    if (res.error) {
+      const code = (res.error as { code?: string }).code ?? "";
+      if (code === "PGRST202" || code === "42883" || isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo el gasto: ${res.error.message}`);
+    }
+    return (res.data as SpendReport | null) ?? null;
+  }
 
   async listRecordedDailyCosts(): Promise<RecordedDailyCost[]> {
     const res = await this.db

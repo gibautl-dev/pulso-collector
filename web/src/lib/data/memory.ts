@@ -1,5 +1,6 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
 import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
+import type { SpendReport } from "@/lib/spend";
 import { SIMULATOR_LIMITS_DEFAULT, checkQuota, type SimulatorLimits } from "@/lib/response-simulator";
 import { dayKey, startOfDay } from "@/lib/time";
 import { hasDuplicatePending, matchExistingCandidate, slugifyName } from "@/lib/rival-suggest";
@@ -39,6 +40,8 @@ export interface FixtureData {
   simulator_limits?: SimulatorLimits | null;
   /** Preguntas al asistente del usuario local (modo fixture). */
   assistant_questions?: (AssistantQuestion & { cost_usd?: number | null })[];
+  /** Panel Gasto exportado de la base (solo lectura). undefined/null = sin datos. */
+  spend_report?: SpendReport | null;
 }
 
 /** Usuario del modo local (sin login). */
@@ -282,6 +285,18 @@ export class MemoryRepo implements PulsoRepo {
       ...(this.data.candidate_rivals ?? []).filter((r) => r.candidate_id !== candidateId),
       ...next,
     ];
+  }
+  async getSpendReport(from: string, to: string): Promise<SpendReport | null> {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede ver el gasto");
+    const r = this.data.spend_report;
+    if (!r) return null;
+    return {
+      ...r,
+      from,
+      to,
+      rows: r.rows.filter((x) => x.day >= from && x.day <= to),
+      x_usage: r.x_usage.filter((x) => x.quota_date >= from && x.quota_date <= to),
+    };
   }
   async listRecordedDailyCosts() {
     return this.data.recorded_daily_costs ?? [];
