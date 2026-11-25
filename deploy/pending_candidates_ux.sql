@@ -1,7 +1,6 @@
 -- UX de altas pendientes: evita duplicados, permite aprobar o borrar, registra quién y cuándo.
--- ESTE ARCHIVO NO SE EJECUTÓ. No aplicarlo hasta que Leandro lo apruebe.
--- No aplicar todavía: en pulso-demo hay filas duplicadas de "Milei" para Kicillof
--- que harían fallar el índice único. Hay que limpiarlas antes, en un paso aparte.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-24 (hora de Argentina). No volver a aplicar tal cual si ya está.
+-- Antes de aplicar se borraron 3 duplicados de Milei y se conservó 0ab49778-abe4-4a9a-b95d-45194898eb48.
 -- No contiene secretos. No cambia roles de collector/classifier. No invita usuarios.
 -- No enciende recolección: un 'aprobado' queda listo, pero el cron no lo mide
 -- hasta que exista en public.candidates.
