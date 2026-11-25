@@ -1,6 +1,6 @@
 # Resumen del día (daily brief) — feat/daily-brief
 
-Estado: **propuesto**. La migración NO está aplicada y el job está APAGADO por defecto.
+Estado: migración aplicada en pulso-demo (2026-11-25); job activado en el cron pulso-rss.
 
 ## Qué hace
 - Una vez por día, por candidato (incluye rivales descubiertos en DB), genera un resumen
@@ -35,7 +35,7 @@ Usa `CLASSIFIER_DATABASE_URL` (rol pulso_classifier) y `LLM_API_KEY`.
 CLI: `python -m pulso.daily_brief --candidate axel-kicillof [--date YYYY-MM-DD] [--dry-run] [--force]`
 o sin DB: `--pack pack.json --out out.json`.
 
-## Migración (requiere aprobación)
+## Migración (aplicada)
 `deploy/daily_brief.sql`: tabla `public.daily_briefs`, RLS forzado; pulso_classifier
 select/insert/update; authenticated solo lectura vía `candidate_members`; anon nada.
 

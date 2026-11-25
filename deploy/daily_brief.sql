@@ -1,5 +1,5 @@
 -- Resumen diario por candidato (qué cambió, por qué importa, qué hacer).
--- PROPUESTA: NO APLICADA. Necesita la aprobación de Leandro antes de correrla en pulso-demo.
+-- Aplicada en pulso-demo el 2026-11-25 (aprobada por Leandro).
 -- Idempotente. No contiene secretos. No cambia env ni el cron.
 --
 -- El job (python -m pulso.daily_brief) usa el rol pulso_classifier, la clave del
