@@ -42,6 +42,8 @@ export interface FixtureData {
   assistant_questions?: (AssistantQuestion & { cost_usd?: number | null })[];
   /** Panel Gasto exportado de la base (solo lectura). undefined/null = sin datos. */
   spend_report?: SpendReport | null;
+  /** Modo local: simula que hoy se alcanzó el tope de En la IA. */
+  ai_visibility_cap_reached_today?: boolean;
 }
 
 /** Usuario del modo local (sin login). */
@@ -297,6 +299,24 @@ export class MemoryRepo implements PulsoRepo {
       rows: r.rows.filter((x) => x.day >= from && x.day <= to),
       x_usage: r.x_usage.filter((x) => x.quota_date >= from && x.quota_date <= to),
     };
+  }
+  async updateAiVisibilityDailyCap(usd: number) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede cambiar el tope");
+    if (!Number.isFinite(usd) || usd < 0 || usd > 50) throw new Error("Tope inválido");
+    const r = this.data.spend_report;
+    if (r) {
+      r.caps = {
+        ...r.caps,
+        ai_visibility_budget: {
+          daily_budget_usd: usd,
+          last_reached_on: r.caps?.ai_visibility_budget?.last_reached_on ?? null,
+          updated_at: new Date().toISOString(),
+        },
+      };
+    }
+  }
+  async aiVisibilityCapReachedToday() {
+    return this.data.ai_visibility_cap_reached_today === true;
   }
   async listRecordedDailyCosts() {
     return this.data.recorded_daily_costs ?? [];

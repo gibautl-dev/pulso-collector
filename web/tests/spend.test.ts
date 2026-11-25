@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLASSIFIER_EST_USD_PER_MENTION, X_USD_PER_POST, fmtUsd, monthRange, summarizeSpend, type SpendReport } from "@/lib/spend";
+import { CLASSIFIER_EST_USD_PER_MENTION, X_USD_PER_POST, fmtUsd, monthRange, parseDailyCap, summarizeSpend, type SpendReport } from "@/lib/spend";
 
 const K = "k";
 const S = "s";
@@ -54,6 +54,18 @@ describe("summarizeSpend", () => {
     expect(s.features.find((f) => f.feature === "ia_visibilidad")!.dailyCapUsd).toBeNull();
   });
 
+  it("tope de En la IA desde la base: hoy contra el tope total", () => {
+    const c = summarizeSpend(report({
+      caps: { ai_visibility_budget: { daily_budget_usd: 1, last_reached_on: "2026-11-25", updated_at: "2026-11-25T20:00:00Z" } },
+    }));
+    const ia = c.features.find((f) => f.feature === "ia_visibilidad")!;
+    expect(ia.dailyCapUsd).toBe(1);
+    expect(ia.todayUsd).toBeCloseTo(0.5, 6);
+    expect(ia.capText).toContain("1,00");
+    expect(c.aiVisibilityCapUsd).toBe(1);
+    expect(c.aiVisibilityCapReachedOn).toBe("2026-11-25");
+  });
+
   it("X: posts × precio de lista y cupo sumado por día", () => {
     expect(s.xPostsTotal).toBe(300);
     expect(s.xUsd).toBeCloseTo(300 * X_USD_PER_POST, 6);
@@ -87,6 +99,14 @@ describe("helpers", () => {
   it("monthRange usa la fecha de Buenos Aires", () => {
     // 01:30 UTC del 1/12 todavía es 30/11 en Buenos Aires.
     expect(monthRange(new Date("2026-12-01T01:30:00Z"))).toEqual({ from: "2026-11-01", to: "2026-11-30" });
+  });
+  it("parseDailyCap", () => {
+    expect(parseDailyCap("1")).toBe(1);
+    expect(parseDailyCap("1,5")).toBe(1.5);
+    expect(parseDailyCap("0.555")).toBe(0.56);
+    expect(parseDailyCap("-1")).toBeNull();
+    expect(parseDailyCap("51")).toBeNull();
+    expect(parseDailyCap("abc")).toBeNull();
   });
   it("fmtUsd", () => {
     expect(fmtUsd(0)).toBe("USD 0");

@@ -17,6 +17,7 @@ from pulso.ai_visibility.run import (
     CANDIDATE_ID_KICILLOF,
     DEFAULT_NAME,
     DEFAULT_SLUG,
+    DailyBudget,
     run_visibility,
 )
 from pulso.region import profile_for
@@ -60,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
     candidate_name = args.name
     slug = args.candidate
     already = False
+    budget = None
+    on_reached = None
     try:
         api_key_from_env()
         settings = VisibilitySettings.from_env(dry_run=dry_override)
@@ -70,6 +73,13 @@ def main(argv: list[str] | None = None) -> int:
             candidate_id = str(row["id"])
             candidate_name = row["name"]
             already = database.already_ran_on(row["id"], datetime.now(profile_for(slug).zone).date())
+            state = database.budget_state()
+            budget = DailyBudget.from_state(state)
+            if budget is None:
+                log(event="ai_visibility_budget_missing")
+            else:
+                db_ref, today = database, state["today"]
+                on_reached = lambda: db_ref.mark_budget_reached(today)  # noqa: E731
         else:
             if slug == DEFAULT_SLUG:
                 candidate_id = candidate_id or CANDIDATE_ID_KICILLOF
@@ -87,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             already=already,
             log=log,
+            budget=budget,
+            on_budget_reached=on_reached,
         )
     except ValueError as exc:
         log(event="ai_visibility_error", error_type="config", detail=str(exc))

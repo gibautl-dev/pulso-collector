@@ -29,6 +29,7 @@ const FILES = [
   "deploy/inconsistency_alerts.sql",
   "deploy/response_simulator.sql",
   "deploy/data_assistant.sql",
+  "deploy/ai_visibility_cap.sql",
 ];
 
 beforeAll(async () => {
@@ -108,6 +109,7 @@ describe("spend_panel.sql", () => {
     expect(cls?.basis).toBe("sin_costo");
     expect(r.x_usage).toEqual([expect.objectContaining({ quota_date: "2026-11-25", posts: 150, requests: 6 })]);
     expect(r.x_caps.length).toBe(2);
+    expect((r as unknown as { caps: { ai_visibility_budget: { daily_budget_usd: number } } }).caps.ai_visibility_budget.daily_budget_usd).toBe(1);
   });
 
   it("no devuelve textos ni ids de usuario", async () => {

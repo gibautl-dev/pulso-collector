@@ -6,7 +6,7 @@ ya hay filas de ese día, salvo --force.
 """
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import Callable
 from zoneinfo import ZoneInfo
@@ -85,6 +85,34 @@ def ask_one(client: ResponsesClient, prompt: str, use_web_search: bool) -> tuple
         raise
 
 
+DEFAULT_RESERVE_USD = 0.15
+MIN_RESERVE_USD = 0.02
+
+
+@dataclass
+class DailyBudget:
+    """Tope diario total (todos los candidatos, día de Buenos Aires).
+
+    Antes de cada pregunta se reserva el costo máximo reciente de una respuesta
+    (o USD 0,15 si no hay historia): si lo gastado hoy + lo de esta corrida +
+    la reserva supera el tope, no se pregunta más.
+    """
+    daily_budget_usd: float
+    spent_today_usd: float
+    reserve_usd: float = DEFAULT_RESERVE_USD
+
+    @classmethod
+    def from_state(cls, state: dict | None) -> "DailyBudget | None":
+        if not state:
+            return None
+        recent = state.get("recent_max_usd")
+        reserve = max(MIN_RESERVE_USD, float(recent)) if recent else DEFAULT_RESERVE_USD
+        return cls(float(state["daily_budget_usd"]), float(state.get("spent_today_usd") or 0), reserve)
+
+    def allows(self, spent_this_run: float) -> bool:
+        return self.spent_today_usd + spent_this_run + self.reserve_usd <= self.daily_budget_usd + 1e-9
+
+
 def run_visibility(
     settings: VisibilitySettings,
     candidate_name: str,
@@ -100,6 +128,8 @@ def run_visibility(
     already: bool = False,
     now: datetime | None = None,
     log: Callable[..., None] | None = None,
+    budget: DailyBudget | None = None,
+    on_budget_reached: Callable[[], None] | None = None,
 ) -> dict:
     log = log or (lambda **kwargs: None)
     profile = profile_for(candidate_slug)
@@ -137,8 +167,18 @@ def run_visibility(
     use_web = settings.use_web_search
     web_fallback = False
     saved = 0
+    budget_reached = False
+    spent_run = 0.0
     try:
         for item in rendered:
+            if budget is not None and not budget.allows(spent_run):
+                budget_reached = True
+                log(event="ai_visibility_budget_reached", candidate=candidate_slug,
+                    daily_budget_usd=budget.daily_budget_usd,
+                    spent_today_usd=round(budget.spent_today_usd + spent_run, 6),
+                    reserve_usd=round(budget.reserve_usd, 6),
+                    asked=len(rows), pending=len(rendered) - len(rows) - len(errors))
+                break
             log(event="ai_visibility_ask", prompt_key=item["key"], web_search=use_web)
             try:
                 result, use_web_after = ask_one(ask_client, item["text"], use_web)
@@ -152,6 +192,9 @@ def run_visibility(
                 use_web = False
                 log(event="ai_visibility_web_disabled", reason="tool_unsupported")
             cost = cost_for_usage(result["model"], result["usage"], result["web_search_calls"])
+            # Modelo sin precio: se cuenta la reserva para no pasarse del tope.
+            spent_run += float(cost.get("cost_usd") if cost.get("cost_usd") is not None
+                               else (budget.reserve_usd if budget else 0))
             rows.append({
                 "key": item["key"],
                 "candidate_id": candidate_id,
@@ -193,6 +236,11 @@ def run_visibility(
                 raise RuntimeError("Para guardar hace falta el id del candidato")
             saved = database.save_answers(rows, asked_at, asked_at.date())
             wrote = saved > 0
+        if budget_reached and not settings.dry_run and on_budget_reached is not None:
+            try:
+                on_budget_reached()
+            except Exception as exc:  # no frena la corrida
+                log(event="ai_visibility_budget_mark_error", error_type=type(exc).__name__)
         score = daily_balance(rows)
         payload = {
             "candidate": {
@@ -218,6 +266,7 @@ def run_visibility(
             "classify_problems": classify_problems,
             "errors": errors,
             "skipped": False,
+            "budget_reached": budget_reached,
             "cost": {
                 **run_cost,
                 "ask": ask_summary,
@@ -231,7 +280,7 @@ def run_visibility(
             daily_balance=score,
             cost_usd=run_cost.get("cost_usd"),
             monthly_30d_usd=payload["cost"]["monthly_30d_usd"],
-            wrote_db=wrote, saved=saved)
+            wrote_db=wrote, saved=saved, budget_reached=budget_reached)
         return payload
     finally:
         if own_ask:

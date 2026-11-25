@@ -65,6 +65,41 @@ class VisibilityDB:
             (candidate_id,),
         ).fetchone()
 
+    def budget_state(self) -> dict | None:
+        """Tope diario total de En la IA y lo gastado hoy (día de Buenos Aires).
+
+        None si la tabla del tope no existe (migración sin aplicar): sin tope.
+        """
+        import psycopg
+        try:
+            row = self.connection.execute(
+                """select b.daily_budget_usd, b.timezone,
+                          (select coalesce(sum(a.cost), 0) from public.ai_answers a
+                            where a.asked_at >= date_trunc('day', now() at time zone b.timezone) at time zone b.timezone
+                              and a.asked_at < (date_trunc('day', now() at time zone b.timezone) + interval '1 day') at time zone b.timezone
+                          ) as spent_today,
+                          (select max(c) from (select a.cost as c from public.ai_answers a
+                                                where a.cost is not null
+                                                order by a.asked_at desc limit 50) t) as recent_max,
+                          (now() at time zone b.timezone)::date as today
+                     from public.ai_visibility_budget b where b.id"""
+            ).fetchone()
+        except psycopg.errors.UndefinedTable:
+            return None
+        if not row:
+            return None
+        return {
+            "daily_budget_usd": float(row["daily_budget_usd"]),
+            "spent_today_usd": float(row["spent_today"] or 0),
+            "recent_max_usd": float(row["recent_max"]) if row["recent_max"] is not None else None,
+            "today": row["today"],
+        }
+
+    def mark_budget_reached(self, day) -> None:
+        self.connection.execute(
+            "update public.ai_visibility_budget set last_reached_on=%s where id", (day,)
+        )
+
     def save_answers(self, rows: list[dict], asked_at: datetime, asked_on: date) -> int:
         saved = 0
         for row in rows:

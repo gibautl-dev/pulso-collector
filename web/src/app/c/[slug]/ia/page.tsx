@@ -29,7 +29,10 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
   const sp = await searchParams;
   const pregunta = typeof sp.pregunta === "string" ? sp.pregunta : "";
   const { repo, candidate } = await loadCandidate(slug);
-  const answers = await repo.listAiAnswers(candidate.id);
+  const [answers, capReached] = await Promise.all([
+    repo.listAiAnswers(candidate.id),
+    repo.aiVisibilityCapReachedToday(),
+  ]);
   const view = computeAiDashboard(answers);
   const latest = view.latestDay ? answersOnDay(answers, view.latestDay) : [];
   const gauge = dayBalanceGauge(answers);
@@ -57,6 +60,19 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
         title="En la IA"
         description={`Cómo responde la IA cuando le preguntan por ${candidate.name}. ${lastLabel}`}
       />
+      {capReached ? (
+        <div
+          className="mb-6 flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900"
+          role="status"
+          data-testid="ai-cap-reached"
+        >
+          <span aria-hidden className="text-lg leading-none">☀︎</span>
+          <p>
+            <strong className="font-semibold">Por hoy ya completamos las consultas a la IA.</strong> Volvé mañana para
+            ver la próxima foto. Mientras tanto, acá tenés la más reciente.
+          </p>
+        </div>
+      ) : null}
 
       {view.insufficient ? (
         <Card>

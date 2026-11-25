@@ -1,4 +1,6 @@
+import { AiCapForm } from "@/components/ai-cap-form";
 import { Badge, Card, EmptyState, InfoTip, PageHeader, Stat } from "@/components/ui";
+import { saveAiVisibilityCapAction } from "./actions";
 import { requireStaff } from "@/lib/context";
 import {
   CLASSIFIER_EST_USD_PER_MENTION,
@@ -227,6 +229,16 @@ export default async function AdminGastoPage() {
             </tbody>
           </table>
         </div>
+        {s.aiVisibilityCapUsd != null ? (
+          <div className="border-t border-slate-100 bg-slate-50 px-5 py-4">
+            <AiCapForm action={saveAiVisibilityCapAction} current={s.aiVisibilityCapUsd} />
+            <p className="mt-2 text-xs text-slate-500">
+              Suma de todos los candidatos, día de Buenos Aires. Antes de cada pregunta se reserva el costo de una
+              respuesta: si no entra, ese día no se pregunta más y el cliente ve un aviso amable en En la IA.
+              {s.aiVisibilityCapReachedOn ? ` Último día en que se alcanzó: ${shortDay(s.aiVisibilityCapReachedOn)}.` : ""}
+            </p>
+          </div>
+        ) : null}
         <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
           Clasificador: USD {fmtNum(CLASSIFIER_EST_USD_PER_MENTION, 6)} por mención (EST, medido en los logs del cron del 25/11). Clasificación de anuncios: no guarda costo y no hay medición, por eso figura sin dato.
         </p>

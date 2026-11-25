@@ -29,3 +29,16 @@ SECURITY DEFINER, verifica `pulso_staff` con `auth.uid()`, devuelve agregados (s
 Sin la función, la página muestra un aviso vacío y no rompe.
 
 Pruebas: `tests/spend-panel-permissions.sql.test.ts` (PGlite) y `tests/spend.test.ts`.
+
+## Tope diario de "En la IA" (deploy/ai_visibility_cap.sql)
+- Aprobado por Leandro el 25/11: USD 1,00 por día **en total** (todos los candidatos), día de Buenos Aires.
+- Tabla `ai_visibility_budget` (una fila). Solo `pulso_staff` la ve y la edita (formulario en /admin/gasto).
+  El job (`pulso_classifier`) la lee y solo puede escribir `last_reached_on`.
+- El job suma `ai_answers.cost` del día y, antes de cada pregunta, reserva el costo máximo de las últimas
+  50 respuestas (o USD 0,15 si no hay historia). Si no entra, no pregunta más ese día y marca `last_reached_on`.
+- La web del cliente llama `ai_visibility_cap_reached_today()` (solo un booleano) y muestra en En la IA:
+  "Por hoy ya completamos las consultas a la IA. Volvé mañana…". Sin montos ni texto técnico.
+- Impacto CALC con el uso actual (~USD 0,086 por respuesta, 10 preguntas por candidato): entran ~11 respuestas
+  por día en total. Sánchez corre primero (09:00 de Madrid = 05:00 de Buenos Aires) y usa ~USD 0,86; a Kicillof
+  (09:00 de Buenos Aires) le quedan ~1–2 preguntas por día.
+- Requiere deploy del cron (el corte vive en `pulso/ai_visibility`). Aplicar antes que `spend_panel.sql`.
