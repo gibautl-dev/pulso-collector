@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief } from "@/lib/types";
 import { isRivalLevel } from "@/lib/types";
 import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
@@ -256,6 +256,21 @@ export class SupabaseRepo implements PulsoRepo {
       throw new Error(`Error leyendo la configuración de anuncios de Google: ${res.error.message}`);
     }
     return (res.data as GoogleAdsSettings | null) ?? null;
+  }
+
+  async listDailyBriefs(candidateId: string, limit: number): Promise<DailyBrief[]> {
+    const res = await this.db
+      .from("daily_briefs")
+      .select("id,candidate_id,brief_date,timezone,status,headline,metrics,output,created_at,updated_at")
+      .eq("candidate_id", candidateId)
+      .order("brief_date", { ascending: false })
+      .limit(limit);
+    if (res.error) {
+      // La tabla llega con deploy/daily_brief.sql; hasta entonces la sección queda vacía.
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo el resumen del día: ${res.error.message}`);
+    }
+    return (res.data as DailyBrief[]) ?? [];
   }
 
   async listCrisisAlerts(candidateId: string) {

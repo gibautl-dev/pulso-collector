@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief } from "@/lib/types";
 import { hasDuplicatePending, matchExistingCandidate, slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -29,6 +29,7 @@ export interface FixtureData {
   pending_candidates?: PendingCandidate[];
   custom_topics?: CustomTopic[];
   custom_topic_summaries?: CustomTopicSummary[];
+  daily_briefs?: DailyBrief[];
 }
 
 
@@ -161,6 +162,13 @@ export class MemoryRepo implements PulsoRepo {
     alert.status = status;
     alert.status_note = note;
     alert.status_updated_at = new Date().toISOString();
+  }
+  async listDailyBriefs(candidateId: string, limit: number) {
+    return (this.data.daily_briefs ?? [])
+      .filter((b) => b.candidate_id === candidateId)
+      .slice()
+      .sort((a, b) => b.brief_date.localeCompare(a.brief_date))
+      .slice(0, limit);
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;

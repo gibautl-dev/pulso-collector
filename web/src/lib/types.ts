@@ -526,3 +526,55 @@ export interface GoogleAdsSettings {
 export function isGoogleAdSource(value: string): value is GoogleAdSource {
   return (GOOGLE_AD_SOURCES as readonly string[]).includes(value);
 }
+
+/** Resumen diario (public.daily_briefs). Las cifras vienen calculadas; el texto cita menciones. */
+export type DailyBriefStatus = "ok" | "insufficient";
+export interface DailyBriefPoint {
+  text: string;
+  mention_ids: string[];
+}
+export interface DailyBriefAction {
+  action: string;
+  why: string;
+  priority: "alta" | "media" | "baja" | string;
+  area: string;
+  mention_ids: string[];
+}
+export interface DailyBriefHighlight {
+  key: string;
+  value: string;
+  label: string;
+  delta: string | null;
+  tone: "negative" | "positive" | "neutral" | string;
+}
+export interface DailyBriefSource {
+  id: string;
+  url: string;
+  title: string;
+  outlet: string | null;
+  source: string;
+  tone: Tone | null;
+  time: string | null;
+}
+export interface DailyBriefOutput {
+  headline: string;
+  highlight: DailyBriefHighlight | null;
+  what_changed: DailyBriefPoint[];
+  why_it_matters: DailyBriefPoint[];
+  what_to_do: DailyBriefAction[];
+  aclaracion?: string;
+  insufficient_reason?: string | null;
+  sources: DailyBriefSource[];
+}
+export interface DailyBrief {
+  id: string;
+  candidate_id: string;
+  brief_date: string;
+  timezone: string;
+  status: DailyBriefStatus | string;
+  headline: string | null;
+  metrics: Record<string, unknown>;
+  output: DailyBriefOutput;
+  created_at: string;
+  updated_at?: string;
+}

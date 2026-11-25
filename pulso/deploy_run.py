@@ -149,6 +149,7 @@ def main():
                 run_meta_ads_classify(args)
                 run_google_ads(args, remaining=timeout - (time.monotonic() - started))
                 run_crisis_agent(args)
+                run_daily_brief(args)
             return code
         finished = []
         timed_out = False
@@ -184,6 +185,8 @@ def main():
             # media/RSS y clasificador: sin IA, X extra, Meta ni crisis.
             if env_slugs and slug not in env_slugs:
                 log(event='cron_post_steps_skipped', reason='db_rival_media_only', candidate=slug)
+                # El resumen diario sí corre para los rivales: solo lee menciones ya clasificadas.
+                run_daily_brief(child_args)
                 continue
             run_suspicious(child_args)
             run_ai_visibility(child_args)
@@ -195,6 +198,7 @@ def main():
                 log(event='meta_ads_classify_skipped', reason='region_disabled', candidate=slug)
             run_google_ads(child_args, remaining=timeout - (time.monotonic() - started))
             run_crisis_agent(child_args)
+            run_daily_brief(child_args)
     # El resultado del clasificador, el detector, la visibilidad en IA, Meta Ads,
     # los anuncios de Google o la clasificación de anuncios nunca cambia el
     # código de salida del cron.
@@ -370,6 +374,30 @@ def run_crisis_agent(collector_args):
                            env=child_env(COLLECTOR_ONLY, META_ADS_ONLY), prefix='crisis_agent')
     except Exception as exc:
         log(event='crisis_agent_error', error_type=type(exc).__name__)
+        return None
+
+
+def run_daily_brief(collector_args):
+    """Resumen diario por candidato. Apagado por defecto; una vez por día; no publica nada."""
+    try:
+        if os.getenv('PULSO_DAILY_BRIEF_ENABLED', 'false').lower() != 'true':
+            log(event='daily_brief_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_DAILY_BRIEF_TIMEOUT_SECONDS', '180'))
+        if not 30 <= timeout <= 600:
+            raise ValueError('Invalid daily-brief timeout')
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_DAILY_BRIEF_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
+        # Misma clave LLM y rol del clasificador; no ve al recolector ni el token de Meta.
+        # El módulo se saltea solo antes de PULSO_DAILY_BRIEF_HOUR o si ya existe el resumen de ayer.
+        return run_command([sys.executable, '-m', 'pulso.daily_brief', *args], timeout,
+                           env=child_env(COLLECTOR_ONLY, META_ADS_ONLY), prefix='daily_brief')
+    except Exception as exc:
+        log(event='daily_brief_error', error_type=type(exc).__name__)
         return None
 
 

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ACCION_SECTION_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
+import { DAILY_BRIEF_SECTION_LABEL } from "@/lib/daily-brief";
 
 const ICONS: Record<string, string> = {
   tablero: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
+  resumen: "M6 3h9l3 3v15H6V3zM9 9h6M9 13h6M9 17h4",
   menciones: "M4 6h16M4 12h16M4 18h10",
   fuentes: "M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2l2.8 2.8M5.6 18.4l2.8-2.8m7.2-7.2l2.8-2.8",
   sospechosas: "M12 3l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z",
@@ -23,6 +25,7 @@ export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean 
   const base = `/c/${slug}`;
   const items = [
     { href: base, label: "Tablero", icon: "tablero", active: pathname === base },
+    { href: `${base}/resumen`, label: DAILY_BRIEF_SECTION_LABEL, icon: "resumen", active: pathname.startsWith(`${base}/resumen`) },
     { href: `${base}/menciones`, label: "Menciones", icon: "menciones", active: pathname.startsWith(`${base}/menciones`) },
     { href: `${base}/fuentes`, label: "Salud de fuentes", icon: "fuentes", active: pathname.startsWith(`${base}/fuentes`) },
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },

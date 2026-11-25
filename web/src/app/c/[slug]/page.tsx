@@ -21,6 +21,7 @@ import {
   pickHighestRiskAlert,
   pickTopCustomTopic,
 } from "@/lib/home-spotlights";
+import { briefDateLabel, normalizeOutput } from "@/lib/daily-brief";
 import {
   ActionSpotlightCard,
   ComparisonSpotlightCard,
@@ -119,6 +120,8 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const openPending = pendingAlerts(crisisAlerts);
   const topAlert = pickHighestRiskAlert(crisisAlerts);
   const topCustom = pickTopCustomTopic(customStats);
+  const [latestBrief] = await repo.listDailyBriefs(candidate.id, 1);
+  const latestBriefOut = latestBrief ? normalizeOutput(latestBrief.output) : null;
 
 
   return (
@@ -139,6 +142,30 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
           ))}
         </div>
       </PageHeader>
+
+      {latestBrief && latestBriefOut ? (
+        <Link
+          href={`/c/${slug}/resumen`}
+          data-testid="tablero-resumen"
+          className="mb-6 flex flex-col gap-3 rounded-xl border border-indigo-100 bg-indigo-50/60 px-5 py-4 hover:bg-indigo-50 sm:flex-row sm:items-center"
+        >
+          {latestBriefOut.highlight ? (
+            <div className="shrink-0 sm:w-40">
+              <p className="text-3xl font-semibold tabular-nums text-indigo-700">{latestBriefOut.highlight.value}</p>
+              <p className="text-[11px] leading-tight text-indigo-900/70">{latestBriefOut.highlight.label}</p>
+            </div>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600">
+              Resumen del {briefDateLabel(latestBrief.brief_date, { capital: false })}
+            </p>
+            <p className="mt-0.5 text-sm font-semibold text-slate-900">{latestBriefOut.headline || latestBrief.headline}</p>
+          </div>
+          <span className="inline-flex shrink-0 items-center rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white">
+            Ver resumen →
+          </span>
+        </Link>
+      ) : null}
 
       <div data-testid="tablero-kpis" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat
