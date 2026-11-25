@@ -2,6 +2,8 @@ import { Card, EmptyState, PageHeader, RunStatusBadge } from "@/components/ui";
 import { computeSourceHealth } from "@/lib/analytics";
 import { loadCandidate } from "@/lib/context";
 import { sourceLabel } from "@/lib/labels";
+import { GOOGLE_ADS_EXAMPLE_BANNER, GOOGLE_ADS_SPAIN_PENDING, SOURCE_LABEL as GOOGLE_SOURCE_LABEL } from "@/lib/google-ads";
+import { computeGoogleAdsHealth } from "@/lib/google-ads-health";
 import { computeMetaAdsHealth } from "@/lib/meta-ads-health";
 import { regionFor } from "@/lib/region";
 import { clockFor, durationSeconds, formatDateTime, relativeTime } from "@/lib/time";
@@ -14,11 +16,13 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
   const { slug } = await params;
   const clock = clockFor(slug);
   const { repo, candidate } = await loadCandidate(slug);
-  const [runs, sources, ads, adsSettings, ts] = await Promise.all([
+  const [runs, sources, ads, adsSettings, googleAds, googleSettings, ts] = await Promise.all([
     repo.listSourceRuns(candidate.id, 40),
     repo.listCandidateSources(candidate.id),
     repo.listMetaAds(candidate.id),
     repo.listMetaAdsSettings(candidate.id),
+    repo.listGoogleAds(candidate.id),
+    repo.listGoogleAdsSettings(candidate.id),
     repo.dataTimestamp(),
   ]);
   const now = ts ? new Date(ts) : new Date();
@@ -28,6 +32,9 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
   const metaHealth = computeMetaAdsHealth(ads, adsSettings, {
     now,
     showMetaAds: regionFor(slug).showMetaAds,
+  });
+  const googleHealth = computeGoogleAdsHealth(googleAds, googleSettings, {
+    pendingReason: slug === "pedro-sanchez" ? GOOGLE_ADS_SPAIN_PENDING : null,
   });
 
   return (
@@ -132,6 +139,56 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
             </>
           ) : (
             <p className="mt-4 text-sm text-slate-700">{metaHealth.unavailableReason}</p>
+          )}
+        </Card>
+      </div>
+
+      <div className="mt-4" id="salud-google-ads">
+        <Card>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">{sourceLabel("google_ads")}</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {googleSettings?.source
+                  ? GOOGLE_SOURCE_LABEL[googleSettings.source]
+                  : "Job propio, no pasa por source_runs del recolector de 20 minutos."}
+              </p>
+            </div>
+            {googleHealth.lastSuccessAt ? (
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">OK</span>
+            ) : (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-slate-200">Sin corrida</span>
+            )}
+          </div>
+          <dl className="mt-4 grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <dt className="text-xs text-slate-500">Último éxito</dt>
+              <dd className="mt-0.5 font-medium text-slate-900">
+                {googleHealth.lastSuccessAt
+                  ? formatDateTime(googleHealth.lastSuccessAt, clock)
+                  : "Sin dato"}
+              </dd>
+              {googleHealth.lastSuccessAt ? (
+                <p className="mt-0.5 text-xs text-slate-500">{clock.tzLabel}</p>
+              ) : null}
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Anuncios última captura</dt>
+              <dd className="mt-0.5 font-medium text-slate-900">{googleHealth.totalAds || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-slate-500">Anunciantes</dt>
+              <dd className="mt-0.5 font-medium text-slate-900">{googleHealth.advertiserCount || "—"}</dd>
+            </div>
+          </dl>
+          {googleHealth.pendingReason ? (
+            <p className="mt-3 text-sm text-slate-700">{googleHealth.pendingReason}</p>
+          ) : repo.mode === "fixture" && googleAds.length > 0 ? (
+            <p className="mt-3 text-xs text-slate-500">{GOOGLE_ADS_EXAMPLE_BANNER}</p>
+          ) : (
+            <p className="mt-3 text-xs text-slate-500">
+              Ruta oficial solamente. El job no está cableado al cron todavía.
+            </p>
           )}
         </Card>
       </div>

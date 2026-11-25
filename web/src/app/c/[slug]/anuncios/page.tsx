@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { AdsVolumeChart } from "@/components/ads-volume-chart";
+import { GoogleAdCard } from "@/components/google-ad";
 import { MetaAdCard } from "@/components/meta-ad";
 import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
+import { computeGoogleAdsView, formatGoogleAdDate, formatSpendAggregate as formatGoogleSpendAggregate, GOOGLE_ADS_EXAMPLE_BANNER, GOOGLE_ADS_KICILLOF_SCOPE, GOOGLE_ADS_SPAIN_PENDING, SOURCE_LABEL as GOOGLE_SOURCE_LABEL } from "@/lib/google-ads";
 import { computeMetaAdsView, formatAmount, formatSpendAggregate, STANCE_BAR, STANCE_LABEL, type AdsBucket } from "@/lib/meta-ads";
 import { formatShare } from "@/lib/ai-visibility";
 import { formatMetaAdDate } from "@/lib/meta-ads";
@@ -71,22 +73,14 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
   const filters = parseFilters(sp);
   const listPage = Math.max(1, Number(sp.p) || 1);
   const { repo, candidate } = await loadCandidate(slug);
-  if (!region.showMetaAds) {
-    return (
-      <>
-        <PageHeader
-          title="Anuncios"
-          description={`Biblioteca de anuncios de Meta para ${candidate.name}.`}
-        />
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          Esta sección no está activa para candidatos de la Unión Europea. {META_ADS_EU_UNAVAILABLE}{" "}
-          En Pulso no consultamos esa API para este candidato, para no usar valores de Argentina por defecto.
-        </p>
-      </>
-    );
-  }
-  const ads = await repo.listMetaAds(candidate.id);
-  const ts = await repo.dataTimestamp();
+  const [ads, googleAds, googleSettings, ts] = await Promise.all([
+    region.showMetaAds ? repo.listMetaAds(candidate.id) : Promise.resolve([]),
+    repo.listGoogleAds(candidate.id),
+    repo.listGoogleAdsSettings(candidate.id),
+    repo.dataTimestamp(),
+  ]);
+  const googleView = computeGoogleAdsView(googleAds);
+  const googleExample = repo.mode === "fixture" && googleAds.length > 0;
   const latestFetch = ads.reduce<string | null>((acc, ad) => {
     if (!ad.fetched_at) return acc;
     return !acc || ad.fetched_at > acc ? ad.fetched_at : acc;
@@ -130,8 +124,9 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
     <>
       <PageHeader
         title="Anuncios"
-        description={`Anuncios políticos en Facebook e Instagram que mencionan a ${candidate.name}, según la Biblioteca de anuncios de Meta. ${periodLabel}. ${lastFetched}`}
+        description={`Anuncios en Meta y en Google para ${candidate.name}, según fuentes oficiales. ${region.showMetaAds ? `${periodLabel}. ${lastFetched}` : "Meta no aplica en la UE."}`}
       >
+        {region.showMetaAds ? (
         <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm shadow-sm">
           {PERIODS.map((p) => {
             const value = p.value === "todo" ? "all" : Number(p.value);
@@ -147,8 +142,28 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
             );
           })}
         </div>
+        ) : null}
       </PageHeader>
 
+      {googleExample ? (
+        <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          {GOOGLE_ADS_EXAMPLE_BANNER}
+        </p>
+      ) : null}
+
+      {!region.showMetaAds ? (
+        <div id="anuncios-meta" className="mb-6">
+          <h2 className="text-lg font-semibold text-slate-900">Anuncios de Meta</h2>
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            Esta sección no está activa para candidatos de la Unión Europea. {META_ADS_EU_UNAVAILABLE}{" "}
+            En Pulso no consultamos esa API para este candidato, para no usar valores de Argentina por defecto.
+          </p>
+        </div>
+      ) : null}
+
+      {region.showMetaAds ? (
+      <div id="anuncios-meta">
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Anuncios de Meta</h2>
       <p className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
         Estos datos salen de la API oficial de la Biblioteca de anuncios de Meta (ads_archive), no de un scraping.
         El gasto y las impresiones llegan en rangos, no en montos exactos, y cada moneda se muestra por separado: no
@@ -393,6 +408,67 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
           </Card>
         </>
       )}
+
+      </div>
+      ) : null}
+
+      <section id="anuncios-google" className="mt-10">
+        <h2 className="text-lg font-semibold text-slate-900">Anuncios de Google</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          {(googleSettings?.source ?? googleView.source) ? GOOGLE_SOURCE_LABEL[(googleSettings?.source ?? googleView.source)!] : "Ruta oficial de Google, según el país del candidato."}
+        </p>
+        {slug === "axel-kicillof" ? (
+          <p className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+            {GOOGLE_ADS_KICILLOF_SCOPE}
+          </p>
+        ) : null}
+        {slug === "pedro-sanchez" && googleAds.length === 0 ? (
+          <p className="mt-3 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+            {GOOGLE_ADS_SPAIN_PENDING}
+          </p>
+        ) : null}
+        {googleAds.length > 0 ? (
+          <>
+            <div className="mt-4 grid gap-4 sm:grid-cols-3">
+              <Stat label="Anuncios en la captura" value={String(googleView.total)} />
+              <Stat label="Anunciantes" value={String(googleView.advertisers.length)} />
+              <Stat
+                label="Período de difusión"
+                value={
+                  googleView.firstStart && googleView.lastDelivery
+                    ? `${formatGoogleAdDate(googleView.firstStart)} – ${formatGoogleAdDate(googleView.lastDelivery)}`
+                    : "—"
+                }
+              />
+            </div>
+            {formatGoogleSpendAggregate(googleView) ? (
+              <p className="mt-3 text-sm text-slate-600">{formatGoogleSpendAggregate(googleView)}</p>
+            ) : (
+              <p className="mt-3 text-sm text-slate-600">Esta fuente no publica gasto (o no hay moneda en la captura).</p>
+            )}
+            <Card title="Anunciantes" className="mt-4">
+              <ul className="space-y-2 text-sm">
+                {googleView.advertisers.map((item) => (
+                  <li key={item.advertiserId} className="flex justify-between gap-3">
+                    <span className="text-slate-800">{item.advertiserName}</span>
+                    <span className="tabular-nums text-slate-500">{item.ads}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+            <Card title="Listado" subtitle="Vínculos a la ficha oficial. Pulso no scrapea esa página." className="mt-4">
+              <ul>
+                {googleAds.map((ad) => (
+                  <GoogleAdCard key={ad.id} ad={ad} />
+                ))}
+              </ul>
+            </Card>
+          </>
+        ) : slug !== "pedro-sanchez" ? (
+          <EmptyState>Todavía no hay anuncios de Google cargados para este candidato.</EmptyState>
+        ) : null}
+      </section>
+
     </>
   );
 }

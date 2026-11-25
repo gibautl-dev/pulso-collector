@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 import { isRivalLevel } from "@/lib/types";
 import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
@@ -227,6 +227,35 @@ export class SupabaseRepo implements PulsoRepo {
       throw new Error(`Error leyendo la configuración de anuncios: ${res.error.message}`);
     }
     return (res.data as MetaAdsSettings | null) ?? null;
+  }
+
+
+  async listGoogleAds(candidateId: string): Promise<GoogleAd[]> {
+    const res = await this.db
+      .from("google_ads")
+      .select("id,candidate_id,source,ad_id,ad_url,ad_type,regions,advertiser_id,advertiser_name,advertiser_legal_name,date_range_start,date_range_end,first_served_at,last_served_at,num_of_days,impressions_lower,impressions_upper,impressions_raw,spend_currency,spend_lower,spend_upper,age_targeting,gender_targeting,geo_targeting_included,topic,ad_funded_by,fetched_at,fetched_on")
+      .eq("candidate_id", candidateId)
+      .order("last_served_at", { ascending: false, nullsFirst: false })
+      .order("ad_id", { ascending: true })
+      .limit(5000);
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo anuncios de Google: ${res.error.message}`);
+    }
+    return (res.data as GoogleAd[]) ?? [];
+  }
+
+  async listGoogleAdsSettings(candidateId: string): Promise<GoogleAdsSettings | null> {
+    const res = await this.db
+      .from("google_ads_settings")
+      .select("candidate_id,enabled,source,region,last_run_on,report_updated_at,updated_at")
+      .eq("candidate_id", candidateId)
+      .maybeSingle();
+    if (res.error) {
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo la configuración de anuncios de Google: ${res.error.message}`);
+    }
+    return (res.data as GoogleAdsSettings | null) ?? null;
   }
 
   async listCrisisAlerts(candidateId: string) {

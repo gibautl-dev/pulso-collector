@@ -11,6 +11,8 @@ describe("regionFor", () => {
     expect(es.electionLabel).toBe("Elecciones generales 29N · España");
     expect(es.timezone).toBe("Europe/Madrid");
     expect(es.showMetaAds).toBe(false);
+    expect(es.showGoogleAds).toBe(true);
+    expect(regionFor("axel-kicillof").showGoogleAds).toBe(true);
     expect(clockFor("pedro-sanchez").tzLabel).toBe("hora de España");
   });
 

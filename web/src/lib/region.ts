@@ -8,6 +8,8 @@ export interface RegionProfile {
   tzLabel: string;
   electionLabel: string;
   showMetaAds: boolean;
+  /** Ruta oficial de anuncios de Google disponible para este país. */
+  showGoogleAds: boolean;
 }
 
 export const DEFAULT_REGION: RegionProfile = {
@@ -18,6 +20,7 @@ export const DEFAULT_REGION: RegionProfile = {
   tzLabel: "hora de Argentina",
   electionLabel: "Elecciones 2027 · Argentina",
   showMetaAds: true,
+  showGoogleAds: true,
 };
 
 export const SPAIN_REGION: RegionProfile = {
@@ -28,6 +31,7 @@ export const SPAIN_REGION: RegionProfile = {
   tzLabel: "hora de España",
   electionLabel: "Elecciones generales 29N · España",
   showMetaAds: false,
+  showGoogleAds: true,
 };
 
 const PROFILES: Record<string, RegionProfile> = {

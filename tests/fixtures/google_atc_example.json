@@ -1,0 +1,37 @@
+{
+  "note": "EJEMPLO de forma de una fila de creative_stats (Ads Transparency Center). No es un anuncio real verificado.",
+  "rows": [
+    {
+      "advertiser_id": "AR00000000000000000001",
+      "creative_id": "CR00000000000000000001",
+      "creative_page_url": "https://adstransparency.google.com/advertiser/AR00000000000000000001/creative/CR00000000000000000001?region=ES",
+      "ad_format_type": "VIDEO",
+      "advertiser_disclosed_name": "Ejemplo Anunciante ES",
+      "advertiser_legal_name": "Ejemplo Anunciante ES S.A.",
+      "advertiser_location": "ES",
+      "advertiser_verification_status": "VERIFIED",
+      "topic": "Politics",
+      "is_funded_by_google_ad_grants": false,
+      "ad_funded_by": null,
+      "region_stats": [
+        {
+          "region_code": "ES",
+          "first_shown": "2025-06-01",
+          "last_shown": "2025-06-15",
+          "times_shown_lower_bound": 10000,
+          "times_shown_upper_bound": 15000,
+          "times_shown_start_date": "2025-06-01",
+          "times_shown_end_date": "2025-06-15",
+          "times_shown_availability_date": null
+        }
+      ],
+      "audience_selection_approach_info": {
+        "demographic_info": "CRITERIA_UNUSED",
+        "geo_location": "CRITERIA_INCLUDED",
+        "contextual_signals": "CRITERIA_UNUSED",
+        "customer_lists": "CRITERIA_UNUSED",
+        "topics_of_interest": "CRITERIA_UNUSED"
+      }
+    }
+  ]
+}

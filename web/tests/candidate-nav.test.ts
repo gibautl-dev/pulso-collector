@@ -45,10 +45,10 @@ describe("hrefForCandidate", () => {
     expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof")).toBe("/c/pedro-sanchez");
   });
 
-  it("vuelve al tablero si Anuncios no está en el destino (España)", () => {
+  it("conserva Anuncios en España porque Google sí aplica ahí", () => {
     expect(sectionAvailable("anuncios", "axel-kicillof")).toBe(true);
-    expect(sectionAvailable("anuncios", "pedro-sanchez")).toBe(false);
-    expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/anuncios")).toBe("/c/pedro-sanchez");
+    expect(sectionAvailable("anuncios", "pedro-sanchez")).toBe(true);
+    expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/anuncios")).toBe("/c/pedro-sanchez/anuncios");
     expect(hrefForCandidate("axel-kicillof", "/c/pedro-sanchez/anuncios")).toBe(
       "/c/axel-kicillof/anuncios",
     );
