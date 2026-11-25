@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 import { isRivalLevel } from "@/lib/types";
 import { slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
@@ -461,7 +461,137 @@ export class SupabaseRepo implements PulsoRepo {
     return res.data as PendingCandidate;
   }
 
-  /**
+
+  async listCustomTopics(candidateId: string) {
+    const res = await this.db
+      .from("custom_topics")
+      .select("id,candidate_id,name,description,keywords,include_terms,exclude_terms,sources,enabled,created_at,updated_at,created_by")
+      .eq("candidate_id", candidateId)
+      .order("name");
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo temas a medida: ${res.error.message}`);
+    }
+    return (res.data ?? []) as CustomTopic[];
+  }
+
+  async getCustomTopic(candidateId: string, id: string) {
+    const res = await this.db
+      .from("custom_topics")
+      .select("id,candidate_id,name,description,keywords,include_terms,exclude_terms,sources,enabled,created_at,updated_at,created_by")
+      .eq("candidate_id", candidateId)
+      .eq("id", id)
+      .maybeSingle();
+    if (res.error) {
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo el tema: ${res.error.message}`);
+    }
+    return (res.data as CustomTopic | null) ?? null;
+  }
+
+  async upsertCustomTopic(row: {
+    id?: string;
+    candidate_id: string;
+    name: string;
+    description?: string | null;
+    keywords: string[];
+    include_terms: string[];
+    exclude_terms: string[];
+    sources?: string[] | null;
+    enabled: boolean;
+  }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede definir temas a medida");
+    const payload = {
+      id: row.id,
+      candidate_id: row.candidate_id,
+      name: row.name.trim(),
+      description: row.description ?? null,
+      keywords: row.keywords,
+      include_terms: row.include_terms,
+      exclude_terms: row.exclude_terms,
+      sources: row.sources ?? null,
+      enabled: row.enabled,
+      updated_at: new Date().toISOString(),
+    };
+    const q = row.id
+      ? this.db.from("custom_topics").update(payload).eq("id", row.id).eq("candidate_id", row.candidate_id)
+      : this.db.from("custom_topics").insert({ ...payload, id: undefined });
+    const res = await q
+      .select("id,candidate_id,name,description,keywords,include_terms,exclude_terms,sources,enabled,created_at,updated_at,created_by")
+      .single();
+    if (res.error) {
+      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de temas a medida");
+      throw new Error(`Error guardando el tema: ${res.error.message}`);
+    }
+    return res.data as CustomTopic;
+  }
+
+  async listCustomTopicSummaries(candidateId: string, topicId: string) {
+    const res = await this.db
+      .from("custom_topic_summaries")
+      .select("id,topic_id,candidate_id,status,period_start,period_end,output,model,cost_usd,usage,prompt_version,origin,note,created_at,created_by,reviewed_at")
+      .eq("candidate_id", candidateId)
+      .eq("topic_id", topicId)
+      .order("created_at", { ascending: false });
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo resúmenes del tema: ${res.error.message}`);
+    }
+    return (res.data ?? []) as CustomTopicSummary[];
+  }
+
+  async latestCustomTopicSummary(candidateId: string, topicId: string) {
+    const all = await this.listCustomTopicSummaries(candidateId, topicId);
+    return all[0] ?? null;
+  }
+
+  async saveCustomTopicSummary(row: Omit<CustomTopicSummary, "id" | "created_at"> & { id?: string; created_at?: string }) {
+    const { data: session } = await this.db.auth.getUser();
+    const res = await this.db
+      .from("custom_topic_summaries")
+      .insert({
+        topic_id: row.topic_id,
+        candidate_id: row.candidate_id,
+        status: row.status,
+        period_start: row.period_start,
+        period_end: row.period_end,
+        output: row.output,
+        model: row.model,
+        cost_usd: row.cost_usd,
+        usage: row.usage ?? {},
+        prompt_version: row.prompt_version,
+        origin: row.origin,
+        note: row.note ?? null,
+        created_by: session.user?.id ?? null,
+      })
+      .select("id,topic_id,candidate_id,status,period_start,period_end,output,model,cost_usd,usage,prompt_version,origin,note,created_at,created_by,reviewed_at")
+      .single();
+    if (res.error) {
+      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de temas a medida");
+      throw new Error(`Error guardando el resumen: ${res.error.message}`);
+    }
+    return res.data as CustomTopicSummary;
+  }
+
+  async updateCustomTopicSummaryStatus(
+    candidateId: string,
+    topicId: string,
+    summaryId: string,
+    status: CustomTopicSummaryStatus,
+  ) {
+    const res = await this.db
+      .from("custom_topic_summaries")
+      .update({ status, reviewed_at: new Date().toISOString() })
+      .eq("id", summaryId)
+      .eq("candidate_id", candidateId)
+      .eq("topic_id", topicId);
+    if (res.error) {
+      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de temas a medida");
+      throw new Error(`Error actualizando el resumen: ${res.error.message}`);
+    }
+  }
+
+    /**
    * Une la clasificación si la tabla existe. Si la migración todavía no se
    * aplicó, PostgREST responde error y devolvemos los anuncios sin etiqueta.
    */

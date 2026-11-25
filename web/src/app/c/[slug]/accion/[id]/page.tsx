@@ -10,10 +10,11 @@ import {
   CRISIS_STATUS_BADGE,
   CRISIS_STATUS_LABEL,
   CRISIS_TRIGGER_LABEL,
+  ACCION_SECTION_LABEL,
 } from "@/lib/labels";
 import { clockFor, formatDateTime } from "@/lib/time";
 
-export const metadata = { title: "Brief de acción · Pulso" };
+export const metadata = { title: `Brief · ${ACCION_SECTION_LABEL} · Pulso` };
 
 export default async function AccionBriefPage({ params }: PageProps<"/c/[slug]/accion/[id]">) {
   const { slug, id } = await params;
@@ -35,7 +36,7 @@ export default async function AccionBriefPage({ params }: PageProps<"/c/[slug]/a
     <>
       <p className="mb-3 text-sm">
         <Link href={`/c/${slug}/accion`} className="text-indigo-700 hover:underline">
-          ← Bandeja de Acción
+          {`← Bandeja de ${ACCION_SECTION_LABEL}`}
         </Link>
       </p>
       <PageHeader

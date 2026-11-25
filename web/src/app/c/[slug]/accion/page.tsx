@@ -8,10 +8,11 @@ import {
   CRISIS_STATUS_BADGE,
   CRISIS_STATUS_LABEL,
   CRISIS_TRIGGER_LABEL,
+  ACCION_SECTION_LABEL,
 } from "@/lib/labels";
 import { clockFor, formatDateTime } from "@/lib/time";
 
-export const metadata = { title: "Acción · Pulso" };
+export const metadata = { title: `${ACCION_SECTION_LABEL} · Pulso` };
 
 function metricNum(metrics: Record<string, unknown>, key: string): number | null {
   const raw = metrics[key];
@@ -30,7 +31,7 @@ export default async function AccionPage({ params }: PageProps<"/c/[slug]/accion
   return (
     <>
       <PageHeader
-        title="Acción"
+        title={ACCION_SECTION_LABEL}
         description="Bandeja de alertas del equipo de agentes. Una persona aprueba o descarta; Pulso no publica ni postea nada."
       />
       <div className="space-y-6">

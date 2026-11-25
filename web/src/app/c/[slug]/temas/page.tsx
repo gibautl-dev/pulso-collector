@@ -1,0 +1,108 @@
+import Link from "next/link";
+import { Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui";
+import { loadCandidate } from "@/lib/context";
+import { CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
+import { computeTopicStats, estimateClassificationCost } from "@/lib/custom-topics";
+import { regionFor } from "@/lib/region";
+import { clockFor } from "@/lib/time";
+
+export const metadata = { title: `${CUSTOM_TOPICS_SECTION_LABEL} · Pulso` };
+
+export default async function TemasPage({ params, searchParams }: PageProps<"/c/[slug]/temas">) {
+  const { slug } = await params;
+  const clock = clockFor(slug);
+  const days = Number((await searchParams).dias) === 14 ? 14 : 7;
+  const { repo, candidate } = await loadCandidate(slug);
+  const ts = await repo.dataTimestamp();
+  const now = ts ? new Date(ts) : new Date();
+  const since = new Date(now.getTime() - 30 * 86400000).toISOString();
+  const [topics, mentions] = await Promise.all([
+    repo.listCustomTopics(candidate.id),
+    repo.mentionsSince(candidate.id, since),
+  ]);
+  const staff = await repo.isStaff();
+  const rows = topics.map((topic) => ({
+    topic,
+    stats: computeTopicStats(topic, mentions, { now, days, timeZone: clock.timeZone }),
+  }));
+
+  return (
+    <>
+      <PageHeader
+        title={CUSTOM_TOPICS_SECTION_LABEL}
+        description={`Temáticas definidas a mano para ${candidate.name}. Pulso las sigue con menciones que ya recolecta y un analista que escribe un resumen para que una persona lo revise. No se publican solos.`}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm shadow-sm">
+            {[7, 14].map((p) => (
+              <Link
+                key={p}
+                href={`/c/${slug}/temas?dias=${p}`}
+                className={`rounded-md px-3 py-1.5 font-medium ${p === days ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-50"}`}
+              >
+                {p} días
+              </Link>
+            ))}
+          </div>
+          {staff ? (
+            <Link href="/admin/temas" className="text-sm font-medium text-indigo-700 hover:underline">
+              Definir temas (panel Active)
+            </Link>
+          ) : null}
+        </div>
+      </PageHeader>
+
+      {topics.length === 0 ? (
+        <EmptyState>
+          Todavía no hay temas a medida para {candidate.name}. El equipo de Active los carga en el panel, con
+          palabras clave. No se abren fuentes nuevas ni consultas extra a X.
+        </EmptyState>
+      ) : (
+        <ul className="space-y-4">
+          {rows.map(({ topic, stats }) => {
+            const cost = estimateClassificationCost(stats.volume, { days });
+            return (
+              <li key={topic.id}>
+                <Card
+                  title={topic.name}
+                  subtitle={`${topic.enabled ? "Activo" : "Pausado"} · ${regionFor(slug).countryName}`}
+                  action={
+                    <Link href={`/c/${slug}/temas/${topic.id}`} className="text-sm font-medium text-indigo-700 hover:underline">
+                      Ver tema y analista
+                    </Link>
+                  }
+                >
+                  {topic.description ? <p className="mb-4 text-sm text-slate-600">{topic.description}</p> : null}
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <Stat label="Volumen" value={stats.volume} hint={stats.trendLabel} />
+                    <Stat
+                      label="Balance"
+                      value={stats.balance.negativo}
+                      tone={stats.balance.negativo > stats.balance.positivo ? "negative" : "default"}
+                      hint={stats.balance.label}
+                    />
+                    <Stat label="A favor" value={stats.balance.positivo} tone="positive" hint={`${stats.balance.pendiente} sin tono`} />
+                    <Stat
+                      label="Pico"
+                      value={stats.spike ? "Sí" : "No"}
+                      hint={stats.spikeLabel ?? "Sin pico en los últimos 3 días. No dispara crisis."}
+                    />
+                  </div>
+                  {stats.topMentions[0]?.title ? (
+                    <p className="mt-4 text-sm text-slate-700">
+                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Mención reciente. </span>
+                      {stats.topMentions[0].title}
+                    </p>
+                  ) : (
+                    <p className="mt-4 text-sm text-slate-500">No hubo coincidencias por palabras clave en esta ventana.</p>
+                  )}
+                  <p className="mt-3 text-xs text-slate-500">{cost.detail}</p>
+                </Card>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
+}

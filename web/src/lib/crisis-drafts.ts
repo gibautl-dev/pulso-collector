@@ -1,4 +1,4 @@
-/** Destinatario de un borrador de Acción, según el canal. Sirve para cualquier candidato. */
+/** Destinatario de un borrador de Equipo de acción, según el canal. Sirve para cualquier candidato. */
 
 const SPOKESPERSON = new Set(["argumento_oral", "vocero", "oral", "argumento-oral"]);
 const PRESS = new Set(["comunicado", "press", "prensa"]);

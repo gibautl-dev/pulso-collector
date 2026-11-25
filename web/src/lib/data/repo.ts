@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 
 export interface MentionPage {
   items: Mention[];
@@ -59,7 +59,30 @@ export interface PulsoRepo {
     source: PendingCandidateSource;
     reason?: string | null;
   }): Promise<PendingCandidate>;
+  listCustomTopics(candidateId: string): Promise<CustomTopic[]>;
+  getCustomTopic(candidateId: string, id: string): Promise<CustomTopic | null>;
+  upsertCustomTopic(row: {
+    id?: string;
+    candidate_id: string;
+    name: string;
+    description?: string | null;
+    keywords: string[];
+    include_terms: string[];
+    exclude_terms: string[];
+    sources?: string[] | null;
+    enabled: boolean;
+  }): Promise<CustomTopic>;
+  listCustomTopicSummaries(candidateId: string, topicId: string): Promise<CustomTopicSummary[]>;
+  latestCustomTopicSummary(candidateId: string, topicId: string): Promise<CustomTopicSummary | null>;
+  saveCustomTopicSummary(row: Omit<CustomTopicSummary, "id" | "created_at"> & { id?: string; created_at?: string }): Promise<CustomTopicSummary>;
+  updateCustomTopicSummaryStatus(
+    candidateId: string,
+    topicId: string,
+    summaryId: string,
+    status: CustomTopicSummaryStatus,
+  ): Promise<void>;
 }
+
 
 
 

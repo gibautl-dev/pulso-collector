@@ -10,6 +10,8 @@ import { clockFor, formatDateTime } from "@/lib/time";
 import { formatCount, youtubeThumbnailUrl, youtubeVideoId } from "@/lib/youtube";
 import { computeHomeCards } from "@/lib/home-summaries";
 import { SourceSummaryCards } from "@/components/source-summary-cards";
+import { ACCION_SECTION_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
+import { computeTopicStats } from "@/lib/custom-topics";
 
 export const metadata = { title: "Tablero · Pulso" };
 const PERIODS = [7, 14, 30];
@@ -25,7 +27,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const ts = await repo.dataTimestamp();
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - days * 86400000).toISOString();
-  const [mentions, topics, sources, ads, answers, suspicious, rivalRows] = await Promise.all([
+  const [mentions, topics, sources, ads, answers, suspicious, rivalRows, crisisAlerts, customTopics, mentionsForTopics] = await Promise.all([
     repo.mentionsSince(candidate.id, since),
     repo.listTopics(candidate.id),
     repo.listCandidateSources(candidate.id),
@@ -33,7 +35,15 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     repo.listAiAnswers(candidate.id),
     repo.listSuspiciousAccounts(candidate.id),
     repo.listRivals(candidate.id),
+    repo.listCrisisAlerts(candidate.id),
+    repo.listCustomTopics(candidate.id),
+    repo.mentionsSince(candidate.id, new Date(now.getTime() - 30 * 86400000).toISOString()),
   ]);
+  const openAlerts = crisisAlerts.filter((a) => a.status === "new" || a.status === "in_review");
+  const customStats = customTopics.filter((t) => t.enabled).map((topic) => ({
+    topic,
+    stats: computeTopicStats(topic, mentionsForTopics, { now, days, timeZone: clock.timeZone }),
+  }));
   const d = computeDashboard(mentions, topics, { days, now, timeZone: clock.timeZone });
   const sourceCards = computeHomeCards({
     slug,
@@ -98,6 +108,40 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
           </p>
         </Card>
       ) : null}
+
+      <div className="mb-6 grid gap-4 lg:grid-cols-2">
+        <Card title={ACCION_SECTION_LABEL} subtitle="Bandeja de alertas del equipo de agentes. Una persona decide; Pulso no publica.">
+          <p className="text-sm text-slate-700">
+            {openAlerts.length
+              ? `Hay ${openAlerts.length} alerta${openAlerts.length === 1 ? "" : "s"} pendiente${openAlerts.length === 1 ? "" : "s"} de una decisión humana.`
+              : "No hay alertas pendientes."}
+          </p>
+          <p className="mt-3">
+            <Link href={`/c/${slug}/accion`} className="text-sm font-medium text-indigo-700 hover:underline">
+              Abrir {ACCION_SECTION_LABEL.toLowerCase()}
+            </Link>
+          </p>
+        </Card>
+        <Card title={CUSTOM_TOPICS_SECTION_LABEL} subtitle="Temáticas definidas a mano, con un analista por tema.">
+          {customStats.length === 0 ? (
+            <p className="text-sm text-slate-700">Todavía no hay temas a medida cargados para este candidato.</p>
+          ) : (
+            <ul className="space-y-1 text-sm text-slate-700">
+              {customStats.slice(0, 4).map(({ topic, stats }) => (
+                <li key={topic.id}>
+                  <span className="font-medium text-slate-900">{topic.name}.</span> {stats.volume} menciones en el período
+                  {stats.spike ? " · posible pico" : ""}.
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3">
+            <Link href={`/c/${slug}/temas`} className="text-sm font-medium text-indigo-700 hover:underline">
+              Abrir {CUSTOM_TOPICS_SECTION_LABEL.toLowerCase()}
+            </Link>
+          </p>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Menciones" value={d.total} hint={`${d.last24h} en las últimas 24 h`} />

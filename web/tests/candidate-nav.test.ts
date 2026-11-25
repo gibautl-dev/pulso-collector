@@ -54,10 +54,17 @@ describe("hrefForCandidate", () => {
     );
   });
 
-  it("conserva Acción en el otro candidato (la bandeja puede estar vacía)", () => {
+  it("conserva Equipo de acción (ruta /accion) en el otro candidato", () => {
     expect(sectionAvailable("accion", "pedro-sanchez")).toBe(true);
     expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/accion/abc-123")).toBe(
       "/c/pedro-sanchez/accion",
+    );
+  });
+
+  it("conserva Temas a medida en el otro candidato", () => {
+    expect(sectionAvailable("temas", "pedro-sanchez")).toBe(true);
+    expect(hrefForCandidate("pedro-sanchez", "/c/axel-kicillof/temas/abc-123")).toBe(
+      "/c/pedro-sanchez/temas",
     );
   });
 

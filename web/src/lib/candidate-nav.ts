@@ -9,6 +9,7 @@ export const CANDIDATE_SECTIONS = [
   "fuentes",
   "sospechosas",
   "accion",
+  "temas",
   "comparacion",
   "ia",
   "x",

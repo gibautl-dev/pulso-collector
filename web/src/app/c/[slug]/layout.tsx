@@ -35,9 +35,12 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
         <div className="mt-auto hidden border-t border-slate-100 px-5 py-4 lg:block">
           <p className="truncate text-xs text-slate-500" title={viewer.email}>{viewer.email}</p>
           {staff ? (
-            <p className="mt-2">
-              <Link href="/admin/rivales" className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
+            <p className="mt-2 space-y-1">
+              <Link href="/admin/rivales" className="block text-xs font-medium text-indigo-600 hover:text-indigo-500">
                 Panel Active · Rivales
+              </Link>
+              <Link href="/admin/temas" className="block text-xs font-medium text-indigo-600 hover:text-indigo-500">
+                Panel Active · Temas a medida
               </Link>
             </p>
           ) : null}

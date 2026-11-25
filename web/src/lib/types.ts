@@ -400,3 +400,60 @@ export interface RecordedDailyCost {
   date: string;
   cost_usd: number;
 }
+
+
+/** Temática definida a mano para un candidato (no es el tema automático del clasificador). */
+export interface CustomTopic {
+  id: string;
+  candidate_id: string;
+  name: string;
+  description: string | null;
+  keywords: string[];
+  include_terms: string[];
+  exclude_terms: string[];
+  sources: string[] | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by?: string | null;
+}
+
+export type CustomTopicSummaryStatus = "draft" | "approved" | "discarded";
+export type CustomTopicSummaryOrigin = "ai" | "fixture_example";
+
+export interface CustomTopicSummaryOutput {
+  happening: string;
+  risks: string[];
+  opportunities: string[];
+  angles: { title: string; body: string }[];
+}
+
+export interface CustomTopicSummary {
+  id: string;
+  topic_id: string;
+  candidate_id: string;
+  status: CustomTopicSummaryStatus;
+  period_start: string;
+  period_end: string;
+  output: CustomTopicSummaryOutput;
+  model: string | null;
+  cost_usd: number | null;
+  usage?: Record<string, unknown> | null;
+  prompt_version: string;
+  origin: CustomTopicSummaryOrigin;
+  note?: string | null;
+  created_at: string;
+  created_by?: string | null;
+  reviewed_at?: string | null;
+}
+
+export interface CustomTopicClassification {
+  topic_id: string;
+  mention_id: string;
+  candidate_id: string;
+  relevance: Relevance;
+  reason: string | null;
+  model: string | null;
+  cost_usd: number | null;
+  created_at: string;
+}

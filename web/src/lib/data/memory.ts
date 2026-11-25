@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 import { slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -24,6 +24,8 @@ export interface FixtureData {
   recorded_daily_costs?: RecordedDailyCost[];
   rival_suggestion_runs?: RivalSuggestionRun[];
   pending_candidates?: PendingCandidate[];
+  custom_topics?: CustomTopic[];
+  custom_topic_summaries?: CustomTopicSummary[];
 }
 
 
@@ -231,5 +233,94 @@ export class MemoryRepo implements PulsoRepo {
     };
     this.data.pending_candidates = [...pending, rec];
     return rec;
+  }
+
+  async listCustomTopics(candidateId: string) {
+    return (this.data.custom_topics ?? [])
+      .filter((t) => t.candidate_id === candidateId)
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }
+  async getCustomTopic(candidateId: string, id: string) {
+    return (this.data.custom_topics ?? []).find((t) => t.candidate_id === candidateId && t.id === id) ?? null;
+  }
+  async upsertCustomTopic(row: {
+    id?: string;
+    candidate_id: string;
+    name: string;
+    description?: string | null;
+    keywords: string[];
+    include_terms: string[];
+    exclude_terms: string[];
+    sources?: string[] | null;
+    enabled: boolean;
+  }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede definir temas a medida");
+    const name = row.name.trim();
+    if (!name) throw new Error("Falta el nombre del tema");
+    const now = new Date().toISOString();
+    const list = this.data.custom_topics ?? [];
+    if (row.id) {
+      const idx = list.findIndex((t) => t.id === row.id && t.candidate_id === row.candidate_id);
+      if (idx < 0) throw new Error("No está ese tema");
+      const updated: CustomTopic = {
+        ...list[idx],
+        name,
+        description: row.description ?? null,
+        keywords: row.keywords,
+        include_terms: row.include_terms,
+        exclude_terms: row.exclude_terms,
+        sources: row.sources ?? null,
+        enabled: row.enabled,
+        updated_at: now,
+      };
+      this.data.custom_topics = list.map((t, i) => (i === idx ? updated : t));
+      return updated;
+    }
+    const rec: CustomTopic = {
+      id: crypto.randomUUID(),
+      candidate_id: row.candidate_id,
+      name,
+      description: row.description ?? null,
+      keywords: row.keywords,
+      include_terms: row.include_terms,
+      exclude_terms: row.exclude_terms,
+      sources: row.sources ?? null,
+      enabled: row.enabled,
+      created_at: now,
+      updated_at: now,
+    };
+    this.data.custom_topics = [...list, rec];
+    return rec;
+  }
+  async listCustomTopicSummaries(candidateId: string, topicId: string) {
+    return (this.data.custom_topic_summaries ?? [])
+      .filter((s) => s.candidate_id === candidateId && s.topic_id === topicId)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+  async latestCustomTopicSummary(candidateId: string, topicId: string) {
+    const all = await this.listCustomTopicSummaries(candidateId, topicId);
+    return all[0] ?? null;
+  }
+  async saveCustomTopicSummary(row: Omit<CustomTopicSummary, "id" | "created_at"> & { id?: string; created_at?: string }) {
+    const rec: CustomTopicSummary = {
+      ...row,
+      id: row.id ?? crypto.randomUUID(),
+      created_at: row.created_at ?? new Date().toISOString(),
+    };
+    this.data.custom_topic_summaries = [...(this.data.custom_topic_summaries ?? []), rec];
+    return rec;
+  }
+  async updateCustomTopicSummaryStatus(
+    candidateId: string,
+    topicId: string,
+    summaryId: string,
+    status: CustomTopicSummaryStatus,
+  ) {
+    const list = this.data.custom_topic_summaries ?? [];
+    const idx = list.findIndex((s) => s.id === summaryId && s.candidate_id === candidateId && s.topic_id === topicId);
+    if (idx < 0) throw new Error("No está ese resumen");
+    this.data.custom_topic_summaries = list.map((s, i) =>
+      i === idx ? { ...s, status, reviewed_at: new Date().toISOString() } : s,
+    );
   }
 }

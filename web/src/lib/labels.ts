@@ -204,3 +204,14 @@ export const RIVAL_LEVEL_HINT: Record<string, string> = {
 };
 
 export const PENDING_CANDIDATE_STATUS_LABEL = "Pendiente de alta";
+
+/** Nombre visible de la bandeja de crisis. La ruta sigue siendo /accion. */
+export const ACCION_SECTION_LABEL = "Equipo de acción";
+/** Sección de temáticas definidas a mano, distinta de los temas automáticos del clasificador. */
+export const CUSTOM_TOPICS_SECTION_LABEL = "Temas a medida";
+
+export const CUSTOM_TOPIC_SUMMARY_STATUS_LABEL: Record<string, string> = {
+  draft: "Borrador para revisar",
+  approved: "Aprobado",
+  discarded: "Descartado",
+};
