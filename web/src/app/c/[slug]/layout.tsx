@@ -30,7 +30,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
           )}
         </div>
         <div className="px-3 pb-4">
-          <Nav slug={candidate.slug} showAds={region.showMetaAds} />
+          <Nav slug={candidate.slug} showAds={region.showMetaAds || region.showGoogleAds} />
         </div>
         <div className="mt-auto hidden border-t border-slate-100 px-5 py-4 lg:block">
           <p className="truncate text-xs text-slate-500" title={viewer.email}>{viewer.email}</p>

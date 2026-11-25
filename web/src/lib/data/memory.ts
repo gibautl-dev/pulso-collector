@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -17,6 +17,8 @@ export interface FixtureData {
   ai_answers?: AiAnswer[];
   meta_ads?: MetaAd[];
   meta_ads_settings?: MetaAdsSettings[];
+  google_ads?: GoogleAd[];
+  google_ads_settings?: GoogleAdsSettings[];
   crisis_alerts?: CrisisAlert[];
   crisis_briefs?: CrisisBrief[];
   /** En el modo local, el usuario se trata como equipo de Active. */
@@ -112,6 +114,21 @@ export class MemoryRepo implements PulsoRepo {
   }
   async listMetaAdsSettings(candidateId: string) {
     return (this.data.meta_ads_settings ?? []).find((s) => s.candidate_id === candidateId) ?? null;
+  }
+
+
+  async listGoogleAds(candidateId: string) {
+    return (this.data.google_ads ?? [])
+      .filter((a) => a.candidate_id === candidateId)
+      .slice()
+      .sort((a, b) => {
+        const aEnd = a.last_served_at ?? a.date_range_end ?? a.fetched_at;
+        const bEnd = b.last_served_at ?? b.date_range_end ?? b.fetched_at;
+        return bEnd.localeCompare(aEnd) || a.ad_id.localeCompare(b.ad_id);
+      });
+  }
+  async listGoogleAdsSettings(candidateId: string) {
+    return (this.data.google_ads_settings ?? []).find((s) => s.candidate_id === candidateId) ?? null;
   }
 
   async listCrisisAlerts(candidateId: string) {

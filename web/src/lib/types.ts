@@ -477,3 +477,52 @@ export interface CustomTopicClassification {
   cost_usd: number | null;
   created_at: string;
 }
+
+
+export const GOOGLE_AD_SOURCES = ["political_report", "ads_transparency_center"] as const;
+export type GoogleAdSource = (typeof GOOGLE_AD_SOURCES)[number];
+
+export interface GoogleAd {
+  id: string;
+  candidate_id: string;
+  source: GoogleAdSource;
+  ad_id: string;
+  ad_url: string | null;
+  ad_type: string | null;
+  regions: string[];
+  advertiser_id: string | null;
+  advertiser_name: string | null;
+  advertiser_legal_name: string | null;
+  date_range_start: string | null;
+  date_range_end: string | null;
+  first_served_at: string | null;
+  last_served_at: string | null;
+  num_of_days: number | string | null;
+  impressions_lower: number | string | null;
+  impressions_upper: number | string | null;
+  impressions_raw: string | null;
+  spend_currency: string | null;
+  spend_lower: number | string | null;
+  spend_upper: number | string | null;
+  age_targeting: string | null;
+  gender_targeting: string | null;
+  geo_targeting_included: string | null;
+  topic: string | null;
+  ad_funded_by: string | null;
+  fetched_at: string;
+  fetched_on: string;
+}
+
+export interface GoogleAdsSettings {
+  candidate_id: string;
+  enabled: boolean;
+  source: GoogleAdSource;
+  region: string;
+  last_run_on: string | null;
+  report_updated_at: string | null;
+  updated_at: string | null;
+}
+
+export function isGoogleAdSource(value: string): value is GoogleAdSource {
+  return (GOOGLE_AD_SOURCES as readonly string[]).includes(value);
+}

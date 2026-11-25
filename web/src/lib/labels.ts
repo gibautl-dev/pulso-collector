@@ -70,6 +70,7 @@ const SOURCE_LABELS: Record<string, string> = {
   serp: "Buscador (SERP)",
   llm: "Clasificador IA",
   meta_ads: "Biblioteca de anuncios de Meta",
+  google_ads: "Anuncios de Google",
 };
 export function sourceLabel(source: string): string {
   return SOURCE_LABELS[source] ?? source;

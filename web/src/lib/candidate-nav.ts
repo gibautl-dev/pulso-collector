@@ -41,7 +41,11 @@ export function parseCandidatePath(
 export function sectionAvailable(section: string, targetSlug: string): boolean {
   if (!section) return true;
   if (!SECTION_SET.has(section)) return false;
-  if (section === "anuncios") return regionFor(targetSlug).showMetaAds;
+  // Anuncios incluye Meta y/o Google. Google aplica también en la UE.
+  if (section === "anuncios") {
+    const region = regionFor(targetSlug);
+    return region.showMetaAds || region.showGoogleAds;
+  }
   return true;
 }
 

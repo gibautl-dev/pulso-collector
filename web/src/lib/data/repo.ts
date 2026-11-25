@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
 
 export interface MentionPage {
   items: Mention[];
@@ -30,6 +30,8 @@ export interface PulsoRepo {
   listAiAnswers(candidateId: string): Promise<AiAnswer[]>;
   listMetaAds(candidateId: string): Promise<MetaAd[]>;
   listMetaAdsSettings(candidateId: string): Promise<MetaAdsSettings | null>;
+  listGoogleAds(candidateId: string): Promise<GoogleAd[]>;
+  listGoogleAdsSettings(candidateId: string): Promise<GoogleAdsSettings | null>;
   listCrisisAlerts(candidateId: string): Promise<CrisisAlert[]>;
   getCrisisAlert(candidateId: string, id: string): Promise<CrisisAlert | null>;
   listCrisisBriefs(candidateId: string, alertId: string): Promise<CrisisBrief[]>;
