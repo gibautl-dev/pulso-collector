@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RelevanceBadge, SourceBadge, ToneBadge } from "@/components/ui";
 import { TARGET_LABEL } from "@/lib/labels";
 import { clockFor, formatDateTime } from "@/lib/time";
+import { mentionHeadline } from "@/lib/mention-excerpt";
 import type { Mention } from "@/lib/types";
 import { xEngagement, xHandle } from "@/lib/x-posts";
 import {
@@ -12,11 +13,8 @@ import {
   youtubeVideoId,
 } from "@/lib/youtube";
 
-export function cleanTitle(m: Pick<Mention, "title" | "outlet">): string {
-  const t = (m.title ?? "").trim();
-  // Google News agrega " - Medio" al final del título.
-  if (m.outlet && t.endsWith(` - ${m.outlet}`)) return t.slice(0, -(m.outlet.length + 3));
-  return t || "(sin título)";
+export function cleanTitle(m: Pick<Mention, "title" | "content" | "outlet">): string {
+  return mentionHeadline(m);
 }
 
 function YoutubeKindBadge({ comment }: { comment: boolean }) {

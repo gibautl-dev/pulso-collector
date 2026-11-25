@@ -2,15 +2,16 @@ import type { ReactNode } from "react";
 import { RELEVANCE_BADGE, RELEVANCE_LABEL, RUN_STATUS_BADGE, RUN_STATUS_LABEL, SOURCE_BADGE, SOURCE_BADGE_DEFAULT, sourceLabel, TONE_BADGE, TONE_LABEL } from "@/lib/labels";
 import type { Relevance, RunStatus, Tone } from "@/lib/types";
 
-export function Card({ title, subtitle, children, className = "", action }: {
+export function Card({ title, subtitle, children, className = "", action, testId }: {
   title?: string;
   subtitle?: string;
   children: ReactNode;
   className?: string;
   action?: ReactNode;
+  testId?: string;
 }) {
   return (
-    <section className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
+    <section data-testid={testId} className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
       {(title || action) && (
         <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
@@ -60,7 +61,7 @@ export function Stat({ label, value, hint, tone = "default" }: {
   const color = tone === "negative" ? "text-rose-600" : tone === "positive" ? "text-emerald-600" : "text-slate-900";
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 whitespace-nowrap">{label}</p>
       <p className={`mt-2 text-3xl font-semibold tabular-nums ${color}`}>{value}</p>
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>

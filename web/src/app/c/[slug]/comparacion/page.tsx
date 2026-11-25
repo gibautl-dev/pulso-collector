@@ -5,6 +5,7 @@ import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import { RIVAL_LEVEL_HINT, RIVAL_LEVEL_LABEL } from "@/lib/labels";
 import { META_ADS_EU_UNAVAILABLE, regionFor } from "@/lib/region";
+import { mentionHeadline } from "@/lib/mention-excerpt";
 import { formatSharePct, rivalCreativeCards, rivalMetaStats, shareOfVoice } from "@/lib/rival-ads";
 import { buildRivalComparison, type SubjectPack } from "@/lib/rivals";
 import { computeDashboard } from "@/lib/analytics";
@@ -157,7 +158,8 @@ export default async function ComparacionPage({
       ) : null}
 
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+      <div data-testid="rivales-hero" className="mb-6 space-y-6">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Quién domina la conversación" subtitle={`Menciones de terceros en los últimos ${days} días.`}>
           {resolved.length === 0 ? (
             <EmptyState>Todavía no hay rivales asignados para armar una participación de la conversación.</EmptyState>
@@ -240,6 +242,7 @@ export default async function ComparacionPage({
           </div>
         )}
       </Card>
+      </div>
       {!current || !comparison ? (
         <EmptyState>
           Todavía no hay una comparación. Cuando el equipo de Active asigne rivales para este candidato, acá vas a ver el contraste listo, según el nivel elegido (Radar, Comparativo o Completo).
@@ -428,10 +431,10 @@ function MediaList({
             <li key={m.id}>
               {slug ? (
                 <Link href={`/c/${slug}/menciones/${m.id}`} className="font-medium text-indigo-700 hover:underline">
-                  {m.title || m.outlet || "Mención"}
+                  {mentionHeadline(m)}
                 </Link>
               ) : (
-                <span className="font-medium text-slate-800">{m.title || m.outlet || "Mención"}</span>
+                <span className="font-medium text-slate-800">{mentionHeadline(m)}</span>
               )}
               <p className="text-xs text-slate-500">{[m.outlet, m.published_at.slice(0, 10)].filter(Boolean).join(" · ")}</p>
             </li>

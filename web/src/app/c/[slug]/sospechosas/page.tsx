@@ -81,7 +81,7 @@ export default async function SuspiciousAccountsPage({
         {repo.mode === "fixture" ? " Este render es local, con datos exportados, y no es una captura de producción." : null}
       </p>
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-3">
+      <div data-testid="sospechosas-hero" className="mb-6 grid gap-6 lg:grid-cols-3">
         <Card
           title="Red de cuentas que hablan del candidato"
           subtitle="X y comentarios de YouTube. En rojo, cuentas marcadas. Las aristas entre cuentas salen de evidencia real del detector (texto repetido, coordinación, URL compartida o ráfaga de grupo)."

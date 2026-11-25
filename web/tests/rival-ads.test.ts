@@ -22,6 +22,7 @@ describe("shareOfVoice y atribución", () => {
     expect(advertiserMatchesName("Coalición vecinal", "Javier Milei")).toBe(false);
     expect(advertiserMatchesName("Pedro Pesatti", "Pedro Sánchez")).toBe(false);
     expect(advertiserMatchesName("Comité de Pedro Sánchez", "Pedro Sánchez")).toBe(true);
+    expect(advertiserMatchesName("Yo estoy con Milei", "Javier Milei")).toBe(true);
   });
   it("marca unmatched cuando ningún anuncio coincide", () => {
     const ad = {

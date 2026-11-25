@@ -12,8 +12,20 @@ import { clockFor, formatDateTime } from "@/lib/time";
 import { formatCount, youtubeThumbnailUrl, youtubeVideoId } from "@/lib/youtube";
 import { computeHomeCards } from "@/lib/home-summaries";
 import { SourceSummaryCards } from "@/components/source-summary-cards";
-import { ACCION_SECTION_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
 import { computeTopicStats } from "@/lib/custom-topics";
+import { mentionHeadline } from "@/lib/mention-excerpt";
+import {
+  alertHeadline,
+  comparisonSpotlight,
+  pendingAlerts,
+  pickHighestRiskAlert,
+  pickTopCustomTopic,
+} from "@/lib/home-spotlights";
+import {
+  ActionSpotlightCard,
+  ComparisonSpotlightCard,
+  CustomTopicsSpotlightCard,
+} from "@/components/home-spotlight-cards";
 
 export const metadata = { title: "Tablero · Pulso" };
 const PERIODS = [7, 14, 30];
@@ -42,7 +54,6 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     repo.listCustomTopics(candidate.id),
     repo.mentionsSince(candidate.id, new Date(now.getTime() - 30 * 86400000).toISOString()),
   ]);
-  const openAlerts = crisisAlerts.filter((a) => a.status === "new" || a.status === "in_review");
   const customStats = customTopics.filter((t) => t.enabled).map((topic) => ({
     topic,
     stats: computeTopicStats(topic, mentionsForTopics, { now, days, timeZone: clock.timeZone }),
@@ -79,11 +90,35 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const maxOutlet = Math.max(1, ...d.topOutlets.map((o) => o.count));
   const maxTone = Math.max(1, ...d.toneAboutCandidate.map((t) => t.count));
   const maxSource = Math.max(1, ...d.bySource.map((s) => s.count));
-  const rivalNames: string[] = [];
+  const resolvedRivals = [];
   for (const row of rivalRows) {
     const rival = await repo.getCandidateById(row.rival_id);
-    if (rival) rivalNames.push(rival.name);
+    if (!rival) continue;
+    const rivalMentions = await repo.mentionsSince(rival.id, sincePrevious);
+    const currentDash = computeDashboard(rivalMentions, [], { days, now, timeZone: clock.timeZone });
+    const previousDash = computeDashboard(rivalMentions, [], {
+      days,
+      now: new Date(now.getTime() - days * 86400000),
+      timeZone: clock.timeZone,
+    });
+    resolvedRivals.push({
+      id: rival.id,
+      name: rival.name,
+      slug: rival.slug,
+      mentions: currentDash.total,
+      previousMentions: previousDash.total,
+    });
   }
+  const spotlight = comparisonSpotlight({
+    candidate,
+    rivals: resolvedRivals,
+    candidateMentions: d.total,
+    candidatePreviousMentions: previous.total,
+    days,
+  });
+  const openPending = pendingAlerts(crisisAlerts);
+  const topAlert = pickHighestRiskAlert(crisisAlerts);
+  const topCustom = pickTopCustomTopic(customStats);
 
 
   return (
@@ -105,7 +140,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
         </div>
       </PageHeader>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div data-testid="tablero-kpis" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat
           label="Menciones"
           value={d.total}
@@ -126,9 +161,9 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
         />
       </div>
 
-      <SourceSummaryCards cards={sourceCards} />
+      <div data-testid="tablero-source-cards"><SourceSummaryCards cards={sourceCards} /></div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
+      <div data-testid="tablero-volume-tone" className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card title="Volumen de menciones por día" subtitle={`Medios, X y YouTube · ${clock.tzLabel}. Solo menciones de terceros.`} className="lg:col-span-2">
           <VolumeChart data={d.volume} clock={clock} />
         </Card>
@@ -170,6 +205,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
           )}
         </Card>
         <Card
+          testId="ultimas-menciones"
           title="Últimas menciones"
           subtitle="Las más recientes del período, de terceros."
           className="lg:col-span-2"
@@ -224,7 +260,7 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
                     )}
                     <div className="min-w-0 flex-1">
                       <Link href={`/c/${slug}/menciones/${m.id}`} className="block truncate text-sm font-medium text-slate-900 hover:text-indigo-700">
-                        {m.title ?? "(sin título)"}
+                        {mentionHeadline(m)}
                       </Link>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {m.author ?? m.outlet ?? "YouTube"}
@@ -303,58 +339,21 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
         </div>
       </div>
 
-      <div className="mt-6 space-y-4">
-        {rivalNames.length ? (
-          <Card
-            title="Comparación con rivales"
-            subtitle="Vista armada por el equipo de Active, con los datos que Pulso ya recolecta."
-          >
-            <p className="text-sm text-slate-700">
-              {rivalNames.length === 1
-                ? `Hay una comparación lista frente a ${rivalNames[0]}.`
-                : `Hay comparaciones listas frente a ${rivalNames.join(", ")}.`}
-            </p>
-            <p className="mt-3">
-              <Link href={`/c/${slug}/comparacion`} className="text-sm font-medium text-indigo-700 hover:underline">
-                Abrir la comparación
-              </Link>
-            </p>
-          </Card>
-        ) : null}
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card title={ACCION_SECTION_LABEL} subtitle="Bandeja de alertas del equipo de agentes. Una persona decide; Pulso no publica.">
-            <p className="text-sm text-slate-700">
-              {openAlerts.length
-                ? `Hay ${openAlerts.length} alerta${openAlerts.length === 1 ? "" : "s"} pendiente${openAlerts.length === 1 ? "" : "s"} de una decisión humana.`
-                : "No hay alertas pendientes."}
-            </p>
-            <p className="mt-3">
-              <Link href={`/c/${slug}/accion`} className="text-sm font-medium text-indigo-700 hover:underline">
-                Abrir {ACCION_SECTION_LABEL.toLowerCase()}
-              </Link>
-            </p>
-          </Card>
-          <Card title={CUSTOM_TOPICS_SECTION_LABEL} subtitle="Temáticas definidas a mano, con un analista por tema.">
-            {customStats.length === 0 ? (
-              <p className="text-sm text-slate-700">Todavía no hay temas a medida cargados para este candidato.</p>
-            ) : (
-              <ul className="space-y-1 text-sm text-slate-700">
-                {customStats.slice(0, 4).map(({ topic, stats }) => (
-                  <li key={topic.id}>
-                    <span className="font-medium text-slate-900">{topic.name}.</span> {stats.volume} menciones en el período
-                    {stats.spike ? " · posible pico" : ""}.
-                  </li>
-                ))}
-              </ul>
-            )}
-            <p className="mt-3">
-              <Link href={`/c/${slug}/temas`} className="text-sm font-medium text-indigo-700 hover:underline">
-                Abrir {CUSTOM_TOPICS_SECTION_LABEL.toLowerCase()}
-              </Link>
-            </p>
-          </Card>
-        </div>
+      <div data-testid="tablero-spotlights" className="mt-6 grid gap-4 lg:grid-cols-3">
+        <ComparisonSpotlightCard slug={slug} spotlight={spotlight} />
+        <ActionSpotlightCard
+          slug={slug}
+          pendingCount={openPending.length}
+          headline={topAlert ? alertHeadline(topAlert) : null}
+          severity={topAlert?.severity ?? null}
+        />
+        <CustomTopicsSpotlightCard
+          slug={slug}
+          topicName={topCustom?.topic.name ?? null}
+          volume={topCustom?.stats.volume ?? 0}
+          spike={topCustom?.stats.spike ?? false}
+          empty={customStats.length === 0}
+        />
       </div>
 
       <p className="mt-6 text-xs text-slate-500">

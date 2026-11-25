@@ -39,3 +39,29 @@ Sin cambios de schema, roles, env ni cron.
   vacía.
 - Si no hay relaciones documentadas entre cuentas sospechosas, la red lo
   explica.
+
+## Tarjetas del final del tablero
+
+Las tres cards de abajo (Comparación con rivales, Equipo de acción, Temas
+a medida) muestran un dato real en el estilo de los KPI y un botón
+«Ver más →». Si no hay dato, queda el estado vacío (sin inventar).
+
+- **Comparación:** share of voice del candidato vs el rival con más
+  menciones de terceros en la ventana, sobre la suma de candidato +
+  rivales asignados. El ± es en puntos porcentuales frente a la ventana
+  anterior de la misma longitud.
+- **Equipo de acción:** cantidad de alertas en `new` o `in_review` y el
+  título de la de mayor riesgo (severidad, empate por `last_detected_at`).
+- **Temas a medida:** el tema con más menciones del período y, si
+  corresponde, el indicador de pico ya calculado por la interfaz.
+
+## Extracto de menciones
+
+Títulos y extractos se limpian antes de mostrarlos (listas de capítulos
+con horarios, pipes, URLs; recorte con elipsis). En Temas a medida se
+muestran 2–3 menciones recientes como en el feed, con fecha/hora ART y
+un enlace «Ver original →».
+
+Los costos de API y las notas internas («no dispara el agente de
+crisis», topes en USD, modelo) no van en la UI del cliente; quedan en
+el panel Active o en el código.

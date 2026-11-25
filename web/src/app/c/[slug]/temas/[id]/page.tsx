@@ -6,11 +6,7 @@ import { Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { updateTopicSummaryStatusAction } from "@/app/c/[slug]/temas/actions";
 import { TopicSummaryForm } from "@/components/topic-summary-form";
 import { loadCandidate } from "@/lib/context";
-import {
-  CUSTOM_TOPIC_CLASSIFY_USD_PER_MENTION,
-  computeTopicStats,
-  estimateClassificationCost,
-} from "@/lib/custom-topics";
+import { computeTopicStats } from "@/lib/custom-topics";
 import { CUSTOM_TOPIC_SUMMARY_STATUS_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
 import { regionFor } from "@/lib/region";
 import { clockFor, formatDateTime } from "@/lib/time";
@@ -31,7 +27,6 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
     repo.latestCustomTopicSummary(candidate.id, topic.id),
   ]);
   const stats = computeTopicStats(topic, mentions, { now, days: 7, timeZone: clock.timeZone, highlightLimit: 10 });
-  const cost = estimateClassificationCost(stats.volume, { days: 7 });
   const volumeForChart = stats.volumeByDay.map((d) => ({
     day: d.day,
     total: d.total,
@@ -57,7 +52,7 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
         <Stat label="Volumen (7 días)" value={stats.volume} hint={stats.trendLabel} />
         <Stat label="Críticas" value={stats.balance.negativo} tone="negative" hint={stats.balance.label} />
         <Stat label="A favor" value={stats.balance.positivo} tone="positive" />
-        <Stat label="Pico" value={stats.spike ? "Sí" : "No"} hint={stats.spikeLabel ?? "Sin pico. No dispara el agente de crisis."} />
+        <Stat label="Pico" value={stats.spike ? "Sí" : "No"} hint={stats.spikeLabel ?? "Sin pico en los últimos 3 días."} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -73,10 +68,6 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
               <p className="text-sm text-slate-800">{topic.exclude_terms.join(", ")}</p>
             </>
           ) : null}
-          <p className="mt-4 text-xs text-slate-500">{cost.detail}</p>
-          <p className="mt-2 text-xs text-slate-500">
-            Clasificar relevancia con IA costaría USD {CUSTOM_TOPIC_CLASSIFY_USD_PER_MENTION.toFixed(6)} por mención de esta lista.
-          </p>
         </Card>
       </div>
 
@@ -91,9 +82,7 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
               <p className="rounded-md border border-amber-100 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
                 {latest.origin === "fixture_example"
                   ? "Ejemplo de interfaz (modo local). Este resumen no sale de una corrida real del modelo."
-                  : `Resumen de IA para verificar. Modelo ${latest.model ?? "s/d"}. Costo de esta corrida: ${
-                      latest.cost_usd == null ? "desconocido" : `USD ${latest.cost_usd < 0.01 ? latest.cost_usd.toFixed(6) : latest.cost_usd.toFixed(2)}`
-                    }.`}
+                  : "Resumen de IA para verificar. Una persona lo revisa; Pulso no publica nada."}
                 {latest.note ? ` ${latest.note}` : ""}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">

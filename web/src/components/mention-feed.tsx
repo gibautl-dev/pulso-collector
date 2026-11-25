@@ -2,7 +2,7 @@ import Link from "next/link";
 import { RelevanceBadge, ToneBadge } from "@/components/ui";
 import { cleanTitle } from "@/components/mention-row";
 import { sourceLabel } from "@/lib/labels";
-import { relativeTime } from "@/lib/time";
+import { type Clock, formatDateTime, relativeTime } from "@/lib/time";
 import type { Mention } from "@/lib/types";
 
 function SourceGlyph({ source }: { source: string }) {
@@ -44,14 +44,22 @@ export function MentionFeedItem({
   m,
   slug,
   now,
+  clock,
+  showOriginal = false,
 }: {
   m: Mention;
   slug: string;
   now: Date;
+  clock?: Clock;
+  showOriginal?: boolean;
 }) {
   const when = relativeTime(m.published_at, now);
   const minutesAgo = when.startsWith("hace ") && when.endsWith(" min") ? Number(when.split(" ")[1]) : null;
-  const label = when === "recién" || (minutesAgo != null && minutesAgo < 10) ? "ahora" : when;
+  const label = clock
+    ? formatDateTime(m.published_at, clock)
+    : when === "recién" || (minutesAgo != null && minutesAgo < 10)
+      ? "ahora"
+      : when;
   const toneBg =
     m.tone && ["critica", "acusacion", "insulto"].includes(m.tone)
       ? "bg-rose-50/70"
@@ -70,9 +78,19 @@ export function MentionFeedItem({
             {m.relevance === "alta" ? <RelevanceBadge relevance="alta" /> : null}
             <span className="ml-auto shrink-0 tabular-nums text-slate-400">{label}</span>
           </div>
-          <Link href={`/c/${slug}/menciones/${m.id}`} className="mt-1 block text-sm font-medium text-slate-900 hover:text-indigo-700">
+          <Link href={`/c/${slug}/menciones/${m.id}`} className="mt-1 block text-sm font-medium leading-snug text-slate-900 hover:text-indigo-700">
             {cleanTitle(m)}
           </Link>
+          {showOriginal && m.url ? (
+            <a
+              href={m.url}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              className="mt-1.5 inline-flex text-xs font-medium text-indigo-600 hover:text-indigo-500"
+            >
+              Ver original →
+            </a>
+          ) : null}
         </div>
       </div>
     </li>

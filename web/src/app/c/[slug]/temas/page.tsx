@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { MentionFeedItem } from "@/components/mention-feed";
 import { Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import { CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
-import { computeTopicStats, estimateClassificationCost } from "@/lib/custom-topics";
+import { computeTopicStats } from "@/lib/custom-topics";
 import { regionFor } from "@/lib/region";
 import { clockFor } from "@/lib/time";
 
@@ -23,7 +24,7 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
   const staff = await repo.isStaff();
   const rows = topics.map((topic) => ({
     topic,
-    stats: computeTopicStats(topic, mentions, { now, days, timeZone: clock.timeZone }),
+    stats: computeTopicStats(topic, mentions, { now, days, timeZone: clock.timeZone, highlightLimit: 3 }),
   }));
 
   return (
@@ -58,12 +59,12 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
           acá con volumen, balance y un analista por tema. No se abren fuentes nuevas ni consultas extra a X.
         </EmptyState>
       ) : (
-        <ul className="space-y-4">
+        <ul data-testid="temas-list" className="space-y-4">
           {rows.map(({ topic, stats }) => {
-            const cost = estimateClassificationCost(stats.volume, { days });
             return (
               <li key={topic.id}>
                 <Card
+                  testId={`tema-card-${topic.id}`}
                   title={topic.name}
                   subtitle={`${topic.enabled ? "Activo" : "Pausado"} · ${regionFor(slug).countryName}`}
                   action={
@@ -85,18 +86,23 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
                     <Stat
                       label="Pico"
                       value={stats.spike ? "Sí" : "No"}
-                      hint={stats.spikeLabel ?? "Sin pico en los últimos 3 días. No dispara crisis."}
+                      hint={stats.spikeLabel ?? "Sin pico en los últimos 3 días."}
                     />
                   </div>
-                  {stats.topMentions[0]?.title ? (
-                    <p className="mt-4 text-sm text-slate-700">
-                      <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Mención reciente. </span>
-                      {stats.topMentions[0].title}
-                    </p>
+                  {stats.topMentions.length > 0 ? (
+                    <div className="mt-4" data-testid="tema-menciones-recientes">
+                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {stats.topMentions.length === 1 ? "Mención reciente" : "Menciones recientes"}
+                      </p>
+                      <ul className="divide-y divide-slate-50">
+                        {stats.topMentions.map((m) => (
+                          <MentionFeedItem key={m.id} m={m} slug={slug} now={now} clock={clock} showOriginal />
+                        ))}
+                      </ul>
+                    </div>
                   ) : (
                     <p className="mt-4 text-sm text-slate-500">No hubo coincidencias por palabras clave en esta ventana.</p>
                   )}
-                  <p className="mt-3 text-xs text-slate-500">{cost.detail}</p>
                 </Card>
               </li>
             );

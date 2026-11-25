@@ -189,10 +189,12 @@ export function computeTopicStats(
     trendLabel,
     spike,
     spikeLabel: spike
-      ? "Posible pico en los últimos 3 días (señal de la interfaz; no dispara el agente de crisis)."
+      ? "Posible pico en los últimos 3 días."
       : null,
     balance: balanceOf(current),
-    topMentions: current.slice(0, opts.highlightLimit ?? 8),
+    topMentions: [...current]
+      .sort((a, b) => b.published_at.localeCompare(a.published_at))
+      .slice(0, opts.highlightLimit ?? 8),
     volumeByDay: keys.map((d) => volMap.get(d)!),
   };
 }

@@ -75,7 +75,7 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
         </Card>
       ) : (
         <>
-          <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <div data-testid="ia-hero" className="mb-6 grid gap-6 lg:grid-cols-2">
             <Card
               title="Foto del día"
               subtitle={
