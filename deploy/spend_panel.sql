@@ -1,6 +1,6 @@
 -- Panel "Gasto" (solo equipo de Active): una función de lectura que agrega el
 -- gasto registrado de la app por función, candidato y día.
--- Aprobada por Leandro el 2026-11-25. Requiere deploy/ai_visibility_cap.sql aplicado antes.
+-- Aplicada en pulso-demo el 2026-11-25 (aprobada por Leandro). Requiere deploy/ai_visibility_cap.sql aplicado antes.
 -- Idempotente. No crea tablas, no cambia RLS existentes, no toca roles ni datos.
 -- Costo de aplicar el SQL: USD 0.
 --

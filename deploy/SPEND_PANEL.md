@@ -38,7 +38,7 @@ Pruebas: `tests/spend-panel-permissions.sql.test.ts` (PGlite) y `tests/spend.tes
   50 respuestas (o USD 0,15 si no hay historia). Si no entra, no pregunta más ese día y marca `last_reached_on`.
 - La web del cliente llama `ai_visibility_cap_reached_today()` (solo un booleano) y muestra en En la IA:
   "Por hoy ya completamos las consultas a la IA. Volvé mañana…". Sin montos ni texto técnico.
-- Impacto CALC con el uso actual (~USD 0,086 por respuesta, 10 preguntas por candidato): entran ~11 respuestas
-  por día en total. Sánchez corre primero (09:00 de Madrid = 05:00 de Buenos Aires) y usa ~USD 0,86; a Kicillof
-  (09:00 de Buenos Aires) le quedan ~1–2 preguntas por día.
-- Requiere deploy del cron (el corte vive en `pulso/ai_visibility`). Aplicar antes que `spend_panel.sql`.
+- Impacto CALC con el uso actual (~USD 0,086 por respuesta; reserva actual USD 0,128 = máx. de las últimas 50): Sánchez corre primero
+  (09:00 de Madrid = 05:00 de Buenos Aires), hace sus 10 preguntas (~USD 0,86) y a Kicillof (09:00 de Buenos Aires)
+  no le alcanza para ninguna: 0,86 + 0,128 > 1. Para que entren los dos hace falta ~USD 1,85/día.
+- Aplicada en pulso-demo el 25/11 junto con spend_panel.sql. Requiere deploy del cron (el corte vive en `pulso/ai_visibility`). Aplicar antes que `spend_panel.sql`.
