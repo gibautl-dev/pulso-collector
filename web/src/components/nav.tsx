@@ -6,6 +6,7 @@ import { ACCION_SECTION_LABEL, CUSTOM_TOPICS_SECTION_LABEL, SIMULATOR_SECTION_LA
 import { DAILY_BRIEF_SECTION_LABEL } from "@/lib/daily-brief";
 import { INCONSISTENCY_SECTION_LABEL } from "@/lib/inconsistency";
 
+import { ASSISTANT_LABEL } from "@/lib/assistant/suggestions";
 
 const ICONS: Record<string, string> = {
   tablero: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
@@ -21,10 +22,11 @@ const ICONS: Record<string, string> = {
   comparacion: "M5 19V8h4v11H5zm6 0V4h4v15h-4zm6 0v-7h4v7h-4z",
   temas: "M4 6h7v5H4V6zm9 0h7v5h-7V6zM4 13h7v5H4v-5zm9 0h7v5h-7v-5z",
   simulador: "M4 5h16v10H8l-4 4V5zM8 9h8M8 12h5",
+  asistente: "M12 3l1.9 5.6 5.6 1.9-5.6 1.9L12 18l-1.9-5.6-5.6-1.9 5.6-1.9L12 3z",
 };
 
 /** Menú del cliente (escritorio y móvil). Temas a medida es permanente, aunque no haya temas todavía. */
-export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean }) {
+export function Nav({ slug, showAds = true, showAssistant = false }: { slug: string; showAds?: boolean; showAssistant?: boolean }) {
   const pathname = usePathname();
   const base = `/c/${slug}`;
   const items = [
@@ -32,6 +34,9 @@ export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean 
     { href: `${base}/resumen`, label: DAILY_BRIEF_SECTION_LABEL, icon: "resumen", active: pathname.startsWith(`${base}/resumen`) },
     { href: `${base}/contradicciones`, label: INCONSISTENCY_SECTION_LABEL, icon: "contradicciones", active: pathname.startsWith(`${base}/contradicciones`) },
     { href: `${base}/simulador`, label: SIMULATOR_SECTION_LABEL, icon: "simulador", active: pathname.startsWith(`${base}/simulador`) },
+    ...(showAssistant
+      ? [{ href: `${base}/asistente`, label: ASSISTANT_LABEL, icon: "asistente", active: pathname.startsWith(`${base}/asistente`) }]
+      : []),
     { href: `${base}/menciones`, label: "Menciones", icon: "menciones", active: pathname.startsWith(`${base}/menciones`) },
     { href: `${base}/fuentes`, label: "Salud de fuentes", icon: "fuentes", active: pathname.startsWith(`${base}/fuentes`) },
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },

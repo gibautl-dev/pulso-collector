@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import type { SimulatorLimits } from "@/lib/response-simulator";
 
 export interface MentionPage {
@@ -109,6 +109,13 @@ export interface PulsoRepo {
   /** Chequea acceso y cupos y reserva el costo. Error "pulso:<motivo>" si no se puede. */
   startResponseSimulation(candidateId: string, draft: string, reserveUsd: number): Promise<string>;
   finishResponseSimulation(id: string, row: ResponseSimulationFinish): Promise<void>;
+  /** Cupo del asistente para el usuario actual. null = el asistente no está habilitado (falta la tabla). */
+  assistantQuota(): Promise<AssistantQuota | null>;
+  /** Reserva la pregunta (status pending) antes de llamar al modelo. La base rechaza si se pasó del cupo. */
+  startAssistantQuestion(row: { candidate_id: string; question: string; page: string | null; prompt_version: string }): Promise<{ id: string; created_at: string }>;
+  finishAssistantQuestion(id: string, record: AssistantRunRecord): Promise<void>;
+  /** Preguntas del usuario actual sobre el candidato (RLS: solo las propias), más recientes primero. */
+  listAssistantQuestions(candidateId: string, limit: number): Promise<AssistantQuestion[]>;
 }
 
 

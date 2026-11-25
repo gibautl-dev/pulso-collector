@@ -674,3 +674,58 @@ export interface ResponseSimulationFinish {
   usage: Record<string, unknown>;
   error: string | null;
 }
+
+/** Asistente de datos (public.assistant_questions). Las cifras y citas salen de código. */
+export type AssistantStatus = "pending" | "ok" | "no_data" | "error" | "limited";
+export interface AssistantCitation {
+  ref: string;
+  id: string;
+  candidate_slug: string;
+  url: string;
+  title: string;
+  excerpt: string;
+  outlet: string | null;
+  author: string | null;
+  source: string;
+  published_at: string;
+  tone: string | null;
+  about_candidate: boolean;
+  own: boolean;
+}
+export interface AssistantFact {
+  label: string;
+  value: string;
+  hint?: string | null;
+  tone?: "positive" | "negative" | "default";
+}
+export interface AssistantAnswer {
+  text: string;
+  no_data: boolean;
+  followups: string[];
+  citations: AssistantCitation[];
+  facts: AssistantFact[];
+  notes: string[];
+}
+export interface AssistantQuestion {
+  id: string;
+  candidate_id: string;
+  question: string;
+  status: AssistantStatus | string;
+  answer: AssistantAnswer | null;
+  page?: string | null;
+  created_at: string;
+}
+export interface AssistantQuota {
+  user_last_hour: number;
+  user_today: number;
+  total_today: number;
+  cost_today_usd: number;
+}
+export interface AssistantRunRecord {
+  status: AssistantStatus;
+  answer: AssistantAnswer | null;
+  tools: unknown[];
+  model: string | null;
+  cost_usd: number | null;
+  usage: Record<string, unknown>;
+}

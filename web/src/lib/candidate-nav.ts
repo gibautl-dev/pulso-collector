@@ -17,6 +17,7 @@ export const CANDIDATE_SECTIONS = [
   "ia",
   "x",
   "anuncios",
+  "asistente",
 ] as const;
 
 export type CandidateSection = (typeof CANDIDATE_SECTIONS)[number];
