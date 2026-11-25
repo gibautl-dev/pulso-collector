@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { Card, EmptyState, PageHeader } from "@/components/ui";
+import { Card, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { SuspiciousAccountCard } from "@/components/suspicious-account";
 import { SuspiciousInsightsPanel } from "@/components/suspicious-insights";
+import { SuspiciousNetworkGraph } from "@/components/suspicious-network-graph";
 import { loadCandidate } from "@/lib/context";
 import { computeSuspiciousInsights } from "@/lib/suspicious-insights";
+import { buildSuspiciousNetwork } from "@/lib/suspicious-network";
 import { isSuspiciousPlatform, isSuspiciousStatus, type SuspiciousFilters } from "@/lib/types";
 import { clockFor, formatDateTime } from "@/lib/time";
 
@@ -44,6 +46,7 @@ export default async function SuspiciousAccountsPage({
     repo.listTopics(candidate.id),
   ]);
   const insights = computeSuspiciousInsights(mentions, allAccounts, topics, { days, now });
+  const network = buildSuspiciousNetwork(candidate.name, allAccounts, mentions);
   const lastRun = runs.find((r) => r.finished_at)?.finished_at ?? null;
   const lastRunLabel = lastRun
     ? `Última recolección: ${formatDateTime(lastRun, clock)} (${clock.tzLabel}).`
@@ -77,6 +80,31 @@ export default async function SuspiciousAccountsPage({
         Pulso no denuncia en lote ni en automático; una persona revisa y, si corresponde, denuncia a mano en la red.
         {repo.mode === "fixture" ? " Este render es local, con datos exportados, y no es una captura de producción." : null}
       </p>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-3">
+        <Card
+          title="Red de cuentas que hablan del candidato"
+          subtitle="X y comentarios de YouTube. En rojo, cuentas marcadas. Las aristas entre cuentas salen de evidencia real del detector (texto repetido, coordinación, URL compartida o ráfaga de grupo)."
+          className="lg:col-span-2"
+        >
+          {network.nodes.length <= 1 ? (
+            <EmptyState>{network.gap ?? "No hay datos de conversación para armar la red."}</EmptyState>
+          ) : (
+            <>
+              <SuspiciousNetworkGraph network={network} />
+              {network.gap ? <p className="mt-3 text-xs leading-relaxed text-slate-500">{network.gap}</p> : null}
+            </>
+          )}
+        </Card>
+        <div className="space-y-4">
+          <Stat
+            label="Cuentas marcadas"
+            value={network.flaggedCount}
+            tone={network.flaggedCount > 0 ? "negative" : "default"}
+            hint={`${network.pendingReview} pendientes de revisión`}
+          />
+        </div>
+      </div>
 
       <SuspiciousInsightsPanel insights={insights} slug={slug} />
 

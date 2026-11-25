@@ -28,7 +28,7 @@ export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean 
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },
     { href: `${base}/accion`, label: ACCION_SECTION_LABEL, icon: "accion", active: pathname.startsWith(`${base}/accion`) },
     { href: `${base}/temas`, label: CUSTOM_TOPICS_SECTION_LABEL, icon: "temas", active: pathname.startsWith(`${base}/temas`) },
-    { href: `${base}/comparacion`, label: "Comparación", icon: "comparacion", active: pathname.startsWith(`${base}/comparacion`) },
+    { href: `${base}/comparacion`, label: "Rivales y anuncios", icon: "comparacion", active: pathname.startsWith(`${base}/comparacion`) },
     { href: `${base}/ia`, label: "En la IA", icon: "ia", active: pathname.startsWith(`${base}/ia`) },
     { href: `${base}/x`, label: "En X", icon: "x", active: pathname.startsWith(`${base}/x`) },
     ...(showAds

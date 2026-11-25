@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { ComparisonVolumeChart } from "@/components/comparison-volume-chart";
+import { CreativeAdCardView } from "@/components/creative-ad-card";
 import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import { RIVAL_LEVEL_HINT, RIVAL_LEVEL_LABEL } from "@/lib/labels";
+import { META_ADS_EU_UNAVAILABLE, regionFor } from "@/lib/region";
+import { formatSharePct, rivalCreativeCards, rivalMetaStats, shareOfVoice } from "@/lib/rival-ads";
 import { buildRivalComparison, type SubjectPack } from "@/lib/rivals";
+import { computeDashboard } from "@/lib/analytics";
 import { clockFor } from "@/lib/time";
 import { formatBalance as formatAiBalance } from "@/lib/ai-visibility";
 import { formatBalance } from "@/lib/x-posts";
-import type { Candidate, CandidateRival, RivalLevel } from "@/lib/types";
+import type { Candidate, CandidateRival, MetaAd, RivalLevel } from "@/lib/types";
 
-export const metadata = { title: "Comparación · Pulso" };
+export const metadata = { title: "Rivales y anuncios · Pulso" };
 const PERIODS = [7, 14, 30];
 
 function overallBalance(pack: {
@@ -61,6 +65,36 @@ export default async function ComparacionPage({
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - days * 86400000).toISOString();
 
+  const region = regionFor(slug);
+  const [parentMeta, parentGoogle, parentMentions, rivalPacks] = await Promise.all([
+    region.showMetaAds ? repo.listMetaAds(candidate.id) : Promise.resolve([] as MetaAd[]),
+    repo.listGoogleAds(candidate.id),
+    repo.mentionsSince(candidate.id, since),
+    Promise.all(
+      resolved.map(async (row) => {
+        const mentions = await repo.mentionsSince(row.rival.id, since);
+        return { rival: row.rival, mentions };
+      }),
+    ),
+  ]);
+  const parentDash = computeDashboard(parentMentions, await repo.listTopics(candidate.id), {
+    days,
+    now,
+    timeZone: clock.timeZone,
+  });
+  const sov = shareOfVoice([
+    { id: candidate.id, name: candidate.name, slug: candidate.slug, self: true, mentions: parentDash.total },
+    ...rivalPacks.map(({ rival, mentions }) => ({
+      id: rival.id,
+      name: rival.name,
+      slug: rival.slug,
+      self: false,
+      mentions: computeDashboard(mentions, [], { days, now, timeZone: clock.timeZone }).total,
+    })),
+  ]);
+  const pauta = region.showMetaAds ? rivalMetaStats(parentMeta, resolved.map((r) => r.rival), now) : [];
+  const creatives = rivalCreativeCards(parentMeta, parentGoogle, resolved.map((r) => r.rival), now);
+
   let comparison = null as ReturnType<typeof buildRivalComparison> | null;
   if (current) {
     const [left, right] = await Promise.all([
@@ -78,8 +112,8 @@ export default async function ComparacionPage({
   return (
     <>
       <PageHeader
-        title={`Comparación · ${candidate.name}`}
-        description="Vista armada con los rivales que asignó el equipo de Active. Los datos salen de lo que Pulso ya recolecta para cada candidato."
+        title={`Rivales y anuncios · ${candidate.name}`}
+        description="Conversación comparada y anuncios de rivales, con los datos que Pulso ya recolecta."
       >
         <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm shadow-sm">
           {PERIODS.map((p) => (
@@ -122,6 +156,90 @@ export default async function ComparacionPage({
         </div>
       ) : null}
 
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <Card title="Quién domina la conversación" subtitle={`Menciones de terceros en los últimos ${days} días.`}>
+          {resolved.length === 0 ? (
+            <EmptyState>Todavía no hay rivales asignados para armar una participación de la conversación.</EmptyState>
+          ) : (
+            <div className="space-y-3">
+              {sov.map((row) => {
+                const max = Math.max(1, ...sov.map((r) => r.mentions));
+                return (
+                  <HBar
+                    key={row.id}
+                    label={`${row.name}${row.self ? " (tu candidato)" : ""}`}
+                    value={row.mentions}
+                    max={max}
+                    barClass={row.self ? "bg-violet-600" : "bg-slate-300"}
+                    extra={<span className="ml-1.5 text-xs text-slate-500">· {formatSharePct(row.share)}</span>}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </Card>
+        <Card
+          title="Pauta de rivales"
+          subtitle={region.showMetaAds ? "Anuncios de Meta atribuidos al rival por el nombre del anunciante (mencionan a tu candidato)." : "Biblioteca de Meta"}
+        >
+          {!region.showMetaAds ? (
+            <p className="text-sm text-slate-600">{META_ADS_EU_UNAVAILABLE}</p>
+          ) : pauta.length === 0 ? (
+            <EmptyState>Todavía no hay rivales asignados.</EmptyState>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {pauta.map((row) => (
+                <div key={row.rival.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                  <p className="font-semibold text-slate-900">{row.rival.name}</p>
+                  {row.unmatched ? (
+                    <p className="mt-2 text-sm text-slate-600">No hay anuncios de Meta cuyo anunciante coincida con este rival.</p>
+                  ) : (
+                    <>
+                      <div className="mt-3 flex gap-6">
+                        <div>
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Anuncios</p>
+                          <p className="text-2xl font-semibold tabular-nums text-slate-900">{row.ads}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Activos</p>
+                          <p className="text-2xl font-semibold tabular-nums text-emerald-600">{row.active}</p>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-700">
+                        En contra de tu candidato:{" "}
+                        <span className="font-semibold text-rose-600">
+                          {row.againstShare == null ? "sin clasificar" : formatSharePct(row.againstShare)}
+                        </span>
+                      </p>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      <Card
+        title="Anuncios de rivales"
+        subtitle="Creatividades con el texto real del anuncio. No alojamos imágenes: el recuadro muestra el cuerpo o titular que ya está en la base."
+        className="mb-6"
+      >
+        {creatives.length === 0 ? (
+          <EmptyState>
+            {resolved.length === 0
+              ? "Cuando haya rivales asignados, acá van a aparecer sus anuncios de Meta o Google atribuibles por el nombre del anunciante."
+              : "No hay anuncios de Meta o Google atribuibles a estos rivales por el nombre del anunciante. El reporte de Google no trae el texto del creativo."}
+          </EmptyState>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {creatives.map((card) => (
+              <CreativeAdCardView key={card.id} card={card} />
+            ))}
+          </div>
+        )}
+      </Card>
       {!current || !comparison ? (
         <EmptyState>
           Todavía no hay una comparación. Cuando el equipo de Active asigne rivales para este candidato, acá vas a ver el contraste listo, según el nivel elegido (Radar, Comparativo o Completo).

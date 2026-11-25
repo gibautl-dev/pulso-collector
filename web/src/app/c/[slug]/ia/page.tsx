@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { AiAnswerCard } from "@/components/ai-answer-card";
 import { AiBalanceChart } from "@/components/ai-balance-chart";
+import { AiDayGauge } from "@/components/ai-day-gauge";
 import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import {
   answersOnDay,
-  balanceTone,
+  cleanQuote,
   computeAiDashboard,
   formatBalance,
   formatShare,
 } from "@/lib/ai-visibility";
+import { dayBalanceGauge } from "@/lib/ai-day-gauge";
+import { highlightCoverage } from "@/lib/highlight-phrases";
 import { loadCandidate } from "@/lib/context";
 import { regionFor } from "@/lib/region";
 import { clockFor, formatDateTime } from "@/lib/time";
@@ -31,6 +34,14 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
   const answers = await repo.listAiAnswers(candidate.id);
   const view = computeAiDashboard(answers);
   const latest = view.latestDay ? answersOnDay(answers, view.latestDay) : [];
+  const gauge = dayBalanceGauge(answers);
+  const featured =
+    latest
+      .map((answer) => {
+        const hits = highlightCoverage(cleanQuote(answer.answer), answer.positives, answer.negatives);
+        return { answer, score: hits.positiveHits + hits.negativeHits };
+      })
+      .sort((a, b) => b.score - a.score)[0]?.answer ?? latest[0] ?? null;
   const askedAt = latest[0]?.asked_at ?? answers[0]?.asked_at ?? null;
   const lastLabel = askedAt
     ? `Última foto: ${formatDateTime(askedAt, clock)} (${clock.tzLabel}).`
@@ -64,34 +75,54 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
         </Card>
       ) : (
         <>
-          <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat
-              label="Balance general"
-              value={formatBalance(view.overallBalance)}
-              hint={`${view.classified} respuestas clasificadas · de −100 a +100`}
-              tone={balanceTone(view.overallBalance)}
-            />
-            <Stat
-              label="A favor"
-              value={formatShare(view.positiveShare)}
-              tone="positive"
-              hint={`${view.positive} respuestas con saldo positivo`}
-            />
-            <Stat
-              label="En contra"
-              value={formatShare(view.negativeShare)}
-              tone="negative"
-              hint={`${view.negative} respuestas con saldo negativo`}
-            />
-            <Stat
-              label="Neutrales"
-              value={formatShare(view.neutralShare)}
-              hint={
-                view.trendInsufficient
-                  ? "Todavía hay una sola foto diaria para ver una tendencia"
-                  : `Tendencia: ${view.trend! > 0 ? "+" : ""}${view.trend} entre la primera y la última foto`
+          <div className="mb-6 grid gap-6 lg:grid-cols-2">
+            <Card
+              title="Foto del día"
+              subtitle={
+                gauge
+                  ? `Respuestas de la API del ${gauge.day}. El subrayado verde/rojo usa las frases ya guardadas por el clasificador, sin una llamada extra a un modelo.`
+                  : "Todavía no hay una foto diaria."
               }
-            />
+            >
+              {latest.length === 0 ? (
+                <EmptyState>No hay respuestas en el último día.</EmptyState>
+              ) : (
+                <div>
+                  <div className="relative max-h-80 overflow-hidden">
+                    {featured ? <AiAnswerCard answer={featured} /> : null}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
+                  </div>
+                  <p className="mt-3 text-xs text-slate-500">
+                    La respuesta completa está en el listado de abajo
+                    {latest.length > 1 ? `, junto con ${latest.length - 1} pregunta${latest.length - 1 === 1 ? "" : "s"} más del día` : ""}.
+                  </p>
+                </div>
+              )}
+            </Card>
+            <div className="space-y-4">
+              <Card
+                title="Balance del día"
+                subtitle="Promedio de los balances ya guardados (de −100 a +100) en la última foto diaria."
+              >
+                {gauge && gauge.balance != null ? (
+                  <>
+                    <AiDayGauge balance={gauge.balance} />
+                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                      Se promedian los puntajes de las {gauge.classified} respuestas clasificadas de ese día. Las tarjetas
+                      de abajo usan el umbral existente: más de +5 es a favor, menos de −5 es en contra, el resto es
+                      neutral.
+                    </p>
+                  </>
+                ) : (
+                  <EmptyState>No hay un balance numérico para el último día.</EmptyState>
+                )}
+              </Card>
+              <div className="grid grid-cols-3 gap-3">
+                <Stat label="A favor" value={formatShare(gauge?.positiveShare ?? null)} tone="positive" />
+                <Stat label="En contra" value={formatShare(gauge?.negativeShare ?? null)} tone="negative" />
+                <Stat label="Neutrales" value={formatShare(gauge?.neutralShare ?? null)} />
+              </div>
+            </div>
           </div>
 
           <div className="mb-6 grid gap-6 lg:grid-cols-3">

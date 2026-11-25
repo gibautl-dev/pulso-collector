@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import { MentionRow } from "@/components/mention-row";
+import { MentionFeedItem } from "@/components/mention-feed";
 import { VolumeChart } from "@/components/volume-chart";
 import { computeDashboard } from "@/lib/analytics";
+import { formatPeriodChange, periodChange } from "@/lib/volume-peak";
 import { loadCandidate } from "@/lib/context";
 import { NEGATIVE_TONES, SOURCE_BAR, SOURCE_BAR_DEFAULT, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
 import { regionFor } from "@/lib/region";
@@ -27,8 +29,9 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const ts = await repo.dataTimestamp();
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - days * 86400000).toISOString();
+  const sincePrevious = new Date(now.getTime() - days * 2 * 86400000).toISOString();
   const [mentions, topics, sources, ads, answers, suspicious, rivalRows, crisisAlerts, customTopics, mentionsForTopics] = await Promise.all([
-    repo.mentionsSince(candidate.id, since),
+    repo.mentionsSince(candidate.id, sincePrevious),
     repo.listTopics(candidate.id),
     repo.listCandidateSources(candidate.id),
     repo.listMetaAds(candidate.id),
@@ -45,6 +48,12 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
     stats: computeTopicStats(topic, mentionsForTopics, { now, days, timeZone: clock.timeZone }),
   }));
   const d = computeDashboard(mentions, topics, { days, now, timeZone: clock.timeZone });
+  const previous = computeDashboard(mentions, topics, {
+    days,
+    now: new Date(now.getTime() - days * 86400000),
+    timeZone: clock.timeZone,
+  });
+  const wow = periodChange(d.total, previous.total);
   const sourceCards = computeHomeCards({
     slug,
     days,
@@ -59,6 +68,11 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const topicLabel = new Map(topics.map((t) => [t.id, t.label]));
   const classifiedAbout = d.toneAboutCandidate.reduce((s, t) => s + t.count, 0);
   const negPct = classifiedAbout ? Math.round((d.negativeAboutCandidate / classifiedAbout) * 100) : 0;
+  const posPct = classifiedAbout ? Math.round((d.positiveAboutCandidate / classifiedAbout) * 100) : 0;
+  const latestMentions = [...mentions]
+    .filter((m) => m.account_relation === "third_party" && new Date(m.published_at).getTime() >= new Date(since).getTime())
+    .sort((a, b) => b.published_at.localeCompare(a.published_at))
+    .slice(0, 8);
   const active = sources.filter((s) => s.enabled);
   const started = active.map((s) => s.collection_started_at).filter(Boolean).sort()[0] ?? null;
   const maxTopic = Math.max(1, ...d.topTopics.map((t) => t.count));
@@ -92,24 +106,33 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
       </PageHeader>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Menciones" value={d.total} hint={`${d.last24h} en las últimas 24 h`} />
+        <Stat
+          label="Menciones"
+          value={d.total}
+          hint={`${formatPeriodChange(wow.percent, days)} · ${d.last24h} en las últimas 24 h`}
+        />
         <Stat label="Sobre él" value={d.aboutCandidate} hint={`${d.aboutOthers} sobre otros · ${d.unclear} poco claras`} />
         <Stat
           label="Críticas y acusaciones"
-          value={d.negativeAboutCandidate}
-          tone={d.negativeAboutCandidate > 0 ? "negative" : "default"}
-          hint={`${negPct}% de lo clasificado sobre él`}
+          value={classifiedAbout ? `${negPct}%` : "—"}
+          tone={negPct > 0 ? "negative" : "default"}
+          hint={classifiedAbout ? `${d.negativeAboutCandidate} de lo clasificado sobre él` : "Sin menciones clasificadas sobre él"}
         />
-        <Stat label="A favor" value={d.positiveAboutCandidate} tone="positive" hint={`${d.pending} menciones esperando clasificación`} />
+        <Stat
+          label="A favor"
+          value={classifiedAbout ? `${posPct}%` : "—"}
+          tone="positive"
+          hint={classifiedAbout ? `${d.positiveAboutCandidate} de lo clasificado sobre él · ${d.pending} sin clasificar` : "Sin menciones clasificadas sobre él"}
+        />
       </div>
 
       <SourceSummaryCards cards={sourceCards} />
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card title="Volumen de menciones por día" subtitle={`Días en ${clock.tzLabel}. Solo menciones de terceros.`} className="lg:col-span-2">
+        <Card title="Volumen de menciones por día" subtitle={`Medios, X y YouTube · ${clock.tzLabel}. Solo menciones de terceros.`} className="lg:col-span-2">
           <VolumeChart data={d.volume} clock={clock} />
         </Card>
-        <Card title="Tono sobre el candidato" subtitle="Solo menciones cuyo objetivo es él (target = candidato).">
+        <Card title="Tono sobre el candidato" subtitle="Clasificado con IA. Solo menciones cuyo objetivo es él.">
           <div className="space-y-3">
             {d.toneAboutCandidate.map((t) => (
               <HBar key={t.tone} label={TONE_LABEL[t.tone]} value={t.count} max={maxTone} barClass={TONE_BAR[t.tone]} />
@@ -146,11 +169,41 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
             </div>
           )}
         </Card>
-        {d.topYoutubeVideos.length > 0 && (
+        <Card
+          title="Últimas menciones"
+          subtitle="Las más recientes del período, de terceros."
+          className="lg:col-span-2"
+          action={
+            <span className="flex items-center gap-3">
+              {d.last24h > 0 ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  En vivo
+                </span>
+              ) : null}
+              <Link href={`/c/${slug}/menciones`} className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
+                Ver todas →
+              </Link>
+            </span>
+          }
+        >
+          {latestMentions.length === 0 ? (
+            <EmptyState>No hay menciones en el período.</EmptyState>
+          ) : (
+            <ul className="divide-y divide-slate-50">
+              {latestMentions.map((m) => (
+                <MentionFeedItem key={m.id} m={m} slug={slug} now={now} />
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+
+      {d.topYoutubeVideos.length > 0 ? (
+        <div className="mt-6">
           <Card
             title="Videos más vistos"
             subtitle="YouTube, ordenados por cantidad de vistas al recolectarlos."
-            className="lg:col-span-2"
             action={
               <Link href={`/c/${slug}/menciones?source=youtube`} className="text-xs font-medium text-indigo-600 hover:text-indigo-500">
                 Ver YouTube →
@@ -187,8 +240,8 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
               })}
             </ul>
           </Card>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Card

@@ -23,8 +23,8 @@ export const TONE_BADGE: Record<Tone, string> = {
   a_favor: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   critica: "bg-rose-50 text-rose-700 ring-rose-600/20",
   insulto: "bg-red-100 text-red-800 ring-red-600/30",
-  acusacion: "bg-orange-50 text-orange-700 ring-orange-600/20",
-  pregunta: "bg-sky-50 text-sky-700 ring-sky-600/20",
+  acusacion: "bg-red-50 text-red-800 ring-red-700/20",
+  pregunta: "bg-violet-50 text-violet-700 ring-violet-600/20",
   informativo: "bg-slate-100 text-slate-700 ring-slate-500/20",
 };
 
@@ -32,9 +32,9 @@ export const TONE_BADGE: Record<Tone, string> = {
 export const TONE_BAR: Record<Tone, string> = {
   a_favor: "bg-emerald-500",
   critica: "bg-rose-500",
-  insulto: "bg-red-700",
-  acusacion: "bg-orange-500",
-  pregunta: "bg-sky-500",
+  insulto: "bg-red-800",
+  acusacion: "bg-red-800",
+  pregunta: "bg-violet-500",
   informativo: "bg-slate-400",
 };
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AdsVolumeChart } from "@/components/ads-volume-chart";
-import { GoogleAdCard } from "@/components/google-ad";
-import { MetaAdCard } from "@/components/meta-ad";
+import { CreativeAdCardView } from "@/components/creative-ad-card";
+import { googleToCreativeCard, metaToCreativeCard } from "@/lib/rival-ads";
 import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import { computeGoogleAdsView, formatGoogleAdDate, formatSpendAggregate as formatGoogleSpendAggregate, GOOGLE_ADS_EXAMPLE_BANNER, GOOGLE_ADS_KICILLOF_SCOPE, GOOGLE_ADS_SPAIN_PENDING, SOURCE_LABEL as GOOGLE_SOURCE_LABEL } from "@/lib/google-ads";
@@ -373,11 +373,11 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
               </EmptyState>
             ) : (
               <>
-                <ul>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {view.items.map((ad) => (
-                    <MetaAdCard key={ad.id} ad={ad} now={viewNow} />
+                    <CreativeAdCardView key={ad.id} card={metaToCreativeCard(ad, viewNow)} />
                   ))}
-                </ul>
+                </div>
                 {totalPages > 1 ? (
                   <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 text-sm">
                     <p className="text-slate-500">
@@ -456,12 +456,12 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
                 ))}
               </ul>
             </Card>
-            <Card title="Listado" subtitle="Vínculos a la ficha oficial. Pulso no scrapea esa página." className="mt-4">
-              <ul>
+            <Card title="Listado" subtitle="Vínculos a la ficha oficial. El reporte de Google no incluye el texto del creativo; no se inventa un titular." className="mt-4">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {googleAds.map((ad) => (
-                  <GoogleAdCard key={ad.id} ad={ad} />
+                  <CreativeAdCardView key={ad.id} card={googleToCreativeCard(ad)} />
                 ))}
-              </ul>
+              </div>
             </Card>
           </>
         ) : slug !== "pedro-sanchez" ? (
