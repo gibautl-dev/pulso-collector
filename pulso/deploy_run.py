@@ -150,6 +150,7 @@ def main():
                 run_google_ads(args, remaining=timeout - (time.monotonic() - started))
                 run_crisis_agent(args)
                 run_daily_brief(args)
+                run_inconsistency(args)
             return code
         finished = []
         timed_out = False
@@ -187,6 +188,8 @@ def main():
                 log(event='cron_post_steps_skipped', reason='db_rival_media_only', candidate=slug)
                 # El resumen diario sí corre para los rivales: solo lee menciones ya clasificadas.
                 run_daily_brief(child_args)
+                # Las contradicciones también: solo lee titulares de medios ya recolectados.
+                run_inconsistency(child_args)
                 continue
             run_suspicious(child_args)
             run_ai_visibility(child_args)
@@ -199,6 +202,7 @@ def main():
             run_google_ads(child_args, remaining=timeout - (time.monotonic() - started))
             run_crisis_agent(child_args)
             run_daily_brief(child_args)
+            run_inconsistency(child_args)
     # El resultado del clasificador, el detector, la visibilidad en IA, Meta Ads,
     # los anuncios de Google o la clasificación de anuncios nunca cambia el
     # código de salida del cron.
@@ -398,6 +402,29 @@ def run_daily_brief(collector_args):
                            env=child_env(COLLECTOR_ONLY, META_ADS_ONLY), prefix='daily_brief')
     except Exception as exc:
         log(event='daily_brief_error', error_type=type(exc).__name__)
+        return None
+
+
+def run_inconsistency(collector_args):
+    """Alertas de contradicciones. Apagado por defecto; cada PULSO_INCONSISTENCY_EVERY_HOURS; no publica nada."""
+    try:
+        if os.getenv('PULSO_INCONSISTENCY_ENABLED', 'false').lower() != 'true':
+            log(event='inconsistency_skipped', reason='disabled')
+            return None
+        timeout = int(os.getenv('PULSO_INCONSISTENCY_TIMEOUT_SECONDS', '180'))
+        if not 30 <= timeout <= 600:
+            raise ValueError('Invalid inconsistency timeout')
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_INCONSISTENCY_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
+        # Misma clave LLM y rol del clasificador; no ve al recolector ni el token de Meta.
+        return run_command([sys.executable, '-m', 'pulso.inconsistency', *args], timeout,
+                           env=child_env(COLLECTOR_ONLY, META_ADS_ONLY), prefix='inconsistency')
+    except Exception as exc:
+        log(event='inconsistency_error', error_type=type(exc).__name__)
         return None
 
 
