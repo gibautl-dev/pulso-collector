@@ -578,3 +578,36 @@ export interface DailyBrief {
   created_at: string;
   updated_at?: string;
 }
+
+export type ResponseSimulationStatus = "running" | "ok" | "error";
+
+export interface ResponseSimulation {
+  id: string;
+  candidate_id: string;
+  user_id: string;
+  draft: string;
+  status: ResponseSimulationStatus;
+  /** Salida validada (ver lib/response-simulator.ts). jsonb. */
+  output: Record<string, unknown>;
+  /** Datos que vio el modelo: temas, públicos y menciones con referencia corta. jsonb. */
+  context: Record<string, unknown>;
+  model: string | null;
+  prompt_version: string | null;
+  reserved_usd: number;
+  cost_usd: number | null;
+  error: string | null;
+  origin: "ai" | "fixture_example";
+  created_at: string;
+  finished_at: string | null;
+}
+
+export interface ResponseSimulationFinish {
+  status: "ok" | "error";
+  output: Record<string, unknown>;
+  context: Record<string, unknown>;
+  model: string | null;
+  prompt_version: string;
+  cost_usd: number | null;
+  usage: Record<string, unknown>;
+  error: string | null;
+}

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ACCION_SECTION_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
+import { ACCION_SECTION_LABEL, CUSTOM_TOPICS_SECTION_LABEL, SIMULATOR_SECTION_LABEL } from "@/lib/labels";
 import { DAILY_BRIEF_SECTION_LABEL } from "@/lib/daily-brief";
+
 
 const ICONS: Record<string, string> = {
   tablero: "M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
@@ -17,6 +18,7 @@ const ICONS: Record<string, string> = {
   accion: "M12 3l3 6 6 .9-4.5 4.4 1 6.2L12 17.8 6.5 20.5l1-6.2L3 9.9 9 9z",
   comparacion: "M5 19V8h4v11H5zm6 0V4h4v15h-4zm6 0v-7h4v7h-4z",
   temas: "M4 6h7v5H4V6zm9 0h7v5h-7V6zM4 13h7v5H4v-5zm9 0h7v5h-7v-5z",
+  simulador: "M4 5h16v10H8l-4 4V5zM8 9h8M8 12h5",
 };
 
 /** Menú del cliente (escritorio y móvil). Temas a medida es permanente, aunque no haya temas todavía. */
@@ -26,6 +28,7 @@ export function Nav({ slug, showAds = true }: { slug: string; showAds?: boolean 
   const items = [
     { href: base, label: "Tablero", icon: "tablero", active: pathname === base },
     { href: `${base}/resumen`, label: DAILY_BRIEF_SECTION_LABEL, icon: "resumen", active: pathname.startsWith(`${base}/resumen`) },
+    { href: `${base}/simulador`, label: SIMULATOR_SECTION_LABEL, icon: "simulador", active: pathname.startsWith(`${base}/simulador`) },
     { href: `${base}/menciones`, label: "Menciones", icon: "menciones", active: pathname.startsWith(`${base}/menciones`) },
     { href: `${base}/fuentes`, label: "Salud de fuentes", icon: "fuentes", active: pathname.startsWith(`${base}/fuentes`) },
     { href: `${base}/sospechosas`, label: "Cuentas sospechosas", icon: "sospechosas", active: pathname.startsWith(`${base}/sospechosas`) },
