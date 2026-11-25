@@ -18,7 +18,7 @@ def log(**values): print(json.dumps(values,ensure_ascii=False,default=str),flush
 
 def run_exit_code(results):
     """0 si todo OK o falla parcial (cada fuente con al menos un feed OK); 1 si alguna fuente falla entera.
-    Una falla blanda (YouTube o X) no cambia el código de salida."""
+    Una falla blanda (YouTube, X o un 429 de GDELT) no cambia el código de salida."""
     failed = [r for r in results if r.errors and r.feeds_ok == 0 and not r.soft_failure]
     return 1 if failed else 0
 

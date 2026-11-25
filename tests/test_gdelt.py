@@ -2,6 +2,7 @@ import json
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from uuid import uuid4
 from unittest.mock import patch
 import httpx
@@ -106,10 +107,32 @@ class ThrottleTests(unittest.IsolatedAsyncioTestCase):
         def clock():
             return next(clock_values)
 
-        await wait_for_slot(min_seconds=5, sleeper=fake_sleep, clock=clock)
+        await wait_for_slot(min_seconds=5, sleeper=fake_sleep, clock=clock, path="")
         self.assertEqual(slept, [])
-        await wait_for_slot(min_seconds=5, sleeper=fake_sleep, clock=clock)
+        await wait_for_slot(min_seconds=5, sleeper=fake_sleep, clock=clock, path="")
         self.assertEqual(slept, [3.0])
+        reset_throttle()
+
+    async def test_shared_file_throttles_fresh_process(self):
+        """Un segundo proceso (reloj monotónico en 0) respeta el sello wall del archivo."""
+        reset_throttle()
+        slept = []
+
+        async def fake_sleep(seconds):
+            slept.append(seconds)
+
+        with TemporaryDirectory() as tmp:
+            path = str(Path(tmp) / "gdelt_stamp")
+            Path(path).write_text("100.0\n")
+            await wait_for_slot(
+                min_seconds=8,
+                sleeper=fake_sleep,
+                clock=lambda: 0.0,
+                wall=lambda: 103.0,
+                path=path,
+            )
+            self.assertEqual(slept, [5.0])
+            self.assertEqual(float(Path(path).read_text().strip()), 108.0)
         reset_throttle()
 
 
@@ -204,6 +227,19 @@ class FetchTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_plain_rate_limit_message(self):
         result = await self.fetch_with((200, b"Please limit requests to one every 5 seconds or contact us"))
-        # 200 + text retried then fails
+        # 200 + text retried then fails as a soft skip (el cron no debe salir 1).
         self.assertTrue(result.errors)
         self.assertEqual(result.feeds_ok, 0)
+        self.assertTrue(result.soft_failure)
+        self.assertTrue(any("rate_limited" in e for e in result.errors))
+
+    async def test_persistent_429_is_soft_failure(self):
+        def payload(request):
+            return httpx.Response(429, content=b"Please limit requests to one every 5 seconds")
+
+        result = await self.fetch_with(payload)
+        self.assertEqual(result.feeds_ok, 0)
+        self.assertEqual(result.mentions, [])
+        self.assertTrue(result.soft_failure)
+        self.assertTrue(any("429" in e and "rate_limited" in e for e in result.errors))
+        self.assertGreaterEqual(len(self.calls), 3)

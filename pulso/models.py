@@ -80,7 +80,7 @@ class FetchResult(BaseModel):
     feeds_ok: int = 0
     feeds_total: int = 0
     skipped_entries: int = 0
-    # YouTube y X no deben convertir el cron en error duro si RSS/News anduvieron.
+    # YouTube, X o un 429 de GDELT no deben convertir el cron en error duro si RSS/News anduvieron.
     soft_failure: bool = False
 
 

@@ -6,8 +6,10 @@ La propia API pide no más de un pedido cada 5 segundos (mensaje 429).
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from urllib.parse import urlencode
 
 import httpx
@@ -23,8 +25,11 @@ from ..urls import normalize_url, url_hash
 DOC_API = "https://api.gdeltproject.org/api/v2/doc/doc"
 ATTRIBUTION_URL = "https://www.gdeltproject.org/"
 ATTRIBUTION_TEXT = "Proyecto GDELT"
-MIN_REQUEST_SECONDS = 5.0
-RETRY_WAIT = wait_exponential(multiplier=5, min=5, max=20)
+# La API pide 1 pedido / 5 s; dejamos un margen y un sello compartido entre
+# procesos del cron (cada candidato corre en un collect_rss distinto).
+MIN_REQUEST_SECONDS = 8.0
+RETRY_WAIT = wait_exponential(multiplier=8, min=8, max=30)
+DEFAULT_THROTTLE_PATH = os.getenv("PULSO_GDELT_THROTTLE_PATH", "/tmp/pulso_gdelt_last_request")
 MAX_RECORDS = 250
 # Spain is ES in ISO 3166-1; GDELT DOC also accepts the English name.
 # The operator value is chosen from the candidate region, with a settings override.
@@ -101,16 +106,48 @@ def parse_seendate(value: str | None) -> datetime | None:
     return None
 
 
-async def wait_for_slot(min_seconds: float = MIN_REQUEST_SECONDS, sleeper=asyncio.sleep, clock=time.monotonic):
-    """Serializa los pedidos de GDELT a no más de uno cada `min_seconds`."""
+def _read_shared_stamp(path: str) -> float:
+    try:
+        return float(Path(path).read_text().strip())
+    except (OSError, ValueError):
+        return 0.0
+
+
+def _write_shared_stamp(path: str, stamp: float) -> None:
+    try:
+        Path(path).write_text(f"{stamp}\n")
+    except OSError:
+        pass
+
+
+async def wait_for_slot(
+    min_seconds: float = MIN_REQUEST_SECONDS,
+    sleeper=asyncio.sleep,
+    clock=time.monotonic,
+    wall=time.time,
+    path=None,
+):
+    """Serializa los pedidos de GDELT a no más de uno cada `min_seconds`.
+
+    El reloj monotónico vale dentro del proceso; el archivo (hora wall) vale
+    entre los collect_rss sucesivos del mismo cron.
+    """
     global _last_request_at
+    stamp_path = DEFAULT_THROTTLE_PATH if path is None else path
     async with _throttle_lock:
-        now = clock()
-        wait = min_seconds - (now - _last_request_at)
+        now_mono = clock()
+        now_wall = wall()
+        wait_mono = (min_seconds - (now_mono - _last_request_at)) if _last_request_at else 0.0
+        last_wall = _read_shared_stamp(stamp_path) if stamp_path else 0.0
+        wait_wall = (min_seconds - (now_wall - last_wall)) if last_wall else 0.0
+        wait = max(wait_mono, wait_wall, 0.0)
         if wait > 0:
             await sleeper(wait)
-            now = now + wait
-        _last_request_at = now
+            now_mono = now_mono + wait
+            now_wall = now_wall + wait
+        _last_request_at = now_mono
+        if stamp_path:
+            _write_shared_stamp(stamp_path, now_wall)
 
 
 def reset_throttle():
@@ -167,6 +204,9 @@ class GdeltSource(Source):
             if typ == "Retryable" and reason:
                 parts.append(reason)
             result.errors.append(" ".join(parts))
+            if typ == "Retryable" and reason == "rate_limited":
+                # No tumbar el cron: el próximo tick reintenta.
+                result.soft_failure = True
             return result
         result.feeds_ok = 1
         seen: set[str] = set()

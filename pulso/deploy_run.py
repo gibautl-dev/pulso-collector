@@ -184,9 +184,11 @@ def main():
         for slug, _collect_code, child_args in finished:
             run_classifier(child_args)
             # Rivales descubiertos en la DB (no listados en el entorno) solo
-            # media/RSS y clasificador: sin IA, X extra, Meta ni crisis.
+            # media/RSS, clasificador y Wikipedia: sin IA, anuncios ni crisis.
             if env_slugs and slug not in env_slugs:
                 log(event='cron_post_steps_skipped', reason='db_rival_media_only', candidate=slug)
+                # Las visitas de Wikipedia son un indicador de interés, no un paso de IA/anuncios.
+                run_wikipedia(child_args, remaining=timeout - (time.monotonic() - started))
                 # El resumen diario sí corre para los rivales: solo lee menciones ya clasificadas.
                 run_daily_brief(child_args)
                 # Las contradicciones también: solo lee titulares de medios ya recolectados.

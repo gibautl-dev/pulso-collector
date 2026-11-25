@@ -22,3 +22,22 @@ class ExitCodeTests(unittest.TestCase):
     def test_soft_failure_does_not_fail(self):
         self.assertEqual(run_exit_code([FetchResult(feeds_ok=1,feeds_total=1),
                                         FetchResult(errors=['quotaExceeded'],soft_failure=True)]),0)
+    def test_gdelt_rate_limit_alone_exits_zero(self):
+        self.assertEqual(run_exit_code([
+            FetchResult(errors=['gdelt: Retryable 429 rate_limited'], feeds_ok=0, feeds_total=1, soft_failure=True),
+        ]), 0)
+    def test_gdelt_rate_limit_with_ok_rss_exits_zero(self):
+        self.assertEqual(run_exit_code([
+            FetchResult(feeds_ok=30, feeds_total=30),
+            FetchResult(errors=['gdelt: Retryable 429 rate_limited'], feeds_ok=0, feeds_total=1, soft_failure=True),
+        ]), 0)
+    def test_gdelt_rate_limit_does_not_hide_hard_rss_failure(self):
+        self.assertEqual(run_exit_code([
+            FetchResult(errors=['no_feeds_configured'], feeds_ok=0, feeds_total=0),
+            FetchResult(errors=['gdelt: Retryable 429 rate_limited'], feeds_ok=0, feeds_total=1, soft_failure=True),
+        ]), 1)
+    def test_gdelt_hard_error_still_fails(self):
+        self.assertEqual(run_exit_code([
+            FetchResult(feeds_ok=1, feeds_total=1),
+            FetchResult(errors=['gdelt: Retryable 502 upstream_5xx'], feeds_ok=0, feeds_total=1),
+        ]), 1)

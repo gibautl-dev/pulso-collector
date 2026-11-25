@@ -46,6 +46,7 @@ class CronDiscoversDbRivalsTests(unittest.TestCase):
             "PULSO_META_ADS_ENABLED": "true",
             "PULSO_SUSPICIOUS_ENABLED": "true",
             "PULSO_CRISIS_AGENT_ENABLED": "true",
+            "PULSO_WIKIPEDIA_ENABLED": "true",
         }
         out = io.StringIO()
         with mock.patch.dict(os.environ, env, clear=True), \
@@ -73,6 +74,8 @@ class CronDiscoversDbRivalsTests(unittest.TestCase):
         self.assertEqual(count_for("milei", "pulso.suspicious"), 0)
         self.assertEqual(count_for("milei", "pulso.crisis"), 0)
         self.assertEqual(count_for("milei", "pulso.google_ads"), 0)
+        self.assertEqual(count_for("milei", "pulso.wikipedia"), 1)
+        self.assertGreaterEqual(count_for("axel-kicillof", "pulso.wikipedia"), 1)
         self.assertGreaterEqual(count_for("axel-kicillof", "pulso.google_ads"), 1)
         self.assertGreaterEqual(count_for("axel-kicillof", "pulso.ai_visibility"), 1)
         self.assertIn("cron_post_steps_skipped", out.getvalue())
