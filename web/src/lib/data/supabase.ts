@@ -148,6 +148,23 @@ export class SupabaseRepo implements PulsoRepo {
       "corridas",
     );
   }
+  async firstCollectedBySource(candidateId: string, sources: readonly string[]) {
+    // Una consulta mínima por fuente; RLS decide qué menciones del rival se ven.
+    const rows = await Promise.all(
+      sources.map(async (source) => {
+        const res = await this.db
+          .from("mentions")
+          .select("collected_at")
+          .eq("candidate_id", candidateId)
+          .eq("source", source)
+          .order("collected_at", { ascending: true })
+          .limit(1);
+        const data = check<{ collected_at: string }[]>(res, "cobertura");
+        return [source, data[0]?.collected_at ?? null] as const;
+      }),
+    );
+    return Object.fromEntries(rows);
+  }
   async listCandidateSources(candidateId: string) {
     return check<CandidateSource[]>(
       await this.db.from("candidate_sources").select(SOURCE_COLS).eq("candidate_id", candidateId).order("source"),

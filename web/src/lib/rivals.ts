@@ -7,6 +7,7 @@ import { computeSuspiciousInsights } from "./suspicious-insights";
 import { regionFor } from "./region";
 import type { AiAnswer, Candidate, Mention, MetaAd, RivalLevel, SuspiciousAccount, Topic } from "./types";
 import { computeXView } from "./x-posts";
+import { mentionsInWindow, windowCalendarDays, type CommonWindow } from "./comparison-window";
 
 export const MEDIA_SOURCES = new Set(["rss_media", "google_news", "google_alerts"]);
 
@@ -44,9 +45,16 @@ export interface SubjectSnapshot {
   mediaHighlights: Mention[];
 }
 
-function snapshot(pack: SubjectPack, opts: { days: number; now: Date; level: RivalLevel; timeZone?: string }): SubjectSnapshot {
+type CompareOpts = { days: number; now: Date; level: RivalLevel; timeZone?: string; window?: CommonWindow | null };
+
+function snapshot(pack: SubjectPack, rawOpts: CompareOpts): SubjectSnapshot {
+  const win = rawOpts.window ?? null;
+  // Con ventana común: mismas fuentes y mismo período para los dos sujetos.
+  const opts = win ? { ...rawOpts, days: windowCalendarDays(win, rawOpts.timeZone) } : rawOpts;
   const level = opts.level;
-  const mentions = mentionsForLevel(pack.mentions, level);
+  const leveled = mentionsForLevel(pack.mentions, level);
+  const mentions = win ? mentionsInWindow(leveled, win) : leveled;
+  const xCompared = !win || win.sources.includes("x");
   const region = regionFor(pack.candidate.slug);
   const dashboard = computeDashboard(mentions, pack.topics, {
     days: opts.days,
@@ -54,7 +62,7 @@ function snapshot(pack: SubjectPack, opts: { days: number; now: Date; level: Riv
     timeZone: opts.timeZone,
   });
   const media = mentions.filter((m) => MEDIA_SOURCES.has(m.source) && m.account_relation === "third_party");
-  const x = level === "radar" ? null : computeXView(mentions, { days: opts.days, now: opts.now, timeZone: opts.timeZone });
+  const x = level === "radar" || !xCompared ? null : computeXView(mentions, { days: opts.days, now: opts.now, timeZone: opts.timeZone });
   const ia = level === "completo" ? computeAiDashboard(pack.answers) : null;
   const showMetaAds = level !== "radar" && region.showMetaAds;
   const ads = showMetaAds ? stanceSplit(pack.ads, opts.now) : null;
@@ -85,7 +93,7 @@ function snapshot(pack: SubjectPack, opts: { days: number; now: Date; level: Riv
     volume: dashboard.volume,
     showMetaAds,
     showAi: level === "completo",
-    showX: level !== "radar",
+    showX: level !== "radar" && xCompared,
     showSuspicious: level === "completo",
     mediaHighlights,
   };
@@ -105,6 +113,7 @@ export interface AdsPageRank {
 
 export interface RivalComparison {
   level: RivalLevel;
+  window: CommonWindow | null;
   candidate: SubjectSnapshot;
   rival: SubjectSnapshot;
   volumeVs: ComparisonDay[];
@@ -114,7 +123,7 @@ export interface RivalComparison {
 export function buildRivalComparison(
   candidate: SubjectPack,
   rival: SubjectPack,
-  opts: { days: number; now: Date; level: RivalLevel; timeZone?: string },
+  opts: CompareOpts,
 ): RivalComparison {
   const left = snapshot(candidate, opts);
   const right = snapshot(rival, opts);
@@ -128,6 +137,7 @@ export function buildRivalComparison(
   const adsRanking = opts.level === "radar" ? [] : rankAds(candidate.ads, rival.ads, opts.now);
   return {
     level: opts.level,
+    window: opts.window ?? null,
     candidate: left,
     rival: right,
     volumeVs: [...days.values()].sort((a, b) => a.day.localeCompare(b.day)),

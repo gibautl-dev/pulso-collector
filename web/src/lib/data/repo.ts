@@ -20,6 +20,8 @@ export interface PulsoRepo {
   getMention(candidateId: string, id: string): Promise<Mention | null>;
   listSourceRuns(candidateId: string, limit: number): Promise<SourceRun[]>;
   listCandidateSources(candidateId: string): Promise<CandidateSource[]>;
+  /** `collected_at` más antiguo por fuente (inicio real de la recolección). */
+  firstCollectedBySource(candidateId: string, sources: readonly string[]): Promise<Record<string, string | null>>;
   listSuspiciousAccounts(candidateId: string, filters?: SuspiciousFilters): Promise<SuspiciousAccount[]>;
   updateSuspiciousStatus(
     candidateId: string,

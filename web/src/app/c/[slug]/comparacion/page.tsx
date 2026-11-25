@@ -1,14 +1,21 @@
 import Link from "next/link";
 import { ComparisonVolumeChart } from "@/components/comparison-volume-chart";
 import { CreativeAdCardView } from "@/components/creative-ad-card";
-import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
+import { Card, EmptyState, HBar, InfoTip, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import { RIVAL_LEVEL_LABEL } from "@/lib/labels";
 import { META_ADS_EU_UNAVAILABLE, regionFor } from "@/lib/region";
 import { mentionHeadline } from "@/lib/mention-excerpt";
 import { formatSharePct, rivalCreativeCards, rivalMetaStats, shareOfVoice } from "@/lib/rival-ads";
-import { buildRivalComparison, type SubjectPack } from "@/lib/rivals";
-import { computeDashboard } from "@/lib/analytics";
+import { buildRivalComparison, MEDIA_SOURCES, type SubjectPack } from "@/lib/rivals";
+import {
+  commonWindow,
+  countThirdPartyInWindow,
+  formatWindowRange,
+  windowTooltip,
+  type CommonWindow,
+} from "@/lib/comparison-window";
+import { loadCoverage } from "@/lib/data/coverage";
 import { clockFor } from "@/lib/time";
 import { formatBalance as formatAiBalance } from "@/lib/ai-visibility";
 import { balanceCaption, balanceTone, formatBalance } from "@/lib/x-posts";
@@ -78,21 +85,37 @@ export default async function ComparacionPage({
       }),
     ),
   ]);
-  const parentDash = computeDashboard(parentMentions, await repo.listTopics(candidate.id), {
-    days,
-    now,
-    timeZone: clock.timeZone,
-  });
-  const sov = shareOfVoice([
-    { id: candidate.id, name: candidate.name, slug: candidate.slug, self: true, mentions: parentDash.total },
-    ...rivalPacks.map(({ rival, mentions }) => ({
-      id: rival.id,
-      name: rival.name,
-      slug: rival.slug,
-      self: false,
-      mentions: computeDashboard(mentions, [], { days, now, timeZone: clock.timeZone }).total,
-    })),
-  ]);
+  // Solo el período y las fuentes que se miden para todos (lib/comparison-window.ts).
+  const coverageById = new Map(
+    (
+      await Promise.all([candidate, ...resolved.map((r) => r.rival)].map((c) => loadCoverage(repo, c.id)))
+    ).map((c) => [c.id, c]),
+  );
+  const levelOf = new Map(resolved.map((r) => [r.rival.id, r.assignment.level]));
+  const windowFor = (ids: string[]): CommonWindow | null =>
+    commonWindow(
+      ids.map((id) => coverageById.get(id)!),
+      { now, days, allowedSources: ids.some((id) => levelOf.get(id) === "radar") ? MEDIA_SOURCES : null },
+    );
+  const sovWindow = resolved.length ? windowFor([candidate.id, ...resolved.map((r) => r.rival.id)]) : null;
+  const sov = sovWindow
+    ? shareOfVoice([
+        {
+          id: candidate.id,
+          name: candidate.name,
+          slug: candidate.slug,
+          self: true,
+          mentions: countThirdPartyInWindow(parentMentions, sovWindow),
+        },
+        ...rivalPacks.map(({ rival, mentions }) => ({
+          id: rival.id,
+          name: rival.name,
+          slug: rival.slug,
+          self: false,
+          mentions: countThirdPartyInWindow(mentions, sovWindow),
+        })),
+      ])
+    : [];
   const pauta = region.showMetaAds ? rivalMetaStats(parentMeta, resolved.map((r) => r.rival), now) : [];
   const creatives = rivalCreativeCards(parentMeta, parentGoogle, resolved.map((r) => r.rival), now);
 
@@ -102,12 +125,16 @@ export default async function ComparacionPage({
       loadPack(repo, candidate, since),
       loadPack(repo, current.rival, since),
     ]);
-    comparison = buildRivalComparison(left, right, {
-      days,
-      now,
-      level: current.assignment.level,
-      timeZone: clock.timeZone,
-    });
+    const pairWindow = windowFor([candidate.id, current.rival.id]);
+    comparison = pairWindow
+      ? buildRivalComparison(left, right, {
+          days,
+          now,
+          level: current.assignment.level,
+          timeZone: clock.timeZone,
+          window: pairWindow,
+        })
+      : null;
   }
 
   return (
@@ -160,9 +187,16 @@ export default async function ComparacionPage({
 
       <div data-testid="rivales-hero" className="mb-6 space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Quién domina la conversación" subtitle={`Menciones en los últimos ${days} días.`}>
+        <Card
+          title="Quién domina la conversación"
+          subtitle={sovWindow ? `Menciones del período comparado: ${formatWindowRange(sovWindow, clock)}.` : `Menciones en los últimos ${days} días.`}
+          info={sovWindow ? windowTooltip(sovWindow, clock) : undefined}
+          testId="rivales-quien-domina"
+        >
           {resolved.length === 0 ? (
             <EmptyState>Todavía no hay rivales asignados.</EmptyState>
+          ) : !sovWindow ? (
+            <EmptyState>Todavía no hay un período con datos de ambos para comparar.</EmptyState>
           ) : (
             <div className="space-y-3">
               {sov.map((row) => {
@@ -243,7 +277,9 @@ export default async function ComparacionPage({
         )}
       </Card>
       </div>
-      {!current || !comparison ? (
+      {current && !comparison ? (
+        <EmptyState>Todavía no hay un período con datos de ambos para comparar con {current.rival.name}.</EmptyState>
+      ) : !current || !comparison ? (
         <EmptyState>
           Todavía no hay una comparación. Cuando el equipo de Active asigne rivales para este candidato, acá vas a ver el contraste listo, según el nivel elegido (Radar, Comparativo o Completo).
         </EmptyState>
@@ -275,11 +311,17 @@ function ComparisonBody({
   const rightBal = overallBalance(rival);
   const showAds = candidate.showMetaAds || rival.showMetaAds;
   return (
-    <div className="space-y-6">
+    <div data-testid="rivales-par" className="space-y-6">
       <p className="text-sm text-slate-600">
         Nivel <span className="font-semibold text-slate-900">{RIVAL_LEVEL_LABEL[level]}</span>
         {" · "}
         Frente a {rival.candidate.name}.
+        {comparison.window ? (
+          <span data-testid="rivales-periodo" className="ml-2 inline-flex items-center gap-1 text-xs text-slate-400">
+            Período comparado: {formatWindowRange(comparison.window, clock)}
+            <InfoTip label="Qué período se compara" text={windowTooltip(comparison.window, clock)} />
+          </span>
+        ) : null}
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

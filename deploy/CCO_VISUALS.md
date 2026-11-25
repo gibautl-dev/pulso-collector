@@ -78,3 +78,27 @@ usa esa misma regla.
 
 El cuerpo de las cards de anuncios se recorta a 120 caracteres y como
 máximo 5 líneas, con elipsis. La altura del recuadro es fija.
+
+
+## Ventana común en comparaciones (fix/rival-common-window)
+
+Un rival que se suma después (Milei empezó a recolectarse el 24/11 23:25
+ART; Kicillof el 03/11) quedaba subrepresentado: se sumaban 7 días de un
+lado contra horas del otro, y fuentes que solo existen para uno (X, YouTube).
+
+- **Período:** desde el inicio de recolección más tardío entre todos los
+  sujetos comparados (candidato + rivales) y todas las fuentes compartidas,
+  nunca antes de hoy − N días. Inicio = `candidate_sources.collection_started_at`
+  (fuente activa); si la fila no es legible por RLS (un miembro no ve las
+  fuentes del rival) o no tiene fecha, el primer `collected_at` de esa fuente
+  en `mentions`. Las notas viejas que trae el primer barrido no cuentan.
+- **Fuentes:** solo las que se miden para todos (en Radar, solo medios).
+- **Variación (pp):** solo si la ventana anterior de la misma longitud
+  también está cubierta para todos; si no, no se muestra. La ventana anterior
+  ahora tiene tope superior (antes contaba los últimos 2N días).
+- **UI:** «Período comparado: 24–25 nov» en gris y un ⓘ con período,
+  hora de inicio si se recortó, fuentes y por qué no hay variación.
+- Aplica a la tarjeta del tablero, a «Quién domina la conversación» y al
+  frente a frente de Rivales y anuncios (menciones, balance, curvas, medios;
+  X se oculta si no se mide para los dos).
+- Sin cambios de schema ni de permisos.

@@ -80,6 +80,18 @@ export class MemoryRepo implements PulsoRepo {
       .sort((a, b) => b.started_at.localeCompare(a.started_at))
       .slice(0, limit);
   }
+  async firstCollectedBySource(candidateId: string, sources: readonly string[]) {
+    const out: Record<string, string | null> = {};
+    for (const source of sources) {
+      let first: string | null = null;
+      for (const m of this.data.mentions) {
+        if (m.candidate_id !== candidateId || m.source !== source || !m.collected_at) continue;
+        if (first == null || new Date(m.collected_at).getTime() < new Date(first).getTime()) first = m.collected_at;
+      }
+      out[source] = first;
+    }
+    return out;
+  }
   async listCandidateSources(candidateId: string) {
     return this.data.candidate_sources.filter((s) => s.candidate_id === candidateId);
   }

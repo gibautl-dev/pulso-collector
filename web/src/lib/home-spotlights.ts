@@ -1,6 +1,8 @@
 import { CRISIS_TRIGGER_LABEL } from "./labels";
 import { formatSharePct, shareOfVoice } from "./rival-ads";
 import type { CrisisAlert } from "./types";
+import { formatWindowRange, windowTooltip, type CommonWindow } from "./comparison-window";
+import { DEFAULT_CLOCK, type Clock } from "./time";
 
 export const PENDING_ALERT_STATUSES = new Set(["new", "in_review"]);
 
@@ -29,7 +31,7 @@ export function pickMainRival<T extends { mentions: number }>(rivals: T[]): T | 
   return rivals.reduce((best, row) => (row.mentions > best.mentions ? row : best));
 }
 
-export type ComparisonSpotlightKind = "empty" | "no_mentions" | "ready";
+export type ComparisonSpotlightKind = "empty" | "no_window" | "no_mentions" | "ready";
 
 export interface ComparisonSpotlight {
   kind: ComparisonSpotlightKind;
@@ -41,49 +43,70 @@ export interface ComparisonSpotlight {
   rivalMentions: number;
   headline: string;
   deltaPp: number | null;
-  deltaLabel: string;
+  /** null = no se muestra variación (no hay período anterior comparable). */
+  deltaLabel: string | null;
+  /** Período comparado, corto ("24–25 nov"). null sin ventana. */
+  periodLabel: string | null;
+  /** Texto del ⓘ con período y fuentes. */
+  periodTooltip: string | null;
 }
 
 /**
  * Participación del candidato frente a su rival principal (el de más
  * menciones de terceros en la ventana). Los % son sobre la suma de
  * candidato + todos los rivales asignados, igual que en Rivales y anuncios.
+ *
+ * Con `window`, los conteos ya vienen recortados a la ventana común (mismo
+ * período y mismas fuentes para todos) y la variación solo se muestra si el
+ * período anterior también está cubierto para todos. `window: null` significa
+ * que no hay período común: no se compara.
  */
 export function comparisonSpotlight(opts: {
   candidate: { id: string; name: string; slug: string };
-  rivals: { id: string; name: string; slug: string; mentions: number; previousMentions: number }[];
+  rivals: { id: string; name: string; slug: string; mentions: number; previousMentions: number | null }[];
   candidateMentions: number;
-  candidatePreviousMentions: number;
+  candidatePreviousMentions: number | null;
   days: number;
+  window?: CommonWindow | null;
+  clock?: Clock;
 }): ComparisonSpotlight {
   const { candidate, rivals, days } = opts;
+  const clock = opts.clock ?? DEFAULT_CLOCK;
+  const base = {
+    candidateName: candidate.name,
+    candidateShare: null,
+    rivalShare: null,
+    candidateMentions: opts.candidateMentions,
+    headline: "—",
+    deltaPp: null,
+  };
   if (rivals.length === 0) {
-    return {
-      kind: "empty",
-      candidateName: candidate.name,
-      rivalName: null,
-      candidateShare: null,
-      rivalShare: null,
-      candidateMentions: opts.candidateMentions,
-      rivalMentions: 0,
-      headline: "—",
-      deltaPp: null,
-      deltaLabel: "sin base anterior",
-    };
+    return { ...base, kind: "empty", rivalName: null, rivalMentions: 0, deltaLabel: null, periodLabel: null, periodTooltip: null };
   }
+  if (opts.window === null) {
+    const main = pickMainRival(rivals);
+    return { ...base, kind: "no_window", rivalName: main?.name ?? null, rivalMentions: 0, deltaLabel: null, periodLabel: null, periodTooltip: null };
+  }
+  const win = opts.window ?? null;
   const current = shareOfVoice([
     { id: candidate.id, name: candidate.name, slug: candidate.slug, self: true, mentions: opts.candidateMentions },
     ...rivals.map((r) => ({ id: r.id, name: r.name, slug: r.slug, self: false, mentions: r.mentions })),
   ]);
-  const previous = shareOfVoice([
-    { id: candidate.id, name: candidate.name, slug: candidate.slug, self: true, mentions: opts.candidatePreviousMentions },
-    ...rivals.map((r) => ({ id: r.id, name: r.name, slug: r.slug, self: false, mentions: r.previousMentions })),
-  ]);
+  const prevAvailable =
+    (win == null || win.previousComparable) &&
+    opts.candidatePreviousMentions != null &&
+    rivals.every((r) => r.previousMentions != null);
+  const previous = prevAvailable
+    ? shareOfVoice([
+        { id: candidate.id, name: candidate.name, slug: candidate.slug, self: true, mentions: opts.candidatePreviousMentions ?? 0 },
+        ...rivals.map((r) => ({ id: r.id, name: r.name, slug: r.slug, self: false, mentions: r.previousMentions ?? 0 })),
+      ])
+    : null;
   const main = pickMainRival(rivals);
   const selfRow = current.find((r) => r.self);
   const rivalRow = main ? current.find((r) => r.id === main.id) : undefined;
-  const prevSelf = previous.find((r) => r.self);
-  const deltaPp = shareDeltaPp(selfRow?.share ?? null, prevSelf?.share ?? null);
+  const prevSelf = previous?.find((r) => r.self);
+  const deltaPp = previous ? shareDeltaPp(selfRow?.share ?? null, prevSelf?.share ?? null) : null;
   const total = current.reduce((s, r) => s + r.mentions, 0);
   const kind: ComparisonSpotlightKind = total <= 0 ? "no_mentions" : "ready";
   const headline =
@@ -98,7 +121,10 @@ export function comparisonSpotlight(opts: {
     rivalMentions: main?.mentions ?? 0,
     headline,
     deltaPp,
-    deltaLabel: formatShareDeltaPp(deltaPp, days),
+    // Sin ventana (uso previo) se conserva "sin base anterior"; con ventana no comparable, se oculta.
+    deltaLabel: previous ? formatShareDeltaPp(deltaPp, days) : win ? null : formatShareDeltaPp(null, days),
+    periodLabel: win ? formatWindowRange(win, clock) : null,
+    periodTooltip: win ? windowTooltip(win, clock) : null,
   };
 }
 

@@ -22,6 +22,9 @@ import {
   pickTopCustomTopic,
 } from "@/lib/home-spotlights";
 import { briefDateLabel, normalizeOutput } from "@/lib/daily-brief";
+import { commonWindow, countThirdPartyInWindow, countThirdPartyPrevious } from "@/lib/comparison-window";
+import { loadCoverage } from "@/lib/data/coverage";
+import { MEDIA_SOURCES } from "@/lib/rivals";
 import {
   ActionSpotlightCard,
   ComparisonSpotlightCard,
@@ -91,31 +94,41 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const maxOutlet = Math.max(1, ...d.topOutlets.map((o) => o.count));
   const maxTone = Math.max(1, ...d.toneAboutCandidate.map((t) => t.count));
   const maxSource = Math.max(1, ...d.bySource.map((s) => s.count));
-  const resolvedRivals = [];
+  // Comparación con rivales: solo el período y las fuentes que se miden para
+  // todos (ver lib/comparison-window.ts). Sin eso, un rival sumado después
+  // queda subrepresentado.
+  const rivalSubjects = [];
   for (const row of rivalRows) {
     const rival = await repo.getCandidateById(row.rival_id);
     if (!rival) continue;
-    const rivalMentions = await repo.mentionsSince(rival.id, sincePrevious);
-    const currentDash = computeDashboard(rivalMentions, [], { days, now, timeZone: clock.timeZone });
-    const previousDash = computeDashboard(rivalMentions, [], {
-      days,
-      now: new Date(now.getTime() - days * 86400000),
-      timeZone: clock.timeZone,
-    });
-    resolvedRivals.push({
-      id: rival.id,
-      name: rival.name,
-      slug: rival.slug,
-      mentions: currentDash.total,
-      previousMentions: previousDash.total,
-    });
+    rivalSubjects.push({ rival, level: row.level, mentions: await repo.mentionsSince(rival.id, sincePrevious) });
   }
+  const coverages = await Promise.all([
+    loadCoverage(repo, candidate.id),
+    ...rivalSubjects.map((r) => loadCoverage(repo, r.rival.id)),
+  ]);
+  const cmpWindow = rivalSubjects.length
+    ? commonWindow(coverages, {
+        now,
+        days,
+        allowedSources: rivalSubjects.some((r) => r.level === "radar") ? MEDIA_SOURCES : null,
+      })
+    : null;
+  const resolvedRivals = rivalSubjects.map(({ rival, mentions: rm }) => ({
+    id: rival.id,
+    name: rival.name,
+    slug: rival.slug,
+    mentions: cmpWindow ? countThirdPartyInWindow(rm, cmpWindow) : 0,
+    previousMentions: cmpWindow ? countThirdPartyPrevious(rm, cmpWindow) : null,
+  }));
   const spotlight = comparisonSpotlight({
     candidate,
     rivals: resolvedRivals,
-    candidateMentions: d.total,
-    candidatePreviousMentions: previous.total,
+    candidateMentions: cmpWindow ? countThirdPartyInWindow(mentions, cmpWindow) : 0,
+    candidatePreviousMentions: cmpWindow ? countThirdPartyPrevious(mentions, cmpWindow) : null,
     days,
+    window: cmpWindow,
+    clock,
   });
   const openPending = pendingAlerts(crisisAlerts);
   const topAlert = pickHighestRiskAlert(crisisAlerts);

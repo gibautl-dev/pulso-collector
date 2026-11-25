@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge, Card, EmptyState } from "@/components/ui";
+import { Badge, Card, EmptyState, InfoTip } from "@/components/ui";
 import type { ComparisonSpotlight } from "@/lib/home-spotlights";
 import { ACCION_SECTION_LABEL, CRISIS_RISK_BADGE, CRISIS_RISK_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
 
@@ -63,6 +63,8 @@ export function ComparisonSpotlightCard({
     <Card title="Comparación con rivales" subtitle="Participación en la conversación, con menciones de terceros.">
       {spotlight.kind === "empty" ? (
         <EmptyState>Todavía no hay un rival cargado para comparar.</EmptyState>
+      ) : spotlight.kind === "no_window" ? (
+        <EmptyState>Todavía no hay un período con datos de ambos para comparar.</EmptyState>
       ) : spotlight.kind === "no_mentions" ? (
         <EmptyState>Sin menciones en el período para calcular la participación.</EmptyState>
       ) : (
@@ -72,7 +74,13 @@ export function ComparisonSpotlightCard({
             {spotlight.rivalName ? ` vs ${spotlight.rivalName}` : ""}
           </p>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">{spotlight.headline}</p>
-          <p className="mt-1 text-xs text-slate-500">{spotlight.deltaLabel}</p>
+          {spotlight.deltaLabel ? <p className="mt-1 text-xs text-slate-500">{spotlight.deltaLabel}</p> : null}
+          {spotlight.periodLabel ? (
+            <p data-testid="comparacion-periodo" className="mt-1 flex items-center gap-1 text-xs text-slate-400">
+              <span>Período comparado: {spotlight.periodLabel}</span>
+              {spotlight.periodTooltip ? <InfoTip label="Qué período se compara" text={spotlight.periodTooltip} /> : null}
+            </p>
+          ) : null}
           {spotlight.candidateShare != null && spotlight.rivalShare != null && spotlight.rivalName ? (
             <MiniShareBar
               candidateName={spotlight.candidateName}
