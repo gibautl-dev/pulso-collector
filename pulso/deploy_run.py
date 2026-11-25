@@ -101,11 +101,44 @@ def list_media_enabled_slugs(database_url):
     except Exception:
         return None
 
+def list_media_enabled_rival_slugs(database_url, parent_slugs):
+    """Rivales (candidate_rivals) de los slugs del entorno, con medios/RSS encendidos.
+
+    No devuelve todos los candidatos de la DB: un cron con solo pedro-sanchez
+    no debe recolectar a axel-kicillof ni a los rivales de otro padre.
+    """
+    if not database_url or '://' not in str(database_url):
+        return []
+    parents = [slug for slug in (parent_slugs or []) if slug]
+    if not parents:
+        return []
+    try:
+        import psycopg
+        with psycopg.connect(database_url, connect_timeout=8) as conn:
+            rows = conn.execute(
+                """select distinct r.slug
+                     from public.candidates p
+                     join public.candidate_rivals cr on cr.candidate_id = p.id
+                     join public.candidates r on r.id = cr.rival_id
+                    where p.slug = any(%s)
+                      and exists (
+                        select 1 from public.candidate_sources s
+                         where s.candidate_id = r.id
+                           and s.enabled
+                           and s.source = any(%s)
+                      )
+                    order by r.slug""",
+                (parents, list(MEDIA_COLLECT_SOURCES)),
+            ).fetchall()
+        return [row[0] for row in rows if row and row[0]]
+    except Exception:
+        return None
+
 def discover_collectable_slugs(env_slugs, database_url=None):
-    """Lista del entorno más candidatos con medios/RSS en la DB. Si la consulta falla, queda la lista del env."""
+    """Lista del entorno más rivales de esos padres con medios/RSS. Si la consulta falla, queda la lista del env."""
     import os
     url = database_url if database_url is not None else os.getenv('DATABASE_URL')
-    db_slugs = list_media_enabled_slugs(url)
+    db_slugs = list_media_enabled_rival_slugs(url, env_slugs)
     if db_slugs is None:
         log(event='cron_db_candidates_error', error_type='query_failed')
         return list(env_slugs or [])

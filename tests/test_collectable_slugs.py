@@ -49,7 +49,7 @@ class CronDiscoversDbRivalsTests(unittest.TestCase):
         }
         out = io.StringIO()
         with mock.patch.dict(os.environ, env, clear=True), \
-             mock.patch.object(deploy_run, "list_media_enabled_slugs", return_value=["axel-kicillof", "milei", "pedro-sanchez"]), \
+             mock.patch.object(deploy_run, "list_media_enabled_rival_slugs", return_value=["milei"]), \
              mock.patch.object(deploy_run, "run_command", side_effect=fake), \
              mock.patch.object(sys, "argv", ["x"]), \
              contextlib.redirect_stdout(out):
@@ -78,6 +78,80 @@ class CronDiscoversDbRivalsTests(unittest.TestCase):
         self.assertIn("cron_post_steps_skipped", out.getvalue())
         self.assertIn("db_rival_media_only", out.getvalue())
         self.assertIn("milei", "\n".join(modules))
+
+
+    def test_discover_adds_only_rivals_of_env_parents(self):
+        self.assertEqual(
+            deploy_run.discover_collectable_slugs(["axel-kicillof"], database_url="d"),
+            ["axel-kicillof"],
+        )
+        with mock.patch.object(
+            deploy_run, "list_media_enabled_rival_slugs", return_value=["milei"]
+        ) as listed:
+            self.assertEqual(
+                deploy_run.discover_collectable_slugs(
+                    ["axel-kicillof"], database_url="postgresql://pulso@localhost/postgres"
+                ),
+                ["axel-kicillof", "milei"],
+            )
+            listed.assert_called_once_with(
+                "postgresql://pulso@localhost/postgres", ["axel-kicillof"]
+            )
+        with mock.patch.object(
+            deploy_run, "list_media_enabled_rival_slugs", return_value=[]
+        ):
+            self.assertEqual(
+                deploy_run.discover_collectable_slugs(
+                    ["pedro-sanchez"], database_url="postgresql://pulso@localhost/postgres"
+                ),
+                ["pedro-sanchez"],
+            )
+
+    def test_query_failure_keeps_env_slugs(self):
+        with mock.patch.object(
+            deploy_run, "list_media_enabled_rival_slugs", return_value=None
+        ):
+            self.assertEqual(
+                deploy_run.discover_collectable_slugs(
+                    ["axel-kicillof"], database_url="postgresql://pulso@localhost/postgres"
+                ),
+                ["axel-kicillof"],
+            )
+
+    def test_sanchez_cron_does_not_collect_kicillof_or_milei(self):
+        calls = []
+
+        def fake(command, timeout, env=None, prefix="cron"):
+            calls.append((command, prefix))
+            return 0
+
+        env = {
+            "DATABASE_URL": "postgresql://pulso@localhost/postgres",
+            "PULSO_CANDIDATES": "pedro-sanchez",
+            "PULSO_CLASSIFY_ENABLED": "true",
+            "PULSO_CRISIS_AGENT_ENABLED": "true",
+        }
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, env, clear=True), \
+             mock.patch.object(deploy_run, "list_media_enabled_rival_slugs", return_value=[]), \
+             mock.patch.object(deploy_run, "run_command", side_effect=fake), \
+             mock.patch.object(sys, "argv", ["x"]), \
+             contextlib.redirect_stdout(out):
+            code = deploy_run.main()
+        self.assertEqual(code, 0)
+        collected = [
+            cmd[cmd.index("--candidate") + 1]
+            for cmd, prefix in calls
+            if prefix == "cron" and "--candidate" in cmd
+        ]
+        self.assertEqual(collected, ["pedro-sanchez"])
+        slugs_seen = " ".join(" ".join(cmd) for cmd, _p in calls)
+        self.assertNotIn("axel-kicillof", slugs_seen)
+        self.assertNotIn("milei", slugs_seen)
+        self.assertGreaterEqual(
+            sum(1 for cmd, _p in calls if "pulso.crisis" in " ".join(cmd) and "pedro-sanchez" in cmd),
+            1,
+        )
 
 
 if __name__ == "__main__":
