@@ -91,58 +91,6 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
         </div>
       </PageHeader>
 
-      {rivalNames.length ? (
-        <Card
-          title="Comparación con rivales"
-          subtitle="Vista armada por el equipo de Active, con los datos que Pulso ya recolecta."
-        >
-          <p className="text-sm text-slate-700">
-            {rivalNames.length === 1
-              ? `Hay una comparación lista frente a ${rivalNames[0]}.`
-              : `Hay comparaciones listas frente a ${rivalNames.join(", ")}.`}
-          </p>
-          <p className="mt-3">
-            <Link href={`/c/${slug}/comparacion`} className="text-sm font-medium text-indigo-700 hover:underline">
-              Abrir la comparación
-            </Link>
-          </p>
-        </Card>
-      ) : null}
-
-      <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <Card title={ACCION_SECTION_LABEL} subtitle="Bandeja de alertas del equipo de agentes. Una persona decide; Pulso no publica.">
-          <p className="text-sm text-slate-700">
-            {openAlerts.length
-              ? `Hay ${openAlerts.length} alerta${openAlerts.length === 1 ? "" : "s"} pendiente${openAlerts.length === 1 ? "" : "s"} de una decisión humana.`
-              : "No hay alertas pendientes."}
-          </p>
-          <p className="mt-3">
-            <Link href={`/c/${slug}/accion`} className="text-sm font-medium text-indigo-700 hover:underline">
-              Abrir {ACCION_SECTION_LABEL.toLowerCase()}
-            </Link>
-          </p>
-        </Card>
-        <Card title={CUSTOM_TOPICS_SECTION_LABEL} subtitle="Temáticas definidas a mano, con un analista por tema.">
-          {customStats.length === 0 ? (
-            <p className="text-sm text-slate-700">Todavía no hay temas a medida cargados para este candidato.</p>
-          ) : (
-            <ul className="space-y-1 text-sm text-slate-700">
-              {customStats.slice(0, 4).map(({ topic, stats }) => (
-                <li key={topic.id}>
-                  <span className="font-medium text-slate-900">{topic.name}.</span> {stats.volume} menciones en el período
-                  {stats.spike ? " · posible pico" : ""}.
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="mt-3">
-            <Link href={`/c/${slug}/temas`} className="text-sm font-medium text-indigo-700 hover:underline">
-              Abrir {CUSTOM_TOPICS_SECTION_LABEL.toLowerCase()}
-            </Link>
-          </p>
-        </Card>
-      </div>
-
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Menciones" value={d.total} hint={`${d.last24h} en las últimas 24 h`} />
         <Stat label="Sobre él" value={d.aboutCandidate} hint={`${d.aboutOthers} sobre otros · ${d.unclear} poco claras`} />
@@ -298,6 +246,60 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
                 />
               ))}
             </div>
+          </Card>
+        </div>
+      </div>
+
+      <div className="mt-6 space-y-4">
+        {rivalNames.length ? (
+          <Card
+            title="Comparación con rivales"
+            subtitle="Vista armada por el equipo de Active, con los datos que Pulso ya recolecta."
+          >
+            <p className="text-sm text-slate-700">
+              {rivalNames.length === 1
+                ? `Hay una comparación lista frente a ${rivalNames[0]}.`
+                : `Hay comparaciones listas frente a ${rivalNames.join(", ")}.`}
+            </p>
+            <p className="mt-3">
+              <Link href={`/c/${slug}/comparacion`} className="text-sm font-medium text-indigo-700 hover:underline">
+                Abrir la comparación
+              </Link>
+            </p>
+          </Card>
+        ) : null}
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card title={ACCION_SECTION_LABEL} subtitle="Bandeja de alertas del equipo de agentes. Una persona decide; Pulso no publica.">
+            <p className="text-sm text-slate-700">
+              {openAlerts.length
+                ? `Hay ${openAlerts.length} alerta${openAlerts.length === 1 ? "" : "s"} pendiente${openAlerts.length === 1 ? "" : "s"} de una decisión humana.`
+                : "No hay alertas pendientes."}
+            </p>
+            <p className="mt-3">
+              <Link href={`/c/${slug}/accion`} className="text-sm font-medium text-indigo-700 hover:underline">
+                Abrir {ACCION_SECTION_LABEL.toLowerCase()}
+              </Link>
+            </p>
+          </Card>
+          <Card title={CUSTOM_TOPICS_SECTION_LABEL} subtitle="Temáticas definidas a mano, con un analista por tema.">
+            {customStats.length === 0 ? (
+              <p className="text-sm text-slate-700">Todavía no hay temas a medida cargados para este candidato.</p>
+            ) : (
+              <ul className="space-y-1 text-sm text-slate-700">
+                {customStats.slice(0, 4).map(({ topic, stats }) => (
+                  <li key={topic.id}>
+                    <span className="font-medium text-slate-900">{topic.name}.</span> {stats.volume} menciones en el período
+                    {stats.spike ? " · posible pico" : ""}.
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3">
+              <Link href={`/c/${slug}/temas`} className="text-sm font-medium text-indigo-700 hover:underline">
+                Abrir {CUSTOM_TOPICS_SECTION_LABEL.toLowerCase()}
+              </Link>
+            </p>
           </Card>
         </div>
       </div>
