@@ -1,5 +1,5 @@
 -- Asistente de datos ("Preguntale a Pulso"): registro de preguntas, cupos y costo.
--- PROPUESTA: NO APLICADA. Requiere aprobación de Leandro antes de correrla en pulso-demo.
+-- Aplicada en pulso-demo el 2026-11-25 (aprobada por Leandro).
 -- Idempotente. No contiene secretos. No cambia env, cron ni otras tablas.
 --
 -- Qué hace:

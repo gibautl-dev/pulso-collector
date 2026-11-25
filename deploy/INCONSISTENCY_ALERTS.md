@@ -1,6 +1,6 @@
 # Alertas de contradicciones
 
-**Estado:** el código está en `feat/inconsistency-alerts`. La migración `deploy/inconsistency_alerts.sql` **no está aplicada** y el paso del cron está **apagado** (`PULSO_INCONSISTENCY_ENABLED=false`).
+**Estado:** en main. Migración `deploy/inconsistency_alerts.sql` aplicada en pulso-demo el 2026-11-25; paso del cron encendido (`PULSO_INCONSISTENCY_ENABLED=true` en pulso-rss).
 
 ## Qué hace
 1. **Junta las declaraciones** de cada candidato (`pulso/inconsistency/statements.py`):

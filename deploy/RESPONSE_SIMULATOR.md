@@ -55,7 +55,7 @@ Costo por simulación (gpt-6-luna, USD 0,10 / 0,50 por 1M tokens): prompt real d
 caracteres (≈ 4,0–4,6 mil tokens) y salida ≈ 1,1 mil tokens → **≈ USD 0,001 EST** (máximo
 reservado ≈ USD 0,0015).
 
-## Migración (sin aplicar)
+## Migración (aplicada en pulso-demo el 2026-11-25)
 
 `deploy/response_simulator.sql` — requiere OK antes de aplicarla en pulso-demo. Crea:
 

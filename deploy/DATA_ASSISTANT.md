@@ -46,7 +46,7 @@ Filas sin costo (pendientes o con error) cuentan como USD 0,01 para el tope diar
 - **CALC mensual**: 5 usuarios × 10 preguntas/día × 30 días = 1.500 preguntas ≈
   **USD 1,50/mes**. Techo duro: USD 1/día ⇒ máx. USD 30/mes.
 
-## Migración (NO aplicada)
+## Migración (aplicada en pulso-demo el 2026-11-25)
 
 `deploy/data_assistant.sql` — tabla `assistant_questions`, trigger de cupos,
 función `assistant_quota()`. Solo `authenticated` vía `candidate_members`; cada

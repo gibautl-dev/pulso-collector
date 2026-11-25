@@ -1,5 +1,5 @@
 -- Alertas de contradicciones por candidato (feat/inconsistency-alerts).
--- NO APLICADA. Necesita el OK de Leandro antes de correrla en pulso-demo.
+-- Aplicada en pulso-demo el 2026-11-25 (aprobada por Leandro).
 -- Idempotente. No contiene secretos. No cambia env ni el cron. Costo de aplicar el SQL: USD 0.
 --
 -- El job (python -m pulso.inconsistency) usa el rol pulso_classifier, la clave del

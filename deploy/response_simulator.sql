@@ -1,5 +1,5 @@
 -- Simulador de respuesta: registro privado de simulaciones y cupos.
--- PROPUESTA, SIN APLICAR. Requiere OK de Leandro antes de correrla en pulso-demo.
+-- Aplicada en pulso-demo el 2026-11-25 (aprobada por Leandro).
 -- Idempotente. No contiene secretos. No cambia env ni el cron.
 --
 -- Qué hace:
