@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import { hasDuplicatePending, matchExistingCandidate, slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
@@ -30,6 +30,8 @@ export interface FixtureData {
   custom_topics?: CustomTopic[];
   custom_topic_summaries?: CustomTopicSummary[];
   daily_briefs?: DailyBrief[];
+  /** Preguntas al asistente del usuario local (modo fixture). */
+  assistant_questions?: (AssistantQuestion & { cost_usd?: number | null })[];
 }
 
 
@@ -181,6 +183,46 @@ export class MemoryRepo implements PulsoRepo {
       .slice()
       .sort((a, b) => b.brief_date.localeCompare(a.brief_date))
       .slice(0, limit);
+  }
+  async assistantQuota(): Promise<AssistantQuota | null> {
+    const rows = this.data.assistant_questions ?? [];
+    const now = Date.now();
+    const hour = rows.filter((r) => now - new Date(r.created_at).getTime() < 3600000).length;
+    const day = rows.filter((r) => now - new Date(r.created_at).getTime() < 86400000);
+    return {
+      user_last_hour: hour,
+      user_today: day.length,
+      total_today: day.length,
+      cost_today_usd: day.reduce((s, r) => s + Number(r.cost_usd ?? 0), 0),
+    };
+  }
+  async startAssistantQuestion(row: { candidate_id: string; question: string; page: string | null; prompt_version: string }) {
+    const saved = {
+      id: crypto.randomUUID(),
+      candidate_id: row.candidate_id,
+      question: row.question,
+      page: row.page,
+      status: "pending",
+      answer: null,
+      created_at: new Date().toISOString(),
+    };
+    this.data.assistant_questions = [...(this.data.assistant_questions ?? []), saved];
+    return { id: saved.id, created_at: saved.created_at };
+  }
+  async finishAssistantQuestion(id: string, record: AssistantRunRecord) {
+    const row = (this.data.assistant_questions ?? []).find((r) => r.id === id && r.status === "pending");
+    if (!row) throw new Error("Pregunta no encontrada");
+    row.status = record.status;
+    row.answer = record.answer;
+    row.cost_usd = record.cost_usd;
+  }
+  async listAssistantQuestions(candidateId: string, limit: number) {
+    return (this.data.assistant_questions ?? [])
+      .filter((r) => r.candidate_id === candidateId && r.status !== "pending")
+      .slice()
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, limit)
+      .map((r) => ({ id: r.id, candidate_id: r.candidate_id, question: r.question, status: r.status, answer: r.answer, page: r.page ?? null, created_at: r.created_at }));
   }
   async dataTimestamp() {
     return this.data.exported_at ?? null;

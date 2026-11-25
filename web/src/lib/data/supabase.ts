@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import { isRivalLevel } from "@/lib/types";
 import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
 import { asCitations, asStringList } from "@/lib/ai-visibility";
@@ -288,6 +288,68 @@ export class SupabaseRepo implements PulsoRepo {
       throw new Error(`Error leyendo el resumen del día: ${res.error.message}`);
     }
     return (res.data as DailyBrief[]) ?? [];
+  }
+
+  async assistantQuota(): Promise<AssistantQuota | null> {
+    const res = await this.db.rpc("assistant_quota");
+    if (res.error) {
+      // Llega con deploy/data_assistant.sql; hasta entonces el asistente queda apagado.
+      if (isMissingRelation(res.error) || res.error.code === "PGRST202" || res.error.code === "42883") return null;
+      throw new Error(`Error leyendo el cupo del asistente: ${res.error.message}`);
+    }
+    const row = (Array.isArray(res.data) ? res.data[0] : res.data) as Record<string, unknown> | null;
+    if (!row) return null;
+    return {
+      user_last_hour: Number(row.user_last_hour ?? 0),
+      user_today: Number(row.user_today ?? 0),
+      total_today: Number(row.total_today ?? 0),
+      cost_today_usd: Number(row.cost_today_usd ?? 0),
+    };
+  }
+
+  async startAssistantQuestion(row: { candidate_id: string; question: string; page: string | null; prompt_version: string }) {
+    // user_id lo completa la base con auth.uid(); el trigger aplica el cupo.
+    const res = await this.db
+      .from("assistant_questions")
+      .insert({ candidate_id: row.candidate_id, question: row.question, page: row.page, prompt_version: row.prompt_version, status: "pending" })
+      .select("id,created_at")
+      .single();
+    if (res.error) {
+      if (res.error.message?.includes("assistant_limit")) throw new Error("assistant_limit");
+      throw new Error(`No se pudo registrar la pregunta: ${res.error.message}`);
+    }
+    return res.data as { id: string; created_at: string };
+  }
+
+  async finishAssistantQuestion(id: string, record: AssistantRunRecord) {
+    const res = await this.db
+      .from("assistant_questions")
+      .update({
+        status: record.status,
+        answer: record.answer,
+        tools: record.tools,
+        model: record.model,
+        cost_usd: record.cost_usd,
+        usage: record.usage,
+      })
+      .eq("id", id)
+      .eq("status", "pending");
+    if (res.error) throw new Error(`No se pudo guardar la respuesta: ${res.error.message}`);
+  }
+
+  async listAssistantQuestions(candidateId: string, limit: number): Promise<AssistantQuestion[]> {
+    const res = await this.db
+      .from("assistant_questions")
+      .select("id,candidate_id,question,status,answer,page,created_at")
+      .eq("candidate_id", candidateId)
+      .neq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo preguntas: ${res.error.message}`);
+    }
+    return (res.data as AssistantQuestion[]) ?? [];
   }
 
   async listCrisisAlerts(candidateId: string) {

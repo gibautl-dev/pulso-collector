@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Brand } from "@/components/brand";
 import { CandidateHeading, CandidateSwitcher } from "@/components/candidate-switcher";
 import { Nav } from "@/components/nav";
+import { AssistantDrawer } from "@/components/assistant/panel";
+import { loadAssistantPanel } from "@/components/assistant/server";
 import { signOut } from "@/app/auth/actions";
 import { loadCandidate } from "@/lib/context";
 import { regionFor } from "@/lib/region";
@@ -15,6 +17,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
   const clock = clockFromRegion(region);
   const showSwitcher = candidates.length > 1;
   const staff = await repo.isStaff();
+  const assistant = await loadAssistantPanel(repo, candidate);
 
   return (
     <div className="min-h-screen bg-slate-50 lg:flex">
@@ -30,7 +33,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
           )}
         </div>
         <div className="px-3 pb-4">
-          <Nav slug={candidate.slug} showAds={region.showMetaAds || region.showGoogleAds} />
+          <Nav slug={candidate.slug} showAds={region.showMetaAds || region.showGoogleAds} showAssistant={!!assistant} />
         </div>
         <div className="mt-auto hidden border-t border-slate-100 px-5 py-4 lg:block">
           <p className="truncate text-xs text-slate-500" title={viewer.email}>{viewer.email}</p>
@@ -61,6 +64,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
         )}
         <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">{children}</main>
       </div>
+      {assistant ? <AssistantDrawer {...assistant} /> : null}
     </div>
   );
 }

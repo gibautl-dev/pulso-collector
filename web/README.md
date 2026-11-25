@@ -32,6 +32,7 @@ fuentes. Next.js 16 (App Router, TypeScript) + Tailwind 4 + `@supabase/ssr`.
 | `/c/[slug]/ia` | Respuestas de modelos de IA sobre el candidato |
 | `/c/[slug]/x` | Posts en X: volumen, balance, autores y publicaciones |
 | `/c/[slug]/anuncios` | Biblioteca de anuncios de Meta: totales, páginas, gasto en rangos y listado filtrable |
+| `/c/[slug]/asistente` | Preguntale a Pulso: chat sobre los datos del candidato con fuentes citadas (también como panel lateral y desde los ⓘ). Ver `../deploy/DATA_ASSISTANT.md` |
 
 Las fechas se muestran en hora de Argentina. Solo `account_relation = third_party`
 entra al tablero. Las críticas con `target = other` no cuentan en contra.
