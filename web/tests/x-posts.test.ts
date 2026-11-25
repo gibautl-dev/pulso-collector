@@ -66,7 +66,8 @@ describe("helpers de posts de X", () => {
     expect(xEngagement(xMention({ metrics: null })).score).toBe(0);
     expect(formatBalance(-14)).toBe("-14");
     expect(formatBalance(8)).toBe("+8");
-    expect(balanceTone(-3)).toBe("negative");
+    expect(balanceTone(-3)).toBe("default");
+    expect(balanceTone(-6)).toBe("negative");
     expect(balanceTone(0)).toBe("default");
   });
 });

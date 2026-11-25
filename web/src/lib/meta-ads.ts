@@ -117,7 +117,10 @@ export function adSnippet(
   const text = (body || title).replace(/\s+/g, " ").trim();
   if (!text) return "Sin texto del anuncio";
   if (text.length <= max) return text;
-  return `${text.slice(0, max).trim()}…`;
+  const cut = text.slice(0, max);
+  const atWord = cut.replace(/\s+\S*$/, "");
+  const base = atWord.length >= Math.floor(max * 0.6) ? atWord : cut;
+  return `${base.trimEnd()}…`;
 }
 
 export function formatAmount(value: number): string {

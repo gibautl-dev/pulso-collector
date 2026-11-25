@@ -2,7 +2,7 @@ import { computeAiDashboard, formatBalance as formatAiBalance, formatShare } fro
 import { aggregateSpend, formatSpendAggregate, stanceSplit, type SpendByCurrency } from "./meta-ads";
 import { computeSuspiciousInsights, formatPercent } from "./suspicious-insights";
 import type { AiAnswer, Mention, MetaAd, SuspiciousAccount, Topic } from "./types";
-import { computeXView, formatBalance as formatXBalance } from "./x-posts";
+import { balanceTone, computeXView, formatBalance as formatXBalance } from "./x-posts";
 import { META_ADS_EU_UNAVAILABLE } from "./region";
 
 export interface HomeCardStat {
@@ -63,8 +63,8 @@ export function computeHomeCards(input: {
       title: "En X",
       hint: `Últimos ${days} días`,
       insufficient: x.total === 0,
-      emptyLabel: "datos insuficientes. Todavía no hay posts de X en este período.",
-      tone: x.balance == null || x.balance === 0 ? "default" : x.balance < 0 ? "negative" : "positive",
+      emptyLabel: "Todavía no hay posts de X en este período.",
+      tone: balanceTone(x.balance),
       stats: [
         { label: "Posts", value: String(x.total) },
         { label: "Balance", value: x.balance == null ? "—" : formatXBalance(x.balance) },

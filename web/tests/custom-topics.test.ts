@@ -92,6 +92,8 @@ describe("métricas y pico", () => {
     expect(stats.previousVolume).toBe(1);
     expect(stats.trendPct).toBeGreaterThan(0);
     expect(stats.balance.negativo).toBe(5);
+    expect(stats.balance.score).toBe(-100);
+    expect(stats.balance.label).toBe("En contra");
     expect(stats.topMentions[0].id).toBe("a");
     expect(detectTopicSpike({ recent3d: 6, previous7d: 3 })).toBe(true);
     expect(detectTopicSpike({ recent3d: 2, previous7d: 20 })).toBe(false);

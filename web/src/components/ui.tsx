@@ -2,20 +2,47 @@ import type { ReactNode } from "react";
 import { RELEVANCE_BADGE, RELEVANCE_LABEL, RUN_STATUS_BADGE, RUN_STATUS_LABEL, SOURCE_BADGE, SOURCE_BADGE_DEFAULT, sourceLabel, TONE_BADGE, TONE_LABEL } from "@/lib/labels";
 import type { Relevance, RunStatus, Tone } from "@/lib/types";
 
-export function Card({ title, subtitle, children, className = "", action, testId }: {
+export function InfoTip({ text, label = "Más información" }: { text: string; label?: string }) {
+  return (
+    <span className="relative inline-flex shrink-0 align-middle">
+      <button
+        type="button"
+        aria-label={label}
+        title={text}
+        className="peer inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] leading-none text-slate-400 ring-1 ring-inset ring-slate-300 hover:text-slate-600 hover:ring-slate-400"
+      >
+        ⓘ
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-1.5 w-64 -translate-x-1/2 rounded-lg bg-slate-900 px-2.5 py-2 text-left text-[11px] font-normal leading-relaxed text-white opacity-0 shadow-lg peer-hover:opacity-100 peer-focus:opacity-100"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
+export function Card({ title, subtitle, children, className = "", action, testId, info }: {
   title?: string;
   subtitle?: string;
   children: ReactNode;
   className?: string;
   action?: ReactNode;
   testId?: string;
+  info?: string;
 }) {
   return (
     <section data-testid={testId} className={`rounded-xl border border-slate-200 bg-white shadow-sm ${className}`}>
       {(title || action) && (
         <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            {title && <h2 className="text-sm font-semibold text-slate-900">{title}</h2>}
+            {title && (
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+                {title}
+                {info ? <InfoTip text={info} /> : null}
+              </h2>
+            )}
             {subtitle && <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>}
           </div>
           {action}

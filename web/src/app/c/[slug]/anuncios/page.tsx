@@ -164,20 +164,14 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
       {region.showMetaAds ? (
       <div id="anuncios-meta">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Anuncios de Meta</h2>
-      <p className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-        Estos datos salen de la API oficial de la Biblioteca de anuncios de Meta (ads_archive), no de un scraping.
-        El gasto y las impresiones llegan en rangos, no en montos exactos, y cada moneda se muestra por separado: no
-        las convertimos ni inventamos un total único. El recolector corre una vez por día.
-        {" "}
-        {lastFetched}
-        {repo.mode === "fixture" ? " Este render es local, con datos exportados, y no es una captura de producción." : null}
+      <p className="mb-6 text-sm text-slate-600">
+        El gasto y las impresiones se muestran en rangos, como los informa Meta. {lastFetched}
       </p>
 
       {view.insufficient ? (
         <Card>
           <EmptyState>
-            datos insuficientes. Todavía no hay anuncios de la Biblioteca de Meta para este candidato. Cuando el
-            recolector los traiga, acá vas a ver totales, páginas, el rango de gasto y el listado.
+            Todavía no hay anuncios de Meta para este candidato.
           </EmptyState>
         </Card>
       ) : (
@@ -189,7 +183,7 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
               label="Activos"
               value={formatAmount(view.active)}
               tone={view.active ? "positive" : "default"}
-              hint="Sin fecha de corte o con corte posterior a la última recolección"
+              hint="Al momento de la última actualización"
             />
             <Stat label="Período" value={dateRange} hint="Desde el primer pautado hasta el último corte o inicio" />
           </div>
@@ -218,13 +212,12 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
 
           <Card
             title="A favor, en contra y neutrales"
-            subtitle="Clasificación automática respecto del candidato. El gasto es la suma de rangos de Meta, no un total exacto."
+            subtitle="A favor, en contra o neutrales respecto del candidato."
             className="mb-6"
           >
             {view.classification.insufficient ? (
               <EmptyState>
-                datos insuficientes. Todavía no hay anuncios clasificados en este período. Cuando el clasificador corra,
-                acá vas a ver cuántos están a favor, en contra o son neutrales, y el gasto estimado de cada grupo.
+                Todavía no hay anuncios clasificados en este período.
               </EmptyState>
             ) : (
               <div className="grid gap-6 lg:grid-cols-3">
@@ -364,7 +357,7 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
             subtitle={
               filtered
                 ? `${view.filteredTotal} anuncios coinciden con los filtros, de ${view.total} en el período.`
-                : "Página, fechas, estado, rango de gasto y un recorte del texto. El enlace abre la ficha pública en la Biblioteca de Meta."
+                : "El enlace abre la ficha pública en Meta."
             }
           >
             {view.filteredTotal === 0 ? (
@@ -456,7 +449,7 @@ export default async function MetaAdsPage({ params, searchParams }: PageProps<"/
                 ))}
               </ul>
             </Card>
-            <Card title="Listado" subtitle="Vínculos a la ficha oficial. El reporte de Google no incluye el texto del creativo; no se inventa un titular." className="mt-4">
+            <Card title="Listado" subtitle="Vínculos a la ficha oficial." className="mt-4">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {googleAds.map((ad) => (
                   <CreativeAdCardView key={ad.id} card={googleToCreativeCard(ad)} />

@@ -51,13 +51,10 @@ export function xFlag(m: Pick<Mention, "metrics">, key: "is_quote" | "is_reply" 
   return m.metrics?.[key] === true;
 }
 
+export { balanceCaption, balanceTone } from "./balance";
+
 export function formatBalance(value: number): string {
   return `${value > 0 ? "+" : ""}${value}`;
-}
-
-export function balanceTone(value: number | null): "default" | "negative" | "positive" {
-  if (value == null || value === 0) return "default";
-  return value < 0 ? "negative" : "positive";
 }
 
 export interface XAuthorRow {

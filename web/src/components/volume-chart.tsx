@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/ui";
 import type { DayVolume } from "@/lib/analytics";
 import { volumePeak } from "@/lib/volume-peak";
 import { DEFAULT_CLOCK, formatDayShort, type Clock } from "@/lib/time";
@@ -63,18 +64,19 @@ export function VolumeChart({ data, clock = DEFAULT_CLOCK }: { data: DayVolume[]
           );
         })}
       </svg>
-      <div className="mt-1 flex gap-1.5">
+      <div className="mt-1 flex items-center gap-1.5">
         {data.map((d) => (
           <span key={d.day} className="min-w-0 flex-1 truncate text-center text-[10px] text-slate-500">
             {formatDayShort(d.day, clock)}
           </span>
         ))}
+        {peak ? (
+          <InfoTip
+            label="Qué significa PICO"
+            text="La píldora PICO marca el día más alto frente al promedio de los demás días del período (incluye días en cero). Se muestra a partir de un 15% por encima de ese promedio. Si el resto está en cero, se etiqueta PICO sin porcentaje."
+          />
+        ) : null}
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
-        La píldora PICO compara el día más alto con el promedio de los demás días del período
-        (incluye días en cero). Se muestra a partir de un 15% por encima de ese promedio.
-        Si el resto está en cero, se etiqueta PICO sin porcentaje (no se divide por cero).
-      </p>
     </div>
   );
 }

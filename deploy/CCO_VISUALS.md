@@ -65,3 +65,16 @@ un enlace «Ver original →».
 Los costos de API y las notas internas («no dispara el agente de
 crisis», topes en USD, modelo) no van en la UI del cliente; quedan en
 el panel Active o en el código.
+
+
+## Color del balance
+
+En cualquier KPI o gráfico de balance (−100 a +100), el color sigue el
+signo con el mismo umbral de la IA: verde si es mayor que +5, rojo si es
+menor que −5, gris en el resto. La leyenda (A favor / En contra / Neutro)
+usa esa misma regla.
+
+## Texto de anuncios
+
+El cuerpo de las cards de anuncios se recorta a 120 caracteres y como
+máximo 5 líneas, con elipsis. La altura del recuadro es fija.

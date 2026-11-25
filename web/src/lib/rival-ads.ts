@@ -102,10 +102,10 @@ export interface CreativeAdCard {
 }
 
 export const GOOGLE_CREATIVE_GAP =
-  "El reporte oficial de Google no incluye el texto del creativo.";
+  "El reporte de Google no incluye el texto del anuncio.";
 
 export function metaToCreativeCard(ad: MetaAd, now: Date): CreativeAdCard {
-  const snippet = adSnippet(ad, 280);
+  const snippet = adSnippet(ad, 120);
   const hasText = snippet !== "Sin texto del anuncio";
   const platforms = (ad.publisher_platforms ?? []).map((p) => {
     const k = p.toLowerCase();
@@ -126,7 +126,7 @@ export function metaToCreativeCard(ad: MetaAd, now: Date): CreativeAdCard {
     advertiser: (ad.page_name ?? "").trim() || "Página sin nombre",
     sponsoredLabel: `Patrocinado · ${channel}`,
     body: hasText ? snippet : null,
-    bodyMissingReason: hasText ? null : "Este anuncio no trae texto en la Biblioteca de Meta.",
+    bodyMissingReason: hasText ? null : "Este anuncio no trae texto.",
     active: isAdActive(ad, now),
     stance,
     stanceLabel: stance ? STANCE_LABEL[stance] : null,

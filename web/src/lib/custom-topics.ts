@@ -3,6 +3,7 @@
 import { bucketFor, dayRange, type ToneBucket } from "./analytics";
 import type { Mention } from "./types";
 import type { CustomTopic, CustomTopicSummaryOutput } from "./types";
+import { balanceCaption } from "./balance";
 import { dayKey } from "./time";
 
 export const CUSTOM_TOPIC_SUMMARY_PROMPT_VERSION = "custom-topic-summary-v1-2026-11-24";
@@ -76,6 +77,8 @@ export interface TopicBalance {
   negativo: number;
   neutral: number;
   pendiente: number;
+  /** (a favor − críticas) sobre lo clasificado, −100 a +100. Null si no hay tono. */
+  score: number | null;
   label: string;
 }
 
@@ -83,15 +86,8 @@ export function balanceOf(mentions: Mention[]): TopicBalance {
   const counts: Record<ToneBucket, number> = { positivo: 0, negativo: 0, neutral: 0, pendiente: 0 };
   for (const m of mentions) counts[bucketFor(m)]++;
   const classified = counts.positivo + counts.negativo + counts.neutral;
-  let label = "Sin tono clasificado";
-  if (classified > 0) {
-    const negShare = counts.negativo / classified;
-    const posShare = counts.positivo / classified;
-    if (negShare >= 0.45 && negShare > posShare + 0.1) label = "Más crítico que a favor";
-    else if (posShare >= 0.45 && posShare > negShare + 0.1) label = "Más a favor que crítico";
-    else label = "Balance mixto";
-  }
-  return { ...counts, label };
+  const score = classified > 0 ? Math.round(((counts.positivo - counts.negativo) / classified) * 100) : null;
+  return { ...counts, score, label: balanceCaption(score) };
 }
 
 export interface TopicDayVolume {

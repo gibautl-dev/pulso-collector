@@ -68,7 +68,7 @@ export function SuspiciousAccountCard({ account, slug }: { account: SuspiciousAc
           >
             Ver perfil y denunciar a mano
           </a>
-          <span className="text-slate-500"> — Pulso no denuncia; el link abre la red para hacerlo vos.</span>
+          <span className="text-slate-500"> — Pulso no denuncia.</span>
         </p>
       )}
 

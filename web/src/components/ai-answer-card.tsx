@@ -64,7 +64,7 @@ export function AiAnswerCard({ answer }: { answer: AiAnswer }) {
       )}
       {coverage.missed.length > 0 ? (
         <p className="mt-3 text-xs text-slate-500">
-          Hay aspectos guardados por el clasificador que no aparecen textuales en la respuesta, así que no se subrayaron.
+          Algunas frases destacadas no aparecen textuales en la respuesta, así que no se subrayaron.
         </p>
       ) : null}
     </article>

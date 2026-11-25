@@ -39,9 +39,9 @@ export function CreativeAdCardView({ card }: { card: CreativeAdCard }) {
           <p className="text-xs text-slate-500">{card.sponsoredLabel}</p>
         </div>
       </div>
-      <div className={`mx-4 mt-3 flex min-h-[140px] items-end rounded-xl bg-gradient-to-br p-4 text-white ${gradientFor(card.id)}`}>
+      <div className={`mx-4 mt-3 flex h-36 items-end overflow-hidden rounded-xl bg-gradient-to-br p-4 text-white ${gradientFor(card.id)}`}>
         {card.body ? (
-          <p className="text-xl font-bold leading-snug">{card.body}</p>
+          <p className="line-clamp-5 text-base font-semibold leading-snug">{card.body}</p>
         ) : (
           <p className="text-sm font-medium leading-relaxed text-white/90">{card.bodyMissingReason}</p>
         )}

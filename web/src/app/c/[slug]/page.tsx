@@ -6,7 +6,7 @@ import { VolumeChart } from "@/components/volume-chart";
 import { computeDashboard } from "@/lib/analytics";
 import { formatPeriodChange, periodChange } from "@/lib/volume-peak";
 import { loadCandidate } from "@/lib/context";
-import { NEGATIVE_TONES, SOURCE_BAR, SOURCE_BAR_DEFAULT, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
+import { SOURCE_BAR, SOURCE_BAR_DEFAULT, sourceLabel, TONE_BAR, TONE_LABEL } from "@/lib/labels";
 import { regionFor } from "@/lib/region";
 import { clockFor, formatDateTime } from "@/lib/time";
 import { formatCount, youtubeThumbnailUrl, youtubeVideoId } from "@/lib/youtube";
@@ -164,20 +164,19 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
       <div data-testid="tablero-source-cards"><SourceSummaryCards cards={sourceCards} /></div>
 
       <div data-testid="tablero-volume-tone" className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card title="Volumen de menciones por día" subtitle={`Medios, X y YouTube · ${clock.tzLabel}. Solo menciones de terceros.`} className="lg:col-span-2">
+        <Card title="Volumen de menciones por día" subtitle={`Medios, X y YouTube · ${clock.tzLabel}`} className="lg:col-span-2">
           <VolumeChart data={d.volume} clock={clock} />
         </Card>
-        <Card title="Tono sobre el candidato" subtitle="Clasificado con IA. Solo menciones cuyo objetivo es él.">
+        <Card
+          title="Tono sobre el candidato"
+          subtitle="Menciones cuyo objetivo es él."
+          info={`No cuentan en contra: ${d.aboutOthers} menciones dirigidas a otros${d.criticismOfOthers > 0 ? ` (${d.criticismOfOthers} son críticas de él o su entorno hacia terceros)` : ""} y ${d.unclear} con objetivo poco claro.`}
+        >
           <div className="space-y-3">
             {d.toneAboutCandidate.map((t) => (
               <HBar key={t.tone} label={TONE_LABEL[t.tone]} value={t.count} max={maxTone} barClass={TONE_BAR[t.tone]} />
             ))}
           </div>
-          <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-            No cuentan en contra: {d.aboutOthers} menciones dirigidas a otros
-            {d.criticismOfOthers > 0 && ` (${d.criticismOfOthers} son críticas de él o su entorno hacia terceros)`} y {d.unclear} con
-            objetivo poco claro.
-          </p>
         </Card>
       </div>
 
@@ -357,9 +356,8 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
       </div>
 
       <p className="mt-6 text-xs text-slate-500">
-        Cobertura parcial: la recolección continua arrancó {started ? `el ${formatDateTime(started, clock)} (${clock.tzLabel})` : "hace pocos días"}.
-        Los días anteriores pueden estar incompletos. Negativas = {NEGATIVE_TONES.map((t) => TONE_LABEL[t].toLowerCase()).join(", ")} con objetivo en él.
-        La clasificación es automática (IA) y puede tener errores.
+        La recolección continua arrancó {started ? `el ${formatDateTime(started, clock)} (${clock.tzLabel})` : "hace pocos días"}.
+        Los días anteriores pueden estar incompletos.
       </p>
     </>
   );

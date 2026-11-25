@@ -6,7 +6,7 @@ import { loadCandidate } from "@/lib/context";
 import { TONE_BAR, TONE_LABEL } from "@/lib/labels";
 import { clockFor, formatDateTime } from "@/lib/time";
 import { formatCount } from "@/lib/youtube";
-import { balanceTone, computeXView, formatBalance } from "@/lib/x-posts";
+import { balanceCaption, balanceTone, computeXView, formatBalance } from "@/lib/x-posts";
 
 export const metadata = { title: "En X · Pulso" };
 
@@ -53,12 +53,8 @@ export default async function XPostsPage({ params, searchParams }: PageProps<"/c
         </div>
       </PageHeader>
 
-      <p className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-        Esta pantalla muestra posts originales en español recolectados con la API oficial de X. El recolector no pide
-        retweets ni respuestas; si alguno quedó marcado en los datos, se ve con una etiqueta. Las métricas (me gusta,
-        reposts, impresiones) son las que informó X al momento de recolectar. El job de X corre junto con las otras
-        fuentes, cada 20 minutos, con un tope diario.
-        {repo.mode === "fixture" ? " Este render es local, con datos exportados, y no es una captura de producción." : null}
+      <p className="mb-6 text-sm text-slate-600">
+        Posts originales en español. Las métricas son las que informó X al recolectarlos.
       </p>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -68,11 +64,7 @@ export default async function XPostsPage({ params, searchParams }: PageProps<"/c
           label="Balance sobre él"
           value={view.balance == null ? "—" : formatBalance(view.balance)}
           tone={balanceTone(view.balance)}
-          hint={
-            view.classifiedAboutCandidate
-              ? `${view.positiveAboutCandidate} a favor · ${view.negativeAboutCandidate} críticas o acusaciones`
-              : "Todavía no hay posts clasificados sobre el candidato"
-          }
+          hint={balanceCaption(view.balance)}
         />
         <Stat
           label="A favor"
@@ -85,13 +77,12 @@ export default async function XPostsPage({ params, searchParams }: PageProps<"/c
       <div className="mb-6 grid gap-6 lg:grid-cols-3">
         <Card
           title="Posts por día"
-          subtitle={`Días en ${clock.tzLabel}. Solo posts de cuentas de terceros.`}
+          subtitle={`Días en ${clock.tzLabel}.`}
           className="lg:col-span-2"
         >
           {view.total === 0 ? (
             <EmptyState>
-              Todavía no hay posts de X en este período. Cuando el recolector los traiga, acá vas a ver el volumen de
-              cada día.
+              Todavía no hay posts de X en este período.
             </EmptyState>
           ) : (
             <div>
@@ -170,10 +161,7 @@ export default async function XPostsPage({ params, searchParams }: PageProps<"/c
       <Card title="Posts recientes" subtitle="Los más nuevos del período, con enlace al post original en X.">
         {view.recent.length === 0 ? (
           <EmptyState>
-            Todavía no hay posts de X. El recolector busca posts originales en español y los guarda acá después de cada
-            corrida.
-            {" "}
-            {lastRunLabel}
+            Todavía no hay posts de X en este período.
           </EmptyState>
         ) : (
           <ul>

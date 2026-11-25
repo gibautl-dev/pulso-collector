@@ -7,6 +7,8 @@ import { updateTopicSummaryStatusAction } from "@/app/c/[slug]/temas/actions";
 import { TopicSummaryForm } from "@/components/topic-summary-form";
 import { loadCandidate } from "@/lib/context";
 import { computeTopicStats } from "@/lib/custom-topics";
+import { balanceTone } from "@/lib/balance";
+import { formatBalance } from "@/lib/x-posts";
 import { CUSTOM_TOPIC_SUMMARY_STATUS_LABEL, CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
 import { regionFor } from "@/lib/region";
 import { clockFor, formatDateTime } from "@/lib/time";
@@ -50,16 +52,16 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Volumen (7 días)" value={stats.volume} hint={stats.trendLabel} />
-        <Stat label="Críticas" value={stats.balance.negativo} tone="negative" hint={stats.balance.label} />
+        <Stat label="Balance" value={stats.balance.score == null ? "—" : formatBalance(stats.balance.score)} tone={balanceTone(stats.balance.score)} hint={stats.balance.label} />
         <Stat label="A favor" value={stats.balance.positivo} tone="positive" />
         <Stat label="Pico" value={stats.spike ? "Sí" : "No"} hint={stats.spikeLabel ?? "Sin pico en los últimos 3 días."} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <Card title="Volumen diario" subtitle="Coincidencias por palabras clave, sobre menciones ya recolectadas." className="lg:col-span-2">
+        <Card title="Volumen diario" subtitle="Menciones de este tema, por día." className="lg:col-span-2">
           <VolumeChart data={volumeForChart} clock={clock} />
         </Card>
-        <Card title="Recorte" subtitle="Así se eligen las menciones, sin fuentes nuevas.">
+        <Card title="Palabras clave" subtitle="Así se eligen las menciones de este tema.">
           <p className="text-xs text-slate-500">Palabras</p>
           <p className="text-sm text-slate-800">{[...topic.keywords, ...topic.include_terms].join(", ") || "—"}</p>
           {topic.exclude_terms.length ? (
@@ -74,7 +76,7 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
       <div className="mt-6">
         <Card
           title="Analista del tema"
-          subtitle="Un bot especializado en esta temática. Escribe un resumen para revisar. Pulso no publica ni postea nada."
+          subtitle="Un resumen para que una persona lo revise. Pulso no publica nada."
         >
           <TopicSummaryForm slug={slug} topicId={topic.id} hasLatest={Boolean(latest)} />
           {latest ? (
@@ -151,7 +153,7 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
       </div>
 
       <div className="mt-6">
-        <Card title="Menciones que coinciden" subtitle="Recorte por palabras clave sobre lo que Pulso ya tiene. No es una recolección nueva.">
+        <Card title="Menciones que coinciden" subtitle="Menciones de este tema en el período.">
           {stats.topMentions.length === 0 ? (
             <EmptyState>No hubo coincidencias en los últimos 7 días.</EmptyState>
           ) : (

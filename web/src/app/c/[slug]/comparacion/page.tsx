@@ -3,7 +3,7 @@ import { ComparisonVolumeChart } from "@/components/comparison-volume-chart";
 import { CreativeAdCardView } from "@/components/creative-ad-card";
 import { Card, EmptyState, HBar, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
-import { RIVAL_LEVEL_HINT, RIVAL_LEVEL_LABEL } from "@/lib/labels";
+import { RIVAL_LEVEL_LABEL } from "@/lib/labels";
 import { META_ADS_EU_UNAVAILABLE, regionFor } from "@/lib/region";
 import { mentionHeadline } from "@/lib/mention-excerpt";
 import { formatSharePct, rivalCreativeCards, rivalMetaStats, shareOfVoice } from "@/lib/rival-ads";
@@ -11,7 +11,7 @@ import { buildRivalComparison, type SubjectPack } from "@/lib/rivals";
 import { computeDashboard } from "@/lib/analytics";
 import { clockFor } from "@/lib/time";
 import { formatBalance as formatAiBalance } from "@/lib/ai-visibility";
-import { formatBalance } from "@/lib/x-posts";
+import { balanceCaption, balanceTone, formatBalance } from "@/lib/x-posts";
 import type { Candidate, CandidateRival, MetaAd, RivalLevel } from "@/lib/types";
 
 export const metadata = { title: "Rivales y anuncios · Pulso" };
@@ -160,9 +160,9 @@ export default async function ComparacionPage({
 
       <div data-testid="rivales-hero" className="mb-6 space-y-6">
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Quién domina la conversación" subtitle={`Menciones de terceros en los últimos ${days} días.`}>
+        <Card title="Quién domina la conversación" subtitle={`Menciones en los últimos ${days} días.`}>
           {resolved.length === 0 ? (
-            <EmptyState>Todavía no hay rivales asignados para armar una participación de la conversación.</EmptyState>
+            <EmptyState>Todavía no hay rivales asignados.</EmptyState>
           ) : (
             <div className="space-y-3">
               {sov.map((row) => {
@@ -183,7 +183,7 @@ export default async function ComparacionPage({
         </Card>
         <Card
           title="Pauta de rivales"
-          subtitle={region.showMetaAds ? "Anuncios de Meta atribuidos al rival por el nombre del anunciante (mencionan a tu candidato)." : "Biblioteca de Meta"}
+          subtitle={region.showMetaAds ? "Anuncios de Meta de cada rival." : "Anuncios de Meta"}
         >
           {!region.showMetaAds ? (
             <p className="text-sm text-slate-600">{META_ADS_EU_UNAVAILABLE}</p>
@@ -225,14 +225,14 @@ export default async function ComparacionPage({
 
       <Card
         title="Anuncios de rivales"
-        subtitle="Creatividades con el texto real del anuncio. No alojamos imágenes: el recuadro muestra el cuerpo o titular que ya está en la base."
+        subtitle="Texto de los anuncios, cuando está disponible."
         className="mb-6"
       >
         {creatives.length === 0 ? (
           <EmptyState>
             {resolved.length === 0
-              ? "Cuando haya rivales asignados, acá van a aparecer sus anuncios de Meta o Google atribuibles por el nombre del anunciante."
-              : "No hay anuncios de Meta o Google atribuibles a estos rivales por el nombre del anunciante. El reporte de Google no trae el texto del creativo."}
+              ? "Cuando haya rivales asignados, acá van a aparecer sus anuncios."
+              : "No hay anuncios de estos rivales por ahora."}
           </EmptyState>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -279,17 +279,17 @@ function ComparisonBody({
       <p className="text-sm text-slate-600">
         Nivel <span className="font-semibold text-slate-900">{RIVAL_LEVEL_LABEL[level]}</span>
         {" · "}
-        {RIVAL_LEVEL_HINT[level]} Frente a {rival.candidate.name}.
+        Frente a {rival.candidate.name}.
       </p>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label={`Menciones · ${candidate.candidate.name}`} value={candidate.dashboard.total} />
         <Stat label={`Menciones · ${rival.candidate.name}`} value={rival.dashboard.total} />
-        <Stat label={`Balance · ${candidate.candidate.name}`} value={leftBal == null ? "—" : formatBalance(leftBal)} />
-        <Stat label={`Balance · ${rival.candidate.name}`} value={rightBal == null ? "—" : formatBalance(rightBal)} />
+        <Stat label={`Balance · ${candidate.candidate.name}`} value={leftBal == null ? "—" : formatBalance(leftBal)} tone={balanceTone(leftBal)} hint={balanceCaption(leftBal)} />
+        <Stat label={`Balance · ${rival.candidate.name}`} value={rightBal == null ? "—" : formatBalance(rightBal)} tone={balanceTone(rightBal)} hint={balanceCaption(rightBal)} />
       </div>
 
-      <Card title="Curvas de volumen" subtitle="Menciones por día, según lo que permite este nivel.">
+      <Card title="Curvas de volumen" subtitle="Menciones por día.">
         {volumeVs.length === 0 ? (
           <p className="text-sm text-slate-500">No hay volumen en esta ventana.</p>
         ) : (
@@ -308,7 +308,7 @@ function ComparisonBody({
       </div>
 
       {level !== "radar" && showAds ? (
-        <Card title="Anuncios" subtitle="Ranking de páginas anunciantes en la ventana recolectada.">
+        <Card title="Anuncios" subtitle="Páginas que más pautaron en el período.">
           {adsRanking.length === 0 ? (
             <p className="text-sm text-slate-500">
               No hay anuncios para mostrar. En algunas regiones esta fuente no está activa.

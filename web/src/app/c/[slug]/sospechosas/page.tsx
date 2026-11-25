@@ -59,7 +59,7 @@ export default async function SuspiciousAccountsPage({
     <>
       <PageHeader
         title="Cuentas sospechosas"
-        description={`Revisión humana, sin denuncia automática. Últimos ${days} días. ${lastRunLabel} El detector corre después de cada recolección, cada 20 minutos.`}
+        description={`Revisión humana, sin denuncia automática. Últimos ${days} días. ${lastRunLabel}`}
       >
         <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm shadow-sm">
           {PERIODS.map((p) => (
@@ -75,16 +75,13 @@ export default async function SuspiciousAccountsPage({
       </PageHeader>
 
       <p className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-        Los bloques de esta pantalla son una lectura de evidencia: qué parte de la conversación en X y en comentarios de
-        YouTube corresponde a cuentas marcadas, por qué quedaron marcadas, qué temas impulsan y cómo mueve el tono.
-        Pulso no denuncia en lote ni en automático; una persona revisa y, si corresponde, denuncia a mano en la red.
-        {repo.mode === "fixture" ? " Este render es local, con datos exportados, y no es una captura de producción." : null}
+        Una persona revisa estas cuentas. Pulso no denuncia en automático ni en lote.
       </p>
 
       <div data-testid="sospechosas-hero" className="mb-6 grid gap-6 lg:grid-cols-3">
         <Card
           title="Red de cuentas que hablan del candidato"
-          subtitle="X y comentarios de YouTube. En rojo, cuentas marcadas. Las aristas entre cuentas salen de evidencia real del detector (texto repetido, coordinación, URL compartida o ráfaga de grupo)."
+          subtitle="X y comentarios de YouTube. En rojo, las cuentas marcadas."
           className="lg:col-span-2"
         >
           {network.nodes.length <= 1 ? (
@@ -149,11 +146,7 @@ export default async function SuspiciousAccountsPage({
               "No hay cuentas que coincidan con los filtros."
             ) : allAccounts.length === 0 ? (
               <>
-                Todavía no hay cuentas marcadas. El detector revisa las menciones de X y los comentarios de YouTube
-                después de cada recolección (cada 20 minutos) y solo muestra cuentas con evidencia para que una
-                persona las revise y, si corresponde, denuncie a mano. Pulso no denuncia en lote ni en automático.
-                {" "}
-                {lastRunLabel}
+                Todavía no hay cuentas marcadas. {lastRunLabel}
               </>
             ) : (
               "No hay cuentas que coincidan con los filtros."

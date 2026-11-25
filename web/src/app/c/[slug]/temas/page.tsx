@@ -4,6 +4,8 @@ import { Badge, Card, EmptyState, PageHeader, Stat } from "@/components/ui";
 import { loadCandidate } from "@/lib/context";
 import { CUSTOM_TOPICS_SECTION_LABEL } from "@/lib/labels";
 import { computeTopicStats } from "@/lib/custom-topics";
+import { balanceTone } from "@/lib/balance";
+import { formatBalance } from "@/lib/x-posts";
 import { regionFor } from "@/lib/region";
 import { clockFor } from "@/lib/time";
 
@@ -31,7 +33,7 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
     <>
       <PageHeader
         title={CUSTOM_TOPICS_SECTION_LABEL}
-        description={`Temáticas definidas a mano para ${candidate.name}. Pulso las sigue con menciones que ya recolecta y un analista que escribe un resumen para que una persona lo revise. No se publican solos.`}
+        description={`Temáticas definidas a mano para ${candidate.name}. Un analista escribe un resumen para que una persona lo revise. Pulso no publica nada solo.`}
       >
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 text-sm shadow-sm">
@@ -56,7 +58,7 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
       {topics.length === 0 ? (
         <EmptyState>
           Todavía no hay temas a medida para {candidate.name}. Cuando el equipo de Active los defina, van a aparecer
-          acá con volumen, balance y un analista por tema. No se abren fuentes nuevas ni consultas extra a X.
+          acá con volumen, balance y un analista por tema.
         </EmptyState>
       ) : (
         <ul data-testid="temas-list" className="space-y-4">
@@ -78,8 +80,8 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
                     <Stat label="Volumen" value={stats.volume} hint={stats.trendLabel} />
                     <Stat
                       label="Balance"
-                      value={stats.balance.negativo}
-                      tone={stats.balance.negativo > stats.balance.positivo ? "negative" : "default"}
+                      value={stats.balance.score == null ? "—" : formatBalance(stats.balance.score)}
+                      tone={balanceTone(stats.balance.score)}
                       hint={stats.balance.label}
                     />
                     <Stat label="A favor" value={stats.balance.positivo} tone="positive" hint={`${stats.balance.pendiente} sin tono`} />

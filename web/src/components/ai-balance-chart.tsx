@@ -1,5 +1,5 @@
 import type { AiDayScore } from "@/lib/types";
-import { formatBalance } from "@/lib/ai-visibility";
+import { balanceTone, formatBalance } from "@/lib/ai-visibility";
 import { DEFAULT_CLOCK, formatDayShort, type Clock } from "@/lib/time";
 
 export function AiBalanceChart({ data, clock = DEFAULT_CLOCK }: { data: AiDayScore[]; clock?: Clock }) {
@@ -9,16 +9,20 @@ export function AiBalanceChart({ data, clock = DEFAULT_CLOCK }: { data: AiDaySco
     <div>
       <div className="flex h-48 items-end gap-1.5" role="img" aria-label="Evolución diaria del balance en IA">
         {data.map((d) => {
-          const positive = d.balance >= 0;
+          const tone = balanceTone(d.balance);
           const height = Math.max(4, (Math.abs(d.balance) / max) * 85);
+          const color =
+            tone === "positive" ? "text-emerald-700" : tone === "negative" ? "text-rose-700" : "text-slate-600";
+          const bar =
+            tone === "positive" ? "bg-emerald-500" : tone === "negative" ? "bg-rose-500" : "bg-slate-400";
           return (
             <div key={d.day} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1">
-              <span className={`text-[10px] tabular-nums ${positive ? "text-emerald-700" : "text-rose-700"}`}>
+              <span className={`text-[10px] tabular-nums ${color}`}>
                 {formatBalance(d.balance)}
               </span>
               <div className="flex h-[85%] w-full max-w-10 flex-col justify-end">
                 <div
-                  className={`w-full rounded-t-md ${positive ? "bg-emerald-500" : "bg-rose-500"}`}
+                  className={`w-full rounded-t-md ${bar}`}
                   style={{ height: `${height}%` }}
                   title={`${formatDayShort(d.day, clock)}: ${formatBalance(d.balance)}`}
                 />

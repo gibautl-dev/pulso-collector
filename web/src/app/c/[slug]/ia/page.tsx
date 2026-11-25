@@ -13,7 +13,6 @@ import {
 import { dayBalanceGauge } from "@/lib/ai-day-gauge";
 import { highlightCoverage } from "@/lib/highlight-phrases";
 import { loadCandidate } from "@/lib/context";
-import { regionFor } from "@/lib/region";
 import { clockFor, formatDateTime } from "@/lib/time";
 
 export const metadata = { title: "En la IA · Pulso" };
@@ -27,7 +26,6 @@ const POLARITY_BAR = {
 export default async function AiVisibilityPage({ params, searchParams }: PageProps<"/c/[slug]/ia">) {
   const { slug } = await params;
   const clock = clockFor(slug);
-  const region = regionFor(slug);
   const sp = await searchParams;
   const pregunta = typeof sp.pregunta === "string" ? sp.pregunta : "";
   const { repo, candidate } = await loadCandidate(slug);
@@ -57,21 +55,12 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
     <>
       <PageHeader
         title="En la IA"
-        description={`Qué responde la API de OpenAI cuando le preguntan por ${candidate.name}. ${lastLabel} Es una foto diaria de la API, no idéntica a la app ChatGPT.`}
+        description={`Cómo responde la IA cuando le preguntan por ${candidate.name}. ${lastLabel}`}
       />
-
-      <p className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        Esta pantalla muestra una corrida diaria contra la API de OpenAI (<span className="font-medium">chat-latest</span> con
-        búsqueda web), no una sesión de la app ChatGPT. No replica memoria, enrutado ni la interfaz de esa app. Las citas
-        que no son de {region.countryName} o están claramente fuera de tema se filtran cuando es obvio. El job corre una vez por día
-        a partir de las 09:00 ({clock.tzLabel}). El análisis de lo bueno y lo malo se arma con los aspectos que ya
-        guardó el clasificador, sin una corrida extra.
-        {repo.mode === "fixture" ? " Este render es local, con datos de un dry-run, y no es una captura de producción." : null}
-      </p>
 
       {view.insufficient ? (
         <Card>
-          <EmptyState>{view.insufficientReason ?? "datos insuficientes."}</EmptyState>
+          <EmptyState>{"Todavía no hay suficientes respuestas de la IA."}</EmptyState>
         </Card>
       ) : (
         <>
@@ -80,7 +69,7 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
               title="Foto del día"
               subtitle={
                 gauge
-                  ? `Respuestas de la API del ${gauge.day}. El subrayado verde/rojo usa las frases ya guardadas por el clasificador, sin una llamada extra a un modelo.`
+                  ? `Respuestas del ${gauge.day}.`
                   : "Todavía no hay una foto diaria."
               }
             >
@@ -102,16 +91,11 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
             <div className="space-y-4">
               <Card
                 title="Balance del día"
-                subtitle="Promedio de los balances ya guardados (de −100 a +100) en la última foto diaria."
+                subtitle="De −100 a +100, en la última foto diaria."
               >
                 {gauge && gauge.balance != null ? (
                   <>
                     <AiDayGauge balance={gauge.balance} />
-                    <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                      Se promedian los puntajes de las {gauge.classified} respuestas clasificadas de ese día. Las tarjetas
-                      de abajo usan el umbral existente: más de +5 es a favor, menos de −5 es en contra, el resto es
-                      neutral.
-                    </p>
                   </>
                 ) : (
                   <EmptyState>No hay un balance numérico para el último día.</EmptyState>
@@ -128,14 +112,13 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
           <div className="mb-6 grid gap-6 lg:grid-cols-3">
             <Card
               title="Evolución del balance"
-              subtitle="Promedio diario del puntaje hacia el candidato, de −100 a +100."
+              subtitle="Promedio diario, de −100 a +100."
               className="lg:col-span-2"
             >
               {view.trendInsufficient ? (
                 <div>
                   <p className="mb-4 text-sm text-slate-600">
-                    datos insuficientes para una serie: por ahora hay una sola foto diaria. La tendencia se arma sola a
-                    medida que se sumen días.
+                    Todavía hay una sola foto diaria. La tendencia se arma a medida que se sumen días.
                   </p>
                   <AiBalanceChart clock={clock} data={view.days} />
                 </div>
@@ -175,7 +158,7 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
             className="mb-6"
           >
             {view.questions.length === 0 ? (
-              <EmptyState>datos insuficientes.</EmptyState>
+              <EmptyState>Todavía no hay datos para esta pregunta.</EmptyState>
             ) : (
               <>
                 {best && worst && best.promptKey !== worst.promptKey ? (
@@ -247,8 +230,7 @@ export default async function AiVisibilityPage({ params, searchParams }: PagePro
       >
         {drillDown.length === 0 ? (
           <EmptyState>
-            Todavía no hay respuestas guardadas. El recolector pregunta una vez por día a la API de OpenAI, a partir de
-            las 09:00 ({clock.tzLabel}), y guarda acá el texto, el balance, los aspectos y las fuentes.
+            Todavía no hay respuestas de la IA para este día.
           </EmptyState>
         ) : (
           <div>

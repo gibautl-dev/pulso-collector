@@ -1,4 +1,5 @@
 import type { AiAnswer, AiCitation, AiDayScore, AiDomainRank } from "@/lib/types";
+import { balanceTone as polarityTone } from "./balance";
 
 export function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
@@ -78,12 +79,7 @@ export function formatBalance(value: number | null | undefined): string {
   return `${rounded > 0 ? "+" : ""}${rounded}`;
 }
 
-export function balanceTone(value: number | null | undefined): "positive" | "negative" | "default" {
-  if (typeof value !== "number") return "default";
-  if (value > 5) return "positive";
-  if (value < -5) return "negative";
-  return "default";
-}
+export { balanceCaption, balanceTone } from "./balance";
 
 function hostOf(url: string): string | null {
   try {
@@ -99,8 +95,9 @@ export type AnswerPolarity = "positive" | "negative" | "neutral";
 
 export function answerPolarity(balance: number | null | undefined): AnswerPolarity | null {
   if (typeof balance !== "number" || Number.isNaN(balance)) return null;
-  if (balance > 5) return "positive";
-  if (balance < -5) return "negative";
+  const tone = polarityTone(balance);
+  if (tone === "positive") return "positive";
+  if (tone === "negative") return "negative";
   return "neutral";
 }
 

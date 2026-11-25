@@ -96,7 +96,7 @@ export function SuspiciousInsightsPanel({ insights, slug }: { insights: Suspicio
   const clock = clockFor(slug);
   if (!insights.sufficient) {
     return (
-      <Card title="Lectura de la conversación" subtitle="Evidencia para revisión humana. Pulso no denuncia en automático ni en lote." className="mb-6">
+      <Card title="Lectura de la conversación" subtitle="Para revisión humana. Pulso no denuncia en automático." className="mb-6">
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-semibold">Datos insuficientes</p>
           <p className="mt-1">{insights.insufficientReason}</p>
@@ -117,7 +117,7 @@ export function SuspiciousInsightsPanel({ insights, slug }: { insights: Suspicio
     <div className="mb-6 space-y-6">
       <Card
         title="Participación en la conversación"
-        subtitle="Qué parte de los autores y de los posts o comentarios del período corresponde a cuentas marcadas. Solo X y comentarios de YouTube de terceros. Las cuentas descartadas no cuentan."
+        subtitle="Qué parte de la conversación en X y YouTube corresponde a cuentas marcadas."
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
@@ -137,17 +137,17 @@ export function SuspiciousInsightsPanel({ insights, slug }: { insights: Suspicio
 
       <Card
         title="Motivos agrupados, con evidencia"
-        subtitle="Las señales del detector se agrupan en tres lecturas. La evidencia ya estaba guardada; no se denuncia ni se actúa en automático."
+        subtitle="Por qué quedaron marcadas estas cuentas."
       >
         <ReasonsBlock reasons={insights.reasons} clock={clock} />
       </Card>
 
       <Card
         title="Temas que impulsan las cuentas marcadas"
-        subtitle="Comparación con el resto de la conversación, usando el tema que ya asignó el clasificador. Como máximo, los 10 más frecuentes entre las cuentas marcadas."
+        subtitle="Temas más frecuentes entre las cuentas marcadas, frente al resto."
       >
         {insights.topics.length === 0 ? (
-          <EmptyState>No hay temas del clasificador para comparar en este período.</EmptyState>
+          <EmptyState>No hay temas para comparar en este período.</EmptyState>
         ) : (
           <div className="space-y-4">
             {insights.topics.map((t) => (
@@ -174,7 +174,7 @@ export function SuspiciousInsightsPanel({ insights, slug }: { insights: Suspicio
 
       <Card
         title="Balance de tono con y sin las cuentas marcadas"
-        subtitle="Misma regla que en el tablero y en En X: (a favor − críticas, acusaciones e insultos) sobre los posts o comentarios clasificados cuyo objetivo es el candidato. De −100 a +100."
+        subtitle="De −100 a +100, sobre las menciones clasificadas cuyo objetivo es el candidato."
       >
         <div className="grid gap-4 lg:grid-cols-3">
           <SentimentCard
