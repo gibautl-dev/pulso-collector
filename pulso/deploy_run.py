@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 
-from pulso.region import parse_candidate_slugs, profile_for
+from pulso.region import merge_collectable_slugs, parse_candidate_slugs, profile_for
 
 def log(**values):
     print(json.dumps(values), flush=True)
@@ -76,6 +76,43 @@ def args_for_slug(base_args, slug):
     return args
 
 
+MEDIA_COLLECT_SOURCES = ('rss_media', 'google_news', 'google_alerts')
+
+def list_media_enabled_slugs(database_url):
+    """Slugs con al menos una fuente de medios/RSS encendida. Sin secretos en logs."""
+    if not database_url or '://' not in str(database_url):
+        return []
+    try:
+        import psycopg
+        with psycopg.connect(database_url, connect_timeout=8) as conn:
+            rows = conn.execute(
+                """select c.slug
+                     from public.candidates c
+                    where exists (
+                      select 1 from public.candidate_sources s
+                       where s.candidate_id = c.id
+                         and s.enabled
+                         and s.source = any(%s)
+                    )
+                    order by c.slug""",
+                (list(MEDIA_COLLECT_SOURCES),),
+            ).fetchall()
+        return [row[0] for row in rows if row and row[0]]
+    except Exception:
+        return None
+
+def discover_collectable_slugs(env_slugs, database_url=None):
+    """Lista del entorno más candidatos con medios/RSS en la DB. Si la consulta falla, queda la lista del env."""
+    import os
+    url = database_url if database_url is not None else os.getenv('DATABASE_URL')
+    db_slugs = list_media_enabled_slugs(url)
+    if db_slugs is None:
+        log(event='cron_db_candidates_error', error_type='query_failed')
+        return list(env_slugs or [])
+    return merge_collectable_slugs(env_slugs, db_slugs)
+
+
+
 def main():
     try:
         timeout = int(os.getenv('PULSO_RUN_TIMEOUT_SECONDS', '900'))
@@ -87,12 +124,18 @@ def main():
         args = sys.argv[1:]
         if dry == 'true' and '--dry-run' not in args:
             args = [*args, '--dry-run']
-        slugs = parse_candidate_slugs(argv=args)
+        env_slugs = parse_candidate_slugs(argv=args)
+        slugs = discover_collectable_slugs(env_slugs) if env_slugs else []
+        extras = [slug for slug in slugs if slug not in set(env_slugs)]
+        if extras:
+            log(event='cron_db_candidates', candidates=extras)
         # Sin lista ni --candidate, una sola corrida con los args originales
         # (collect_rss exigirá PULSO_CANDIDATE). Así se mantiene el contrato
         # anterior de los tests y de un cron que solo tiene PULSO_CANDIDATE.
+        # Si el entorno no trae slugs, no se consultan rivales de la DB acá:
+        # se conserva el camino histórico.
         started = time.monotonic()
-        if not slugs:
+        if not env_slugs:
             code = run_command(
                 [sys.executable, '-m', 'pulso.collect_rss', *args],
                 timeout,
@@ -136,6 +179,11 @@ def main():
     if not timed_out and not cancelled:
         for slug, _collect_code, child_args in finished:
             run_classifier(child_args)
+            # Rivales descubiertos en la DB (no listados en el entorno) solo
+            # media/RSS y clasificador: sin IA, X extra, Meta ni crisis.
+            if env_slugs and slug not in env_slugs:
+                log(event='cron_post_steps_skipped', reason='db_rival_media_only', candidate=slug)
+                continue
             run_suspicious(child_args)
             run_ai_visibility(child_args)
             if profile_for(slug).show_meta_ads:

@@ -7,6 +7,7 @@ import {
   namesMatchPending,
   parseSuggestions,
   projectMonthly,
+  keywordsFromPendingName,
   slugifyName,
   tokenCostUsd,
 } from "@/lib/rival-suggest";
@@ -20,6 +21,11 @@ describe("slugifyName y match", () => {
     expect(slugifyName("Pedro Sánchez")).toBe("pedro-sanchez");
     expect(matchExistingCandidate("Pedro Sánchez", [kici, pedro])?.slug).toBe("pedro-sanchez");
     expect(matchExistingCandidate("Alberto Fernández", [kici, pedro])).toBeNull();
+  });
+
+  it("arma keywords con el apellido como alias", () => {
+    expect(keywordsFromPendingName("Javier Milei")).toEqual(["Javier Milei", "Milei"]);
+    expect(keywordsFromPendingName("Milei")).toEqual(["Milei"]);
   });
 });
 

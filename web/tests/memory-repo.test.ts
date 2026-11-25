@@ -211,6 +211,16 @@ describe("MemoryRepo sugerencias y altas pendientes", () => {
     expect(approved.status).toBe("aprobado");
     expect(approved.approved_by).toBe("staff");
     expect(approved.approved_at).toBeTruthy();
+    const rivals = await repo.listRivals("c1");
+    const milei = (await repo.listCandidates()).find((c) => c.slug === "milei");
+    expect(milei?.name).toBe("Milei");
+    expect(rivals).toEqual(expect.arrayContaining([expect.objectContaining({ candidate_id: "c1", rival_id: milei!.id, level: "comparativo" })]));
+    const sources = await repo.listCandidateSources(milei!.id);
+    expect(sources.filter((s) => s.enabled).map((s) => s.source).sort()).toEqual(["google_news", "rss_media"]);
+    expect(sources.some((s) => s.source === "x" && s.enabled)).toBe(false);
+    const againApproved = await repo.approvePendingCandidate(row!.id, "staff");
+    expect(againApproved.status).toBe("aprobado");
+    expect((await repo.listRivals("c1")).filter((r) => r.rival_id === milei!.id)).toHaveLength(1);
     await expect(
       repo.addPendingCandidate({
         name: "Milei",
@@ -218,15 +228,16 @@ describe("MemoryRepo sugerencias y altas pendientes", () => {
         requested_level: "radar",
         source: "manual",
       }),
-    ).rejects.toThrow(/Ya hay un pedido/);
+    ).rejects.toThrow(/ya está en Pulso/);
     await repo.deletePendingCandidate(row!.id);
     expect((await repo.listPendingCandidates("c1")).some((p) => p.name === "Milei")).toBe(false);
-    const again = await repo.addPendingCandidate({
-      name: "Milei",
-      requested_for_candidate_id: "c1",
-      requested_level: "radar",
-      source: "manual",
-    });
-    expect(again.status).toBe("pendiente_de_alta");
+    await expect(
+      repo.addPendingCandidate({
+        name: "Milei",
+        requested_for_candidate_id: "c1",
+        requested_level: "radar",
+        source: "manual",
+      }),
+    ).rejects.toThrow(/ya está en Pulso/);
   });
 });

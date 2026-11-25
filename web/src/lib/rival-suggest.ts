@@ -37,6 +37,18 @@ export function normalizePendingName(value: string): string {
 }
 
 
+export function keywordsFromPendingName(name: string): string[] {
+  const trimmed = name.trim();
+  if (!trimmed) return [];
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const keywords = [trimmed];
+  const last = parts[parts.length - 1];
+  if (parts.length > 1 && last && last.toLowerCase() !== trimmed.toLowerCase()) {
+    keywords.push(last);
+  }
+  return keywords;
+}
+
 export function namesMatchPending(a: string, b: string): boolean {
   const left = normalizePendingName(a);
   return Boolean(left) && left === normalizePendingName(b);

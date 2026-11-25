@@ -1,6 +1,6 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
 import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus } from "@/lib/types";
-import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
+import { hasDuplicatePending, matchExistingCandidate, slugifyName } from "@/lib/rival-suggest";
 import { normalizeMetaAd } from "@/lib/meta-ads";
 import type { MentionPage, PulsoRepo } from "./repo";
 
@@ -243,13 +243,60 @@ export class MemoryRepo implements PulsoRepo {
     return rec;
   }
 
-  async approvePendingCandidate(id: string, approvedBy?: string | null) {
+  async approvePendingCandidate(id: string, approvedBy?: string | null, _options?: { enableIa?: boolean }) {
     if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede aprobar un alta");
     const rec = (this.data.pending_candidates ?? []).find((p) => p.id === id);
     if (!rec || rec.status === "borrado") throw new Error("No está ese pedido de alta");
+    const parent = this.visibleCandidates().find((c) => c.id === rec.requested_for_candidate_id);
+    if (!parent) throw new Error("Candidato inválido");
+    const slug = rec.slug && rec.slug.length > 0 ? rec.slug : slugifyName(rec.name);
+    const known = this.visibleCandidates();
+    let rival = matchExistingCandidate(rec.name, known) ?? known.find((c) => c.slug === slug) ?? null;
+    let created = false;
+    if (!rival) {
+      rival = { id: crypto.randomUUID(), slug, name: rec.name.trim() };
+      this.data.candidates = [...(this.data.candidates ?? [this.data.candidate]), rival];
+      created = true;
+    }
+    if (rival.id === parent.id) throw new Error("Un candidato no puede ser rival de sí mismo");
+    const now = new Date().toISOString();
+    const sources = [...(this.data.candidate_sources ?? [])];
+    const upsert = (source: string, enabled: boolean) => {
+      const idx = sources.findIndex((s) => s.candidate_id === rival!.id && s.source === source);
+      if (idx >= 0) {
+        sources[idx] = { ...sources[idx], enabled: source === "rss_media" || source === "google_news" ? true : (created ? false : sources[idx].enabled) };
+      } else if (source === "rss_media" || source === "google_news" || created) {
+        sources.push({
+          candidate_id: rival!.id,
+          source,
+          enabled,
+          interval_seconds: 1200,
+          last_attempt_at: null,
+          last_success_at: null,
+          collection_started_at: null,
+          earliest_observed_at: null,
+          latest_observed_at: null,
+          coverage_status: "unknown",
+        });
+      }
+    };
+    upsert("rss_media", true);
+    upsert("google_news", true);
+    if (created) {
+      for (const extra of ["x", "youtube", "llm", "google_alerts", "facebook", "instagram", "gdelt", "serp"]) {
+        upsert(extra, false);
+      }
+    }
+    this.data.candidate_sources = sources;
+    const rivals = [...(this.data.candidate_rivals ?? [])];
+    const existing = rivals.find((r) => r.candidate_id === parent.id && r.rival_id === rival!.id);
+    if (existing) existing.level = rec.requested_level;
+    else rivals.push({ candidate_id: parent.id, rival_id: rival.id, level: rec.requested_level, created_at: now });
+    this.data.candidate_rivals = rivals;
     rec.status = "aprobado";
-    rec.approved_at = new Date().toISOString();
-    rec.approved_by = approvedBy ?? null;
+    rec.approved_at = rec.approved_at ?? now;
+    rec.approved_by = rec.approved_by ?? approvedBy ?? null;
+    rec.slug = rec.slug ?? slug;
     return rec;
   }
   async deletePendingCandidate(id: string) {

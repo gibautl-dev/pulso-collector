@@ -127,9 +127,11 @@ export async function approvePendingCandidate(_prev: FormActionState, formData: 
     if (!id) return { ok: false, error: "Falta el pedido" };
     const row = await repo.approvePendingCandidate(id);
     revalidatePath("/admin/rivales");
+    const parent = await repo.getCandidateById(row.requested_for_candidate_id);
+    if (parent) revalidatePath(`/c/${parent.slug}/comparacion`);
     return {
       ok: true,
-      message: `${row.name} quedó aprobado, listo para recolectar. Todavía no se empezó a recolectar.`,
+      message: "Aprobado y activado: empieza a medirse en la próxima recolección",
     };
   } catch {
     return { ok: false, error: "No se pudo aprobar el pedido." };

@@ -105,3 +105,20 @@ def parse_candidate_slugs(*, env: dict | None = None, argv: list[str] | None = N
         seen.add(slug)
         slugs.append(slug)
     return slugs
+
+
+def merge_collectable_slugs(env_slugs: list[str], db_slugs: list[str] | None = None) -> list[str]:
+    """Une la lista del entorno con slugs habilitados en la base, sin duplicar.
+
+    Se conserva el orden de PULSO_CANDIDATES/PULSO_CANDIDATE y se agregan
+    al final los que solo están en la base (rivales activados con medios/RSS).
+    """
+    slugs: list[str] = []
+    seen: set[str] = set()
+    for part in list(env_slugs or []) + list(db_slugs or []):
+        slug = (part or "").strip()
+        if not slug or slug in seen:
+            continue
+        seen.add(slug)
+        slugs.append(slug)
+    return slugs

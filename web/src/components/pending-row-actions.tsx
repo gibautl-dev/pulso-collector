@@ -24,7 +24,7 @@ export function PendingRowActions({ row }: { row: PendingCandidate }) {
           </p>
           {row.status === "aprobado" ? (
             <p className="mt-1 text-xs text-slate-500">
-              Listo para recolectar. Todavía no se empezó a recolectar
+              Aprobado y activado: empieza a medirse en la próxima recolección
               {row.approved_at ? ` · aprobado el ${row.approved_at.slice(0, 16).replace("T", " ")}` : ""}.
             </p>
           ) : null}

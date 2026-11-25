@@ -491,23 +491,21 @@ export class SupabaseRepo implements PulsoRepo {
 
   async approvePendingCandidate(id: string, approvedBy?: string | null) {
     if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede aprobar un alta");
-    const { data: session } = await this.db.auth.getUser();
-    const res = await this.db
-      .from("pending_candidates")
-      .update({
-        status: "aprobado",
-        approved_at: new Date().toISOString(),
-        approved_by: approvedBy ?? session.user?.id ?? null,
-      })
-      .eq("id", id)
-      .neq("status", "borrado")
-      .select("id,name,slug,arena,status,requested_for_candidate_id,requested_level,source,reason,created_at,created_by,approved_at,approved_by")
-      .single();
+    void approvedBy;
+    const res = await this.db.rpc("approve_and_activate_pending_candidate", {
+      p_pending_id: id,
+      p_enable_ia: false,
+    });
     if (res.error) {
-      if (isMissingRelation(res.error)) throw new Error("Todavía no se aplicó la migración de altas pendientes");
+      const msg = res.error.message ?? "";
+      if (isMissingRelation(res.error) || /approve_and_activate_pending_candidate|does not exist|no existe/i.test(msg)) {
+        throw new Error("Todavía no se aplicó la migración de Aprobar y activar");
+      }
       throw new Error(`Error aprobando el alta: ${res.error.message}`);
     }
-    return res.data as PendingCandidate;
+    const payload = res.data as PendingCandidate & { id?: string };
+    if (!payload || !payload.id) throw new Error("Error aprobando el alta: respuesta vacía");
+    return payload as PendingCandidate;
   }
 
   async deletePendingCandidate(id: string) {

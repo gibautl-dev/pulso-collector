@@ -207,7 +207,7 @@ export const RIVAL_LEVEL_HINT: Record<string, string> = {
 export const PENDING_CANDIDATE_STATUS_LABEL = "Pendiente de alta";
 export const PENDING_CANDIDATE_STATUS_LABELS: Record<string, string> = {
   pendiente_de_alta: "Pendiente de alta",
-  aprobado: "Aprobado, listo para recolectar",
+  aprobado: "Aprobado y activado",
   borrado: "Borrado",
 };
 

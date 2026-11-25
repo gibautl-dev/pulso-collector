@@ -158,7 +158,7 @@ export default async function AdminRivalsPage() {
                 <section>
                   <h3 className="text-sm font-semibold text-slate-900">Sumar un rival que Pulso todavía no mide</h3>
                   <p className="mt-1 text-xs text-slate-500">
-                    Queda como {PENDING_CANDIDATE_STATUS_LABEL.toLowerCase()}. No se recolecta ni entra al tablero del cliente hasta que Active lo apruebe. Aprobar lo deja listo para recolectar, pero todavía no enciende la recolección.
+                    Queda como {PENDING_CANDIDATE_STATUS_LABEL.toLowerCase()}. No se recolecta ni entra al tablero del cliente hasta que Active lo apruebe. Aprobar lo activa con medios y RSS (el plan del pedido), lo suma a Comparación y empieza a medirse en la próxima recolección. La IA queda apagada salvo que se pida explícitamente.
                   </p>
                   <div className="mt-3 overflow-x-auto">
                     <table className="min-w-full text-sm">
