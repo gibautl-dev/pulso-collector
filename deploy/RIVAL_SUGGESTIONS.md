@@ -1,8 +1,8 @@
 # Sugerencias de rivales y altas pendientes
 
-Migración: `deploy/rival_suggestions.sql`. **No aplicada** en pulso-demo.
+Migración: `deploy/rival_suggestions.sql`. **Aplicada** en pulso-demo el 2026-11-24 (hora de Argentina).
 
-## Qué crearía
+## Qué creó
 
 - Tabla `public.rival_suggestion_runs`: caché de cada clic en «Sugerir rivales con IA». Solo el equipo de Active (filas en `pulso_staff`) puede leer o insertar. Las sugerencias no se agregan solas a la comparación.
 - Tabla `public.pending_candidates`: un nombre pedido (a mano o desde una sugerencia) queda en estado `pendiente_de_alta`. **No entra en `candidates`**, así que el recolector y el cron actuales no lo miden. La aprobación y el alta real quedan para un paso posterior, con costo informado.
@@ -15,7 +15,7 @@ Migración: `deploy/rival_suggestions.sql`. **No aplicada** en pulso-demo.
 - Dar de alta un pendiente **no** gasta API ahora, porque no se recolecta.
 - Estimación mensual al pedir un alta: se arma con costos **ya registrados** en Pulso. Hoy `daily_usage` está vacío, así que medios, X y anuncios se informan como desconocidos. «En la IA» sí tiene `ai_answers.cost` (chat-latest con búsqueda web). Si no hay suficientes días, se dice. No se inventan tarifas de X ni de Meta.
 
-La web, si las tablas no existen, no escribe: el panel avisa que falta la migración. Para correr el modelo en producción, el servidor de pulso-web necesitaría `LLM_API_KEY` u `OPENAI_API_KEY` (solo servidor, nunca `NEXT_PUBLIC_`). Esta rama no configura ni publica esa variable.
+La web, si las tablas no existieran, no escribe: el panel avisa que falta la migración. El modelo en producción usa `LLM_API_KEY` u `OPENAI_API_KEY` solo en el servidor de pulso-web (nunca `NEXT_PUBLIC_`).
 
 
 ## Corrida local de prueba (2026-11-24, hora de Argentina)

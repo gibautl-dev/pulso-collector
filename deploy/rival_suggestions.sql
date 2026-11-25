@@ -1,5 +1,5 @@
 -- Sugerencias de rivales con IA y altas pendientes (panel Active).
--- ESTE ARCHIVO NO SE EJECUTÓ. No aplicarlo hasta que Leandro lo apruebe.
+-- Aplicada en pulso-demo (bkjugpesqbplnaeotadh) el 2026-11-24 (hora de Argentina). No volver a aplicar tal cual si ya está.
 -- No contiene secretos. No cambia roles de collector/classifier. No invita usuarios.
 -- No enciende recolección: un pendiente no entra en public.candidates, así que
 -- el cron actual no lo va a medir.
