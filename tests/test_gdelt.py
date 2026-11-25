@@ -1,0 +1,209 @@
+import json
+import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from uuid import uuid4
+from unittest.mock import patch
+import httpx
+
+from pulso.collect_rss import adapter_for
+from pulso.config import Settings
+from pulso.models import Candidate, SourceConfig, SourceName
+from tenacity import wait_none
+from pulso.sources.gdelt import (
+    ATTRIBUTION_URL,
+    DOC_API,
+    GdeltSource,
+    build_query,
+    parse_seendate,
+    reset_throttle,
+    source_country_for,
+    timespan_for,
+    wait_for_slot,
+)
+from pulso.urls import url_hash
+
+FIXTURES = Path(__file__).parent / "fixtures" / "gdelt"
+
+
+def candidate(**updates):
+    values = dict(
+        id=uuid4(), slug="axel-kicillof", name="Axel Kicillof",
+        keywords=["Axel Kicillof", "Kicillof", "@Kicillofok"],
+        exclude_keywords=[],
+    )
+    values.update(updates)
+    return Candidate(**values)
+
+
+def config(candidate_id, **updates):
+    values = dict(
+        candidate_id=candidate_id, source="gdelt", enabled=True,
+        interval_seconds=1200, settings={"sourcecountry": "AR"}, cursor={},
+    )
+    values.update(updates)
+    return SourceConfig(**values)
+
+
+def settings():
+    return Settings("unused", user_agent="PulsoCollector/0.3 (+https://pulso-web-re4x.onrender.com)")
+
+
+class QueryTests(unittest.TestCase):
+    def test_source_country_from_region_and_override(self):
+        self.assertEqual(source_country_for("axel-kicillof"), "AR")
+        self.assertEqual(source_country_for("milei"), "AR")
+        self.assertEqual(source_country_for("pedro-sanchez"), "ES")
+        self.assertEqual(source_country_for("pedro-sanchez", {"sourcecountry": "SP"}), "SP")
+
+    def test_query_strips_handles_and_adds_country_and_exclusions(self):
+        c = candidate()
+        q = build_query(c, "AR")
+        self.assertIn('"Axel Kicillof"', q)
+        self.assertIn('"Kicillof"', q)
+        self.assertIn('"Kicillofok"', q)
+        self.assertNotIn("@", q)
+        self.assertIn("sourcecountry:AR", q)
+        s = candidate(slug="pedro-sanchez", name="Pedro Sánchez",
+                      keywords=["Pedro Sánchez", "Sánchez"],
+                      exclude_keywords=["Alexis Sánchez", "Hugo Sánchez"])
+        q2 = build_query(s, "ES")
+        self.assertIn("sourcecountry:ES", q2)
+        self.assertIn('-"Alexis Sánchez"', q2)
+
+    def test_timespan_caps_at_three_months(self):
+        now = datetime(2026, 11, 25, tzinfo=timezone.utc)
+        self.assertEqual(timespan_for(now - timedelta(days=7), now), "7d")
+        self.assertEqual(timespan_for(now - timedelta(hours=6), now), "6h")
+        self.assertEqual(timespan_for(now - timedelta(days=120), now), "3m")
+
+    def test_seendate(self):
+        self.assertEqual(
+            parse_seendate("20261124T150000Z"),
+            datetime(2026, 11, 24, 15, 0, tzinfo=timezone.utc),
+        )
+        self.assertIsNone(parse_seendate(""))
+        self.assertIsNone(parse_seendate("nope"))
+
+    def test_adapter_registration(self):
+        self.assertIsInstance(adapter_for(SourceName.GDELT, settings()), GdeltSource)
+
+    def test_attribution_url(self):
+        self.assertEqual(ATTRIBUTION_URL, "https://www.gdeltproject.org/")
+        self.assertTrue(DOC_API.startswith("https://api.gdeltproject.org/"))
+
+
+class ThrottleTests(unittest.IsolatedAsyncioTestCase):
+    async def test_waits_between_requests(self):
+        reset_throttle()
+        slept = []
+
+        async def fake_sleep(seconds):
+            slept.append(seconds)
+
+        clock_values = iter([10.0, 12.0])
+
+        def clock():
+            return next(clock_values)
+
+        await wait_for_slot(min_seconds=5, sleeper=fake_sleep, clock=clock)
+        self.assertEqual(slept, [])
+        await wait_for_slot(min_seconds=5, sleeper=fake_sleep, clock=clock)
+        self.assertEqual(slept, [3.0])
+        reset_throttle()
+
+
+class FetchTests(unittest.IsolatedAsyncioTestCase):
+    async def fetch_with(self, responses, cand=None, cfg=None, since=None):
+        reset_throttle()
+        cand = cand or candidate()
+        cfg = cfg or config(cand.id)
+        since = since or datetime(2026, 11, 20, tzinfo=timezone.utc)
+        payload = responses
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.calls.append({"url": str(request.url), "ua": request.headers.get("user-agent")})
+            if callable(payload):
+                return payload(request)
+            status, body = payload
+            if isinstance(body, bytes):
+                return httpx.Response(status, content=body, headers={"content-type": "text/plain"})
+            return httpx.Response(status, json=body)
+
+        self.calls = []
+        adapter = GdeltSource(settings())
+        original = httpx.AsyncClient
+
+        def factory(*args, **kwargs):
+            kwargs = dict(kwargs)
+            kwargs["transport"] = httpx.MockTransport(handler)
+            return original(*args, **kwargs)
+
+        with patch("pulso.sources.gdelt.wait_for_slot", new=self._noop_slot), patch(
+            "pulso.sources.gdelt.RETRY_WAIT", wait_none()
+        ), patch(
+            "pulso.sources.gdelt.httpx.AsyncClient", side_effect=factory
+        ):
+            return await adapter.fetch(cand, since, cfg)
+
+    async def _noop_slot(self, *args, **kwargs):
+        return None
+
+    async def test_filters_duplicates_unrelated_and_dateless(self):
+        articles = json.loads((FIXTURES / "articles.json").read_text())
+        result = await self.fetch_with((200, articles))
+        self.assertEqual(result.feeds_ok, 1)
+        self.assertEqual(len(result.mentions), 1)
+        mention = result.mentions[0]
+        self.assertEqual(mention.url, "https://www.infobae.com/politica/2026/11/24/kicillof-anuncio/")
+        self.assertEqual(mention.outlet, "infobae.com")
+        self.assertEqual(mention.source, SourceName.GDELT)
+        self.assertGreaterEqual(result.skipped_entries, 3)
+        self.assertIn("PulsoCollector", self.calls[0]["ua"])
+        self.assertIn("pulso-web-re4x.onrender.com", self.calls[0]["ua"])
+        self.assertIn("sourcecountry%3AAR", self.calls[0]["url"])
+
+    async def test_known_url_hashes_are_skipped(self):
+        articles = json.loads((FIXTURES / "articles.json").read_text())
+        cand = candidate()
+        digest = url_hash("https://www.infobae.com/politica/2026/11/24/kicillof-anuncio/")
+        result = await self.fetch_with(
+            (200, articles),
+            cand=cand,
+            cfg=config(cand.id, settings={"sourcecountry": "AR", "known_url_hashes": [digest]}),
+        )
+        self.assertEqual(result.mentions, [])
+
+    async def test_spain_query_uses_es(self):
+        cand = candidate(
+            slug="pedro-sanchez", name="Pedro Sánchez",
+            keywords=["Pedro Sánchez"], exclude_keywords=[],
+        )
+        result = await self.fetch_with(
+            (200, {"articles": []}),
+            cand=cand,
+            cfg=config(cand.id, settings={}),
+        )
+        self.assertEqual(result.feeds_ok, 1)
+        self.assertIn("sourcecountry%3AES", self.calls[0]["url"])
+
+    async def test_429_then_success(self):
+        articles = {"articles": []}
+        state = {"n": 0}
+
+        def payload(request):
+            state["n"] += 1
+            if state["n"] == 1:
+                return httpx.Response(429, content=b"Please limit requests to one every 5 seconds")
+            return httpx.Response(200, json=articles)
+
+        result = await self.fetch_with(payload)
+        self.assertEqual(result.feeds_ok, 1)
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(self.calls), 2)
+
+    async def test_plain_rate_limit_message(self):
+        result = await self.fetch_with((200, b"Please limit requests to one every 5 seconds or contact us"))
+        # 200 + text retried then fails
+        self.assertTrue(result.errors)
+        self.assertEqual(result.feeds_ok, 0)

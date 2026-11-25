@@ -1,7 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, WikipediaPageview, WikipediaPageviewSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import type { SimulatorLimits } from "@/lib/response-simulator";
 import type { SpendReport } from "@/lib/spend";
 
@@ -36,6 +36,9 @@ export interface PulsoRepo {
   listMetaAdsSettings(candidateId: string): Promise<MetaAdsSettings | null>;
   listGoogleAds(candidateId: string): Promise<GoogleAd[]>;
   listGoogleAdsSettings(candidateId: string): Promise<GoogleAdsSettings | null>;
+  /** Serie de visitas diarias a Wikipedia; vacía si la migración no está aplicada. */
+  listWikipediaPageviews(candidateId: string): Promise<WikipediaPageview[]>;
+  listWikipediaPageviewSettings(candidateId: string): Promise<WikipediaPageviewSettings | null>;
   listCrisisAlerts(candidateId: string): Promise<CrisisAlert[]>;
   getCrisisAlert(candidateId: string, id: string): Promise<CrisisAlert | null>;
   listCrisisBriefs(candidateId: string, alertId: string): Promise<CrisisBrief[]>;

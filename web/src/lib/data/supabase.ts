@@ -4,7 +4,7 @@ import type { SpendReport } from "@/lib/spend";
 import { createClient } from "@/lib/supabase/server";
 import { NEGATIVE_TONES } from "@/lib/labels";
 import { dateBounds, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, WikipediaPageview, WikipediaPageviewSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestion, RivalSuggestionOrigin, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import type { SimulatorLimits } from "@/lib/response-simulator";
 import { isRivalLevel } from "@/lib/types";
 import { hasDuplicatePending, slugifyName } from "@/lib/rival-suggest";
@@ -300,6 +300,36 @@ export class SupabaseRepo implements PulsoRepo {
       throw new Error(`Error leyendo la configuración de anuncios de Google: ${res.error.message}`);
     }
     return (res.data as GoogleAdsSettings | null) ?? null;
+  }
+
+  async listWikipediaPageviews(candidateId: string): Promise<WikipediaPageview[]> {
+    const res = await this.db
+      .from("wikipedia_pageviews")
+      .select("candidate_id,project,article,day,views,collected_at")
+      .eq("candidate_id", candidateId)
+      .order("day", { ascending: true })
+      .limit(400);
+    if (res.error) {
+      if (isMissingRelation(res.error)) return [];
+      throw new Error(`Error leyendo las visitas de Wikipedia: ${res.error.message}`);
+    }
+    return ((res.data as WikipediaPageview[]) ?? []).map((row) => ({
+      ...row,
+      views: Number(row.views) || 0,
+    }));
+  }
+
+  async listWikipediaPageviewSettings(candidateId: string): Promise<WikipediaPageviewSettings | null> {
+    const res = await this.db
+      .from("wikipedia_pageview_settings")
+      .select("candidate_id,enabled,project,article,last_run_on,updated_at")
+      .eq("candidate_id", candidateId)
+      .maybeSingle();
+    if (res.error) {
+      if (isMissingRelation(res.error)) return null;
+      throw new Error(`Error leyendo la configuración de Wikipedia: ${res.error.message}`);
+    }
+    return (res.data as WikipediaPageviewSettings | null) ?? null;
   }
 
   async listDailyBriefs(candidateId: string, limit: number): Promise<DailyBrief[]> {

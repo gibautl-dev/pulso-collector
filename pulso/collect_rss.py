@@ -12,6 +12,7 @@ from .sources.rss_media import RSSSource
 from .sources.google_alerts import GoogleAlertsSource
 from .sources.youtube import YouTubeSource
 from .sources.x import XSource
+from .sources.gdelt import GdeltSource
 
 def log(**values): print(json.dumps(values,ensure_ascii=False,default=str),flush=True)
 
@@ -38,6 +39,8 @@ def adapter_for(source, settings):
         return YouTubeSource(settings)
     if source == SourceName.X:
         return XSource(settings)
+    if source == SourceName.GDELT:
+        return GdeltSource(settings)
     return RSSSource(source, settings)
 
 async def collect(args):

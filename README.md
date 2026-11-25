@@ -1,8 +1,10 @@
 # Pulso — recolector, pasos 1 a 3
 
 Python 3.12+, PostgreSQL de Supabase y adaptadores RSS, Google News, Google
-Alerts, YouTube y X (estos dos últimos apagados hasta configurar la clave o el
-token y habilitar la fila). Las demás fuentes siguen sin implementar.
+Alerts, YouTube, X, GDELT DOC 2.0 y visitas de Wikipedia. YouTube, X, GDELT y
+Wikipedia quedan apagados hasta habilitar la fila o la migración (ver
+`deploy/NEW_SOURCES.md` y `deploy/GOOGLE_ALERTS.md`). GDELT y Wikipedia no
+tienen costo de API.
 No incluye front, cron, clasificación, agrupación, vistas ni backfill multifuente.
 
 ## Probar contra Supabase real
@@ -158,6 +160,8 @@ la generación del código. Las pruebas locales usan feeds de ejemplo simulados.
 - `sources/google_alerts.py`: RSS configurado de Google Alerts.
 - `sources/youtube.py`: YouTube Data API v3, con tope de cuota en el cursor.
 - `sources/x.py`: X API v2 recent search, con tope diario en el cursor.
+- `sources/gdelt.py`: GDELT DOC 2.0, un pedido cada 5 segundos, con atribución.
+- `wikipedia/`: visitas diarias a la ficha en es.wikipedia (API de Wikimedia).
 - `collect_rss.py`: comando manual para probar pasos 2–3.
 
 ## Límites y decisiones

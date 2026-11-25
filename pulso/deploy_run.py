@@ -76,7 +76,7 @@ def args_for_slug(base_args, slug):
     return args
 
 
-MEDIA_COLLECT_SOURCES = ('rss_media', 'google_news', 'google_alerts')
+MEDIA_COLLECT_SOURCES = ('rss_media', 'google_news', 'google_alerts', 'gdelt')
 
 def list_media_enabled_slugs(database_url):
     """Slugs con al menos una fuente de medios/RSS encendida. Sin secretos en logs."""
@@ -148,6 +148,7 @@ def main():
                 run_meta_ads(args)
                 run_meta_ads_classify(args)
                 run_google_ads(args, remaining=timeout - (time.monotonic() - started))
+                run_wikipedia(args, remaining=timeout - (time.monotonic() - started))
                 run_crisis_agent(args)
                 run_daily_brief(args)
                 run_inconsistency(args)
@@ -200,6 +201,7 @@ def main():
                 log(event='meta_ads_skipped', reason='region_disabled', candidate=slug)
                 log(event='meta_ads_classify_skipped', reason='region_disabled', candidate=slug)
             run_google_ads(child_args, remaining=timeout - (time.monotonic() - started))
+            run_wikipedia(child_args, remaining=timeout - (time.monotonic() - started))
             run_crisis_agent(child_args)
             run_daily_brief(child_args)
             run_inconsistency(child_args)
@@ -355,6 +357,40 @@ def run_google_ads(collector_args, remaining=None):
                            env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY), prefix='google_ads')
     except Exception as exc:
         log(event='google_ads_error', error_type=type(exc).__name__)
+        return None
+
+
+
+def run_wikipedia(collector_args, remaining=None):
+    """Visitas diarias a Wikipedia (API de Wikimedia). Apagado por defecto."""
+    try:
+        if os.getenv('PULSO_WIKIPEDIA_ENABLED', 'false').lower() != 'true':
+            log(event='wikipedia_skipped', reason='disabled')
+            return None
+        if remaining is not None and remaining < 30:
+            log(event='wikipedia_skipped', reason='insufficient_time',
+                remaining_seconds=round(remaining, 1))
+            return None
+        timeout = int(os.getenv('PULSO_WIKIPEDIA_TIMEOUT_SECONDS', '60'))
+        if not 15 <= timeout <= 180:
+            raise ValueError('Invalid wikipedia timeout')
+        if remaining is not None:
+            timeout = min(timeout, max(15, int(remaining)))
+        args = []
+        if '--candidate' in collector_args:
+            i = collector_args.index('--candidate')
+            args = ['--candidate', collector_args[i + 1]]
+        if os.getenv('PULSO_WIKIPEDIA_DRY_RUN', 'false').lower() == 'true':
+            args.append('--dry-run')
+        elif '--dry-run' in collector_args:
+            args.append('--dry-run')
+        else:
+            args.append('--write')
+        # Misma conexión del recolector; no ve la clave del LLM ni el token de Meta.
+        return run_command([sys.executable, '-m', 'pulso.wikipedia', *args], timeout,
+                           env=child_env(CLASSIFIER_ONLY, META_ADS_ONLY), prefix='wikipedia')
+    except Exception as exc:
+        log(event='wikipedia_error', error_type=type(exc).__name__)
         return None
 
 

@@ -9,6 +9,7 @@ class SourceName(StrEnum):
     ALERTS = "google_alerts"
     YOUTUBE = "youtube"
     X = "x"
+    GDELT = "gdelt"
 
 class Candidate(BaseModel):
     model_config = ConfigDict(extra="ignore")

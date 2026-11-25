@@ -527,6 +527,26 @@ export function isGoogleAdSource(value: string): value is GoogleAdSource {
   return (GOOGLE_AD_SOURCES as readonly string[]).includes(value);
 }
 
+/** Visitas diarias a la ficha de Wikipedia (public.wikipedia_pageviews). */
+export interface WikipediaPageview {
+  candidate_id: string;
+  project: string;
+  article: string;
+  day: string;
+  views: number;
+  collected_at?: string | null;
+}
+
+export interface WikipediaPageviewSettings {
+  candidate_id: string;
+  enabled: boolean;
+  project: string;
+  article: string;
+  last_run_on: string | null;
+  updated_at: string | null;
+}
+
+
 /** Resumen diario (public.daily_briefs). Las cifras vienen calculadas; el texto cita menciones. */
 export type DailyBriefStatus = "ok" | "insufficient";
 export interface DailyBriefPoint {

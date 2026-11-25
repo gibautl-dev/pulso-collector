@@ -1,7 +1,8 @@
-import { Card, EmptyState, PageHeader, RunStatusBadge } from "@/components/ui";
+import { Card, EmptyState, InfoTip, PageHeader, RunStatusBadge } from "@/components/ui";
 import { computeSourceHealth } from "@/lib/analytics";
 import { loadCandidate } from "@/lib/context";
 import { sourceLabel } from "@/lib/labels";
+import { GDELT_ATTRIBUTION } from "@/lib/wikipedia-pageviews";
 import { GOOGLE_ADS_EXAMPLE_BANNER, GOOGLE_ADS_SPAIN_PENDING, SOURCE_LABEL as GOOGLE_SOURCE_LABEL } from "@/lib/google-ads";
 import { computeGoogleAdsHealth } from "@/lib/google-ads-health";
 import { computeMetaAdsHealth } from "@/lib/meta-ads-health";
@@ -48,10 +49,19 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
         {enabled.map((s) => {
           const h = health.find((x) => x.source === s.source);
           return (
-            <Card key={s.source}>
+            <Card key={s.source} testId={s.source === "gdelt" ? "fuentes-gdelt" : undefined}>
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <h2 className="text-base font-semibold text-slate-900">{sourceLabel(s.source)}</h2>
+                  <h2 className="flex items-center gap-1.5 text-base font-semibold text-slate-900">
+                    {s.source === "gdelt" ? (
+                      <a href={GDELT_ATTRIBUTION.href} target="_blank" rel="noreferrer" className="hover:text-indigo-700">
+                        {sourceLabel(s.source)}
+                      </a>
+                    ) : (
+                      sourceLabel(s.source)
+                    )}
+                    {s.source === "gdelt" ? <InfoTip text={GDELT_ATTRIBUTION.tip} label="Fuente" /> : null}
+                  </h2>
                   <p className="mt-0.5 text-xs text-slate-500">
                     Cada {Math.round(s.interval_seconds / 60)} min · cobertura {COVERAGE[s.coverage_status].toLowerCase()}
                   </p>

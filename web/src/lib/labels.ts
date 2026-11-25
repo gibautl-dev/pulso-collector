@@ -82,6 +82,7 @@ export const SOURCE_BADGE: Record<string, string> = {
   rss_media: "bg-amber-50 text-amber-800 ring-amber-600/20",
   google_alerts: "bg-teal-50 text-teal-800 ring-teal-600/20",
   youtube: "bg-red-50 text-red-800 ring-red-600/20",
+  gdelt: "bg-cyan-50 text-cyan-800 ring-cyan-600/20",
   x: "bg-zinc-900 text-white ring-zinc-900",
 };
 export const SOURCE_BADGE_DEFAULT = "bg-slate-100 text-slate-700 ring-slate-500/20";
@@ -92,6 +93,7 @@ export const SOURCE_BAR: Record<string, string> = {
   rss_media: "bg-amber-500",
   google_alerts: "bg-teal-500",
   youtube: "bg-red-500",
+  gdelt: "bg-cyan-500",
   x: "bg-zinc-800",
 };
 export const SOURCE_BAR_DEFAULT = "bg-slate-400";

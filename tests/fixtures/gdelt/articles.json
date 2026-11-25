@@ -1,0 +1,35 @@
+{
+  "articles": [
+    {
+      "url": "https://www.infobae.com/politica/2026/11/24/kicillof-anuncio/?utm_source=gdelt",
+      "title": "Kicillof anunció una medida en la Provincia",
+      "seendate": "20261124T150000Z",
+      "domain": "infobae.com",
+      "language": "Spanish",
+      "sourcecountry": "Argentina"
+    },
+    {
+      "url": "https://www.infobae.com/politica/2026/11/24/kicillof-anuncio/?utm_campaign=dup",
+      "title": "Duplicado del mismo artículo",
+      "seendate": "20261124T151000Z",
+      "domain": "infobae.com",
+      "language": "Spanish",
+      "sourcecountry": "Argentina"
+    },
+    {
+      "url": "https://www.example.com/otro-tema",
+      "title": "Un artículo que no nombra al candidato",
+      "seendate": "20261124T160000Z",
+      "domain": "example.com",
+      "language": "Spanish",
+      "sourcecountry": "Argentina"
+    },
+    {
+      "url": "https://www.lanacion.com.ar/politica/sin-fecha",
+      "title": "Kicillof sin fecha",
+      "domain": "lanacion.com.ar",
+      "language": "Spanish",
+      "sourcecountry": "Argentina"
+    }
+  ]
+}

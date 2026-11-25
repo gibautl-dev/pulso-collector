@@ -1,0 +1,11 @@
+{
+  "items": [
+    {"project": "es.wikipedia", "article": "Axel_Kicillof", "granularity": "daily", "timestamp": "2026111800", "access": "all-access", "agent": "user", "views": 800},
+    {"project": "es.wikipedia", "article": "Axel_Kicillof", "granularity": "daily", "timestamp": "2026111900", "access": "all-access", "agent": "user", "views": 820},
+    {"project": "es.wikipedia", "article": "Axel_Kicillof", "granularity": "daily", "timestamp": "2026112000", "access": "all-access", "agent": "user", "views": 900},
+    {"project": "es.wikipedia", "article": "Axel_Kicillof", "granularity": "daily", "timestamp": "2026112100", "access": "all-access", "agent": "user", "views": 880},
+    {"project": "es.wikipedia", "article": "Axel_Kicillof", "granularity": "daily", "timestamp": "2026112200", "access": "all-access", "agent": "user", "views": 910},
+    {"project": "es.wikipedia", "article": "Axel_Kicillof", "granularity": "daily", "timestamp": "2026112300", "access": "all-access", "agent": "user", "views": 940},
+    {"project": "es.wikipedia", "article": "Axel_Kicillof", "granularity": "daily", "timestamp": "2026112400", "access": "all-access", "agent": "user", "views": 1100}
+  ]
+}

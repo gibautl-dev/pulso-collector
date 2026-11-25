@@ -9,7 +9,7 @@ import type { AiAnswer, Candidate, Mention, MetaAd, RivalLevel, SuspiciousAccoun
 import { computeXView } from "./x-posts";
 import { mentionsInWindow, windowCalendarDays, type CommonWindow } from "./comparison-window";
 
-export const MEDIA_SOURCES = new Set(["rss_media", "google_news", "google_alerts"]);
+export const MEDIA_SOURCES = new Set(["rss_media", "google_news", "google_alerts", "gdelt"]);
 
 export function mentionsForLevel(mentions: Mention[], level: RivalLevel): Mention[] {
   if (level === "radar") return mentions.filter((m) => MEDIA_SOURCES.has(m.source));

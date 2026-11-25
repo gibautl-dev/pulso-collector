@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
+import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, WikipediaPageview, WikipediaPageviewSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import type { SpendReport } from "@/lib/spend";
 import { SIMULATOR_LIMITS_DEFAULT, checkQuota, type SimulatorLimits } from "@/lib/response-simulator";
 import { dayKey, startOfDay } from "@/lib/time";
@@ -22,6 +22,8 @@ export interface FixtureData {
   meta_ads_settings?: MetaAdsSettings[];
   google_ads?: GoogleAd[];
   google_ads_settings?: GoogleAdsSettings[];
+  wikipedia_pageviews?: WikipediaPageview[];
+  wikipedia_pageview_settings?: WikipediaPageviewSettings[];
   crisis_alerts?: CrisisAlert[];
   crisis_briefs?: CrisisBrief[];
   /** En el modo local, el usuario se trata como equipo de Active. */
@@ -160,6 +162,15 @@ export class MemoryRepo implements PulsoRepo {
   }
   async listGoogleAdsSettings(candidateId: string) {
     return (this.data.google_ads_settings ?? []).find((s) => s.candidate_id === candidateId) ?? null;
+  }
+  async listWikipediaPageviews(candidateId: string) {
+    return (this.data.wikipedia_pageviews ?? [])
+      .filter((r) => r.candidate_id === candidateId)
+      .slice()
+      .sort((a, b) => a.day.localeCompare(b.day));
+  }
+  async listWikipediaPageviewSettings(candidateId: string) {
+    return (this.data.wikipedia_pageview_settings ?? []).find((s) => s.candidate_id === candidateId) ?? null;
   }
 
   async listCrisisAlerts(candidateId: string) {

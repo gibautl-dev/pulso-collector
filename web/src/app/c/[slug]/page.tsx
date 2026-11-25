@@ -36,6 +36,8 @@ import {
   ComparisonSpotlightCard,
   CustomTopicsSpotlightCard,
 } from "@/components/home-spotlight-cards";
+import { WikipediaInterestCard } from "@/components/wikipedia-interest-card";
+import { computeWikipediaInterest, GDELT_ATTRIBUTION } from "@/lib/wikipedia-pageviews";
 
 export const metadata = { title: "Tablero · Pulso" };
 const PERIODS = [7, 14, 30];
@@ -141,6 +143,13 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
   const [latestBrief] = await repo.listDailyBriefs(candidate.id, 1);
   const latestBriefOut = latestBrief ? normalizeOutput(latestBrief.output) : null;
 
+  const [wikiViews, wikiSettings] = await Promise.all([
+    repo.listWikipediaPageviews(candidate.id),
+    repo.listWikipediaPageviewSettings(candidate.id),
+  ]);
+  const wikiInterest = computeWikipediaInterest(wikiViews, wikiSettings);
+
+
 
   return (
     <>
@@ -207,6 +216,8 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
         />
       </div>
 
+      {wikiInterest ? <WikipediaInterestCard interest={wikiInterest} /> : null}
+
       <div data-testid="tablero-source-cards"><SourceSummaryCards cards={sourceCards} /></div>
 
       <div data-testid="tablero-volume-tone" className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -248,6 +259,13 @@ export default async function Dashboard({ params, searchParams }: PageProps<"/c/
               ))}
             </div>
           )}
+          {d.bySource.some((s) => s.source === "gdelt") ? (
+            <p className="mt-3 text-xs text-slate-500">
+              <a href={GDELT_ATTRIBUTION.href} target="_blank" rel="noreferrer" className="font-medium text-slate-600 hover:text-indigo-700">
+                {GDELT_ATTRIBUTION.name}
+              </a>
+            </p>
+          ) : null}
         </Card>
         <Card
           testId="ultimas-menciones"
