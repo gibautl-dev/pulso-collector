@@ -1,6 +1,7 @@
 import "server-only";
 import { isFixtureMode } from "@/lib/mode";
 import type { MentionFilters } from "@/lib/filters";
+import type { CandidateCountry, CollectionMode, CreatedCandidate } from "@/lib/types";
 import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, WikipediaPageview, WikipediaPageviewSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import type { SimulatorLimits } from "@/lib/response-simulator";
 import type { SpendReport } from "@/lib/spend";
@@ -66,6 +67,24 @@ export interface PulsoRepo {
   getCandidateById(id: string): Promise<Candidate | null>;
   /** Directorio para el panel (todos, si es staff). */
   listAssignableCandidates(): Promise<Candidate[]>;
+  setCandidateCollectionPaused(id: string, paused: boolean): Promise<Candidate>;
+  createCandidate(row: {
+    name: string;
+    slug: string;
+    country: CandidateCountry;
+    collection_mode: CollectionMode;
+    office?: string | null;
+    party?: string | null;
+    keywords: string[];
+    exclude_keywords: string[];
+    x_handle?: string | null;
+    youtube_channel_id?: string | null;
+    wikipedia_article?: string | null;
+    rival_candidate_id?: string | null;
+    rival_level?: RivalLevel | null;
+    daily_budget_usd: number;
+    enable_ai_visibility?: boolean;
+  }): Promise<CreatedCandidate>;
   listRivals(candidateId: string): Promise<CandidateRival[]>;
   replaceRivals(candidateId: string, rows: { rival_id: string; level: RivalLevel }[]): Promise<void>;
   listRecordedDailyCosts(): Promise<RecordedDailyCost[]>;

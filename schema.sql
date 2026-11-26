@@ -12,6 +12,11 @@ create table public.candidates (
   reference_accounts jsonb not null default '{}',
   alert_feeds text[] not null default '{}',
   x_daily_cap integer not null default 300 check (x_daily_cap >= 0),
+  collection_paused boolean not null default false,
+  country text not null default 'AR' check (country in ('AR', 'ES')),
+  collection_mode text not null default 'full' check (collection_mode in ('full', 'media_only')),
+  office text,
+  party text,
   created_at timestamptz not null default now()
 );
 

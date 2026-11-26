@@ -55,7 +55,7 @@ export default async function TemaDetailPage({ params }: PageProps<"/c/[slug]/te
       </p>
       <PageHeader
         title={topic.name}
-        description={topic.description || `Tema a medida para ${candidate.name} en ${regionFor(slug).countryName}.`}
+        description={topic.description || `Tema a medida para ${candidate.name} en ${regionFor(slug, candidate?.country).countryName}.`}
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

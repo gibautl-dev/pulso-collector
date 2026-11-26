@@ -58,7 +58,7 @@ export default async function ComparacionPage({
   searchParams,
 }: PageProps<"/c/[slug]/comparacion">) {
   const { slug } = await params;
-  const clock = clockFor(slug);
+  let clock = clockFor(slug);
   const sp = await searchParams;
   const days = PERIODS.includes(Number(sp.dias)) ? Number(sp.dias) : 7;
   const { repo, candidate, viewer } = await loadCandidate(slug);
@@ -75,7 +75,8 @@ export default async function ComparacionPage({
   const now = ts ? new Date(ts) : new Date();
   const since = new Date(now.getTime() - days * 86400000).toISOString();
 
-  const region = regionFor(slug);
+  const region = regionFor(slug, candidate.country);
+  clock = clockFor(slug, candidate.country);
   const [parentMeta, parentGoogle, parentMentions, rivalPacks] = await Promise.all([
     region.showMetaAds ? repo.listMetaAds(candidate.id) : Promise.resolve([] as MetaAd[]),
     repo.listGoogleAds(candidate.id),

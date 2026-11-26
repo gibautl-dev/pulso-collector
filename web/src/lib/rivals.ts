@@ -62,7 +62,7 @@ function snapshot(pack: SubjectPack, rawOpts: CompareOpts): SubjectSnapshot {
   const leveled = mentionsForLevel(pack.mentions, level);
   const mentions = win ? mentionsInWindow(leveled, win) : leveled;
   const xCompared = !win || win.sources.includes("x");
-  const region = regionFor(pack.candidate.slug);
+  const region = regionFor(pack.candidate.slug, pack.candidate.country);
   const dashboard = computeDashboard(mentions, pack.topics, {
     days: opts.days,
     now: opts.now,

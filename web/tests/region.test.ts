@@ -14,6 +14,10 @@ describe("regionFor", () => {
     expect(es.showGoogleAds).toBe(true);
     expect(regionFor("axel-kicillof").showGoogleAds).toBe(true);
     expect(clockFor("pedro-sanchez").tzLabel).toBe("hora de España");
+    expect(regionFor("diego-santilli", "AR").country).toBe("AR");
+    expect(regionFor("nuevo-es", "ES").countryName).toBe("España");
+    expect(regionFor("nuevo-es", "ES").showMetaAds).toBe(false);
+    expect(regionFor("pedro-sanchez", "ES").timezone).toBe("Europe/Madrid");
   });
 
   it("formatea un instante en hora de Madrid", () => {

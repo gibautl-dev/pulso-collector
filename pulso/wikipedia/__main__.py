@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 from pulso.wikipedia.client import DEFAULT_DAYS, fetch_pageviews, range_for
 from pulso.wikipedia.defaults import article_for, article_url, project_for
+from pulso.collection import is_collection_paused
 
 TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 
@@ -62,6 +63,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             db = WikipediaDB(Cfg.from_env().database_url)
             row = db.candidate(args.candidate)
+            if is_collection_paused(row):
+                log(event="wikipedia_skipped", reason="collection_paused", candidate=args.candidate)
+                return 0
             candidate_id = row["id"]
             stored = db.settings(candidate_id) or {}
             if stored and not stored.get("enabled", True):

@@ -21,13 +21,13 @@ export async function requestTopicSummaryAction(_prev: FormActionState, formData
     const now = new Date();
     const since = new Date(now.getTime() - 14 * 86400000);
     const mentions = await repo.mentionsSince(candidate.id, since.toISOString());
-    const stats = computeTopicStats(topic, mentions, { now, days: 14, timeZone: regionFor(slug).timezone });
+    const stats = computeTopicStats(topic, mentions, { now, days: 14, timeZone: regionFor(slug, candidate?.country).timezone });
     const headlines = stats.topMentions.map((m) =>
       [m.outlet, m.title].filter(Boolean).join(": "),
     ).filter(Boolean);
     const result = await requestTopicSummary({
       candidateName: candidate.name,
-      countryName: regionFor(slug).countryName,
+      countryName: regionFor(slug, candidate?.country).countryName,
       topic,
       stats,
       headlines,

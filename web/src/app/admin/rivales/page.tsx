@@ -19,7 +19,7 @@ export default async function AdminRivalsPage() {
       rivals: await repo.listRivals(c.id),
       suggestions: await repo.latestSuggestionRun(c.id),
       pending: await repo.listPendingCandidates(c.id),
-      costTable: buildOnboardingCostTable(regionFor(c.slug)),
+      costTable: buildOnboardingCostTable(regionFor(c.slug, c.country)),
     })),
   );
 
@@ -48,7 +48,7 @@ export default async function AdminRivalsPage() {
         {assignments.map(({ candidate, rivals, suggestions, pending, costTable }) => {
           const current = new Map(rivals.map((r) => [r.rival_id, r.level]));
           const others = candidates.filter((c) => c.id !== candidate.id);
-          const region = regionFor(candidate.slug);
+          const region = regionFor(candidate.slug, candidate.country);
           return (
             <div key={candidate.id} id={`rivales-${candidate.slug}`}>
             <Card title={candidate.name} subtitle={`/${candidate.slug} · ${region.countryName}`}>
@@ -74,7 +74,7 @@ export default async function AdminRivalsPage() {
                                   className="h-4 w-4 rounded border-slate-300 text-indigo-600"
                                 />
                                 {other.name}
-                                <span className="text-xs font-normal text-slate-500">{regionFor(other.slug).countryName}</span>
+                                <span className="text-xs font-normal text-slate-500">{regionFor(other.slug, other.country).countryName}</span>
                               </label>
                               <label className="flex items-center gap-2 text-xs text-slate-500">
                                 Nivel

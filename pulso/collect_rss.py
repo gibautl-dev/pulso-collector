@@ -13,6 +13,7 @@ from .sources.google_alerts import GoogleAlertsSource
 from .sources.youtube import YouTubeSource
 from .sources.x import XSource
 from .sources.gdelt import GdeltSource, gdelt_slot_matches
+from pulso.collection import is_collection_paused
 
 def log(**values): print(json.dumps(values,ensure_ascii=False,default=str),flush=True)
 
@@ -57,6 +58,9 @@ async def collect(args):
     results = []
     try:
         candidate = db.candidate(args.candidate)
+        if is_collection_paused(candidate):
+            log(status='skipped', reason='collection_paused', candidate=candidate.slug)
+            return 0
         locked = db.lock(candidate.id)
         if not locked:
             log(status='skipped',reason='candidate_locked'); return 0

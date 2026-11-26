@@ -28,7 +28,7 @@ export default async function Home() {
           </p>
           <ul className="mt-6 space-y-3" data-testid="candidate-chooser">
             {candidates.map((c) => {
-              const region = regionFor(c.slug);
+              const region = regionFor(c.slug, c.country);
               return (
                 <li key={c.slug}>
                   <Link

@@ -15,8 +15,9 @@ const COVERAGE: Record<string, string> = { unknown: "Desconocida", partial: "Par
 
 export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuentes">) {
   const { slug } = await params;
-  const clock = clockFor(slug);
+  let clock = clockFor(slug);
   const { repo, candidate } = await loadCandidate(slug);
+  clock = clockFor(slug, candidate.country);
   const [runs, sources, ads, adsSettings, googleAds, googleSettings, ts] = await Promise.all([
     repo.listSourceRuns(candidate.id, 40),
     repo.listCandidateSources(candidate.id),
@@ -32,7 +33,7 @@ export default async function SourcesPage({ params }: PageProps<"/c/[slug]/fuent
   const disabled = sources.filter((s) => !s.enabled);
   const metaHealth = computeMetaAdsHealth(ads, adsSettings, {
     now,
-    showMetaAds: regionFor(slug).showMetaAds,
+    showMetaAds: regionFor(slug, candidate.country).showMetaAds,
   });
   const googleHealth = computeGoogleAdsHealth(googleAds, googleSettings, {
     pendingReason: slug === "pedro-sanchez" ? GOOGLE_ADS_SPAIN_PENDING : null,

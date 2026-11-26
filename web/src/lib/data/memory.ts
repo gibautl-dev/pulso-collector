@@ -1,5 +1,5 @@
 import { applyFilters, type MentionFilters } from "@/lib/filters";
-import type { AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, WikipediaPageview, WikipediaPageviewSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
+import type { CandidateCountry, CollectionMode, CreatedCandidate,  AiAnswer, Candidate, CandidateRival, CandidateSource, CrisisAlert, CrisisBrief, CrisisStatus, Mention, MetaAd, MetaAdsSettings, GoogleAd, GoogleAdsSettings, WikipediaPageview, WikipediaPageviewSettings, PendingCandidate, PendingCandidateSource, RecordedDailyCost, RivalLevel, RivalSuggestionRun, SourceRun, SuspiciousAccount, SuspiciousFilters, SuspiciousStatus, Topic, CustomTopic, CustomTopicSummary, CustomTopicSummaryStatus, DailyBrief, InconsistencyAlert, InconsistencyScan, ResponseSimulation, ResponseSimulationFinish, AssistantQuestion, AssistantQuota, AssistantRunRecord } from "@/lib/types";
 import type { SpendReport } from "@/lib/spend";
 import { SIMULATOR_LIMITS_DEFAULT, checkQuota, type SimulatorLimits } from "@/lib/response-simulator";
 import { dayKey, startOfDay } from "@/lib/time";
@@ -278,6 +278,65 @@ export class MemoryRepo implements PulsoRepo {
   }
   async listAssignableCandidates() {
     return this.visibleCandidates();
+  }
+  async setCandidateCollectionPaused(id: string, paused: boolean) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede pausar o reanudar la recolección");
+    const list = this.visibleCandidates();
+    const current = list.find((c) => c.id === id);
+    if (!current) throw new Error("Candidato inválido");
+    const updated = { ...current, collection_paused: paused };
+    if (this.data.candidate.slug === current.slug) this.data.candidate = updated;
+    this.data.candidates = (this.data.candidates ?? [this.data.candidate]).map((c) =>
+      c.id === id ? updated : c,
+    );
+    return updated;
+  }
+  async createCandidate(row: {
+    name: string;
+    slug: string;
+    country: CandidateCountry;
+    collection_mode: CollectionMode;
+    office?: string | null;
+    party?: string | null;
+    keywords: string[];
+    exclude_keywords: string[];
+    x_handle?: string | null;
+    youtube_channel_id?: string | null;
+    wikipedia_article?: string | null;
+    rival_candidate_id?: string | null;
+    rival_level?: RivalLevel | null;
+    daily_budget_usd: number;
+    enable_ai_visibility?: boolean;
+  }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede dar de alta un candidato");
+    const name = row.name.trim();
+    const slug = row.slug.trim();
+    if (!name) throw new Error("Falta el nombre del candidato");
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) throw new Error("El slug no es válido");
+    const existing = this.visibleCandidates();
+    if (existing.some((c) => c.slug === slug)) throw new Error("Ya existe un candidato con ese slug");
+    if (existing.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+      throw new Error("Ya existe un candidato con ese nombre");
+    }
+    const created: Candidate = {
+      id: crypto.randomUUID(),
+      slug,
+      name,
+      country: row.country,
+      collection_mode: row.collection_mode,
+      collection_paused: false,
+      office: row.office ?? null,
+      party: row.party ?? null,
+    };
+    this.data.candidates = [...(this.data.candidates ?? [this.data.candidate]), created];
+    if (row.rival_candidate_id) {
+      if (!existing.some((c) => c.id === row.rival_candidate_id)) throw new Error("El rival indicado no existe");
+      this.data.candidate_rivals = [
+        ...(this.data.candidate_rivals ?? []),
+        { candidate_id: created.id, rival_id: row.rival_candidate_id, level: row.rival_level ?? "comparativo" },
+      ];
+    }
+    return created;
   }
   async listRivals(candidateId: string) {
     return (this.data.candidate_rivals ?? []).filter((r) => r.candidate_id === candidateId);

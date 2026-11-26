@@ -22,6 +22,7 @@ from pulso.ai_visibility.run import (
 )
 from pulso.region import profile_for
 from pulso.ai_visibility.settings import VisibilitySettings, api_key_from_env
+from pulso.collection import is_collection_paused
 
 
 def log(**values):
@@ -70,9 +71,12 @@ def main(argv: list[str] | None = None) -> int:
             url, password = database_url_from_env()
             database = VisibilityDB(url, password)
             row = database.candidate(slug)
+            if is_collection_paused(row):
+                log(event="ai_visibility_skipped", reason="collection_paused", candidate=slug)
+                return 0
             candidate_id = str(row["id"])
             candidate_name = row["name"]
-            already = database.already_ran_on(row["id"], datetime.now(profile_for(slug).zone).date())
+            already = database.already_ran_on(row["id"], datetime.now(profile_for(slug, row.get("country")).zone).date())
             state = database.budget_state(row["id"])
             budget = DailyBudget.from_state(state)
             if budget is None:

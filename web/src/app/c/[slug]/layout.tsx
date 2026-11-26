@@ -13,7 +13,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
   const { slug } = await params;
   const { viewer, candidate, candidates, repo } = await loadCandidate(slug);
   const exportedAt = viewer.fixture ? await repo.dataTimestamp() : null;
-  const region = regionFor(candidate.slug);
+  const region = regionFor(candidate.slug, candidate.country);
   const clock = clockFromRegion(region);
   const showSwitcher = candidates.length > 1;
   const staff = await repo.isStaff();

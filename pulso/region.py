@@ -69,7 +69,13 @@ PROFILES: dict[str, RegionProfile] = {
 }
 
 
-def profile_for(slug: str | None) -> RegionProfile:
+def profile_for(slug: str | None, country: str | None = None) -> RegionProfile:
+    """El país de la fila del candidato manda; si falta, se usa el mapa por slug."""
+    code = (country or "").strip().upper()
+    if code == "ES":
+        return SPAIN_PROFILE
+    if code == "AR":
+        return DEFAULT_PROFILE
     if slug and slug in PROFILES:
         return PROFILES[slug]
     return DEFAULT_PROFILE

@@ -51,6 +51,7 @@ class PostgresStore:
             from public.candidates c
             join public.crisis_agent_settings s on s.candidate_id = c.id
             where s.enabled = true
+              and coalesce(c.collection_paused, false) = false
         """
         params: list[Any] = []
         if only_slug:
@@ -297,7 +298,7 @@ class MemoryStore:
         self.runs: list[dict[str, Any]] = []
 
     def list_enabled_candidates(self, only_slug: str | None = None) -> list[dict[str, Any]]:
-        rows = [c for c in self.candidates if c.get("enabled")]
+        rows = [c for c in self.candidates if c.get("enabled") and not c.get("collection_paused")]
         if only_slug:
             rows = [c for c in rows if c.get("slug") == only_slug]
         return rows

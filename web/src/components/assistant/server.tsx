@@ -15,7 +15,7 @@ export async function loadAssistantPanel(repo: PulsoRepo, candidate: Candidate) 
   const labels = topics.map((t) => t.label);
   const topTopic = labels.find((l) => /econom/i.test(l)) ?? labels.find((l) => l !== "otros") ?? null;
   const rival = rivals[0] ? await repo.getCandidateById(rivals[0].rival_id) : null;
-  const region = regionFor(candidate.slug);
+  const region = regionFor(candidate.slug, candidate.country);
   return {
     slug: candidate.slug,
     candidateName: candidate.name,

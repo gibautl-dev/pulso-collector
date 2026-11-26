@@ -25,7 +25,7 @@ export default async function AdminTemasPage() {
       </p>
       <div className="space-y-6">
         {topics.map(({ candidate, topics: list }) => {
-          const region = regionFor(candidate.slug);
+          const region = regionFor(candidate.slug, candidate.country);
           return (
             <div key={candidate.id} id={`temas-${candidate.slug}`}>
               <Card title={candidate.name} subtitle={`/${candidate.slug} · ${region.countryName}`}>

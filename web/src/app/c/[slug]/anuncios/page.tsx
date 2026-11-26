@@ -66,13 +66,13 @@ function volumeSubtitle(bucket: AdsBucket, tzLabel: string): string {
 
 export default async function MetaAdsPage({ params, searchParams }: PageProps<"/c/[slug]/anuncios">) {
   const { slug } = await params;
-  const clock = clockFor(slug);
-  const region = regionFor(slug);
   const sp = await searchParams;
   const days = parsePeriod(sp.dias);
   const filters = parseFilters(sp);
   const listPage = Math.max(1, Number(sp.p) || 1);
   const { repo, candidate } = await loadCandidate(slug);
+  const clock = clockFor(slug, candidate.country);
+  const region = regionFor(slug, candidate.country);
   const [ads, googleAds, googleSettings, ts] = await Promise.all([
     region.showMetaAds ? repo.listMetaAds(candidate.id) : Promise.resolve([]),
     repo.listGoogleAds(candidate.id),

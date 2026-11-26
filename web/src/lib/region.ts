@@ -41,7 +41,10 @@ const PROFILES: Record<string, RegionProfile> = {
 export const META_ADS_EU_UNAVAILABLE =
   "Desde el 6 de octubre de 2025 Meta no entrega anuncios políticos, electorales o de temas sociales en la Unión Europea, y la API de la Biblioteca de anuncios ya no admite esa búsqueda para países de la UE.";
 
-export function regionFor(slug: string | null | undefined): RegionProfile {
+export function regionFor(slug: string | null | undefined, country?: string | null): RegionProfile {
+  const code = (country || "").trim().toUpperCase();
+  if (code === "ES") return SPAIN_REGION;
+  if (code === "AR") return DEFAULT_REGION;
   if (slug && PROFILES[slug]) return PROFILES[slug];
   return DEFAULT_REGION;
 }

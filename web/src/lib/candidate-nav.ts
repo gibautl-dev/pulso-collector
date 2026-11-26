@@ -42,12 +42,12 @@ export function parseCandidatePath(
 }
 
 /** La pestaña existe en el destino (Anuncios, p. ej., no está en candidatos de la UE). */
-export function sectionAvailable(section: string, targetSlug: string): boolean {
+export function sectionAvailable(section: string, targetSlug: string, country?: string | null): boolean {
   if (!section) return true;
   if (!SECTION_SET.has(section)) return false;
   // Anuncios incluye Meta y/o Google. Google aplica también en la UE.
   if (section === "anuncios") {
-    const region = regionFor(targetSlug);
+    const region = regionFor(targetSlug, country);
     return region.showMetaAds || region.showGoogleAds;
   }
   return true;

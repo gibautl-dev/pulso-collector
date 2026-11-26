@@ -70,7 +70,7 @@ export default async function TemasPage({ params, searchParams }: PageProps<"/c/
                 <Card
                   testId={`tema-card-${topic.id}`}
                   title={topic.name}
-                  subtitle={`${topic.enabled ? "Activo" : "Pausado"} · ${regionFor(slug).countryName}`}
+                  subtitle={`${topic.enabled ? "Activo" : "Pausado"} · ${regionFor(slug, candidate?.country).countryName}`}
                   action={
                     <Link href={`/c/${slug}/temas/${topic.id}`} className="text-sm font-medium text-indigo-700 hover:underline">
                       Ver tema y analista

@@ -6,6 +6,11 @@ import subprocess
 import sys
 import time
 
+from pulso.collection import (
+    MEDIA_ONLY,
+    CandidateRunPlan,
+    effective_collection_mode,
+)
 from pulso.region import merge_collectable_slugs, parse_candidate_slugs, profile_for
 
 def log(**values):
@@ -112,6 +117,58 @@ def discover_collectable_slugs(env_slugs, database_url=None):
     return merge_collectable_slugs(env_slugs, db_slugs)
 
 
+def list_collection_states(database_url):
+    """slug -> country, collection_mode, collection_paused. None si la consulta falla."""
+    if not database_url or '://' not in str(database_url):
+        return {}
+    try:
+        import psycopg
+        with psycopg.connect(database_url, connect_timeout=8) as conn:
+            rows = conn.execute(
+                """select slug, country, collection_mode, collection_paused
+                     from public.candidates"""
+            ).fetchall()
+        states = {}
+        for row in rows:
+            slug = row[0] if row else None
+            if not slug:
+                continue
+            states[slug] = {
+                "country": row[1],
+                "collection_mode": row[2],
+                "collection_paused": bool(row[3]),
+            }
+        return states
+    except Exception:
+        return None
+
+
+def discover_collectable_plans(env_slugs, database_url=None, states=None):
+    """Igual que discover_collectable_slugs, con país/modo y sin los pausados."""
+    import os
+    url = database_url if database_url is not None else os.getenv("DATABASE_URL")
+    slugs = discover_collectable_slugs(env_slugs, url)
+    if states is None:
+        states = list_collection_states(url)
+        if states is None:
+            log(event="cron_collection_state_error", error_type="query_failed")
+            states = {}
+    plans = []
+    for slug in slugs:
+        st = states.get(slug) or {}
+        plan = CandidateRunPlan(
+            slug=slug,
+            country=st.get("country"),
+            collection_mode=st.get("collection_mode"),
+            collection_paused=bool(st.get("collection_paused")),
+        )
+        if plan.collection_paused:
+            log(event="cron_candidate_paused", candidate=slug)
+            continue
+        plans.append(plan)
+    return plans
+
+
 
 def main():
     try:
@@ -125,8 +182,8 @@ def main():
         if dry == 'true' and '--dry-run' not in args:
             args = [*args, '--dry-run']
         env_slugs = parse_candidate_slugs(argv=args)
-        slugs = discover_collectable_slugs(env_slugs) if env_slugs else []
-        extras = [slug for slug in slugs if slug not in set(env_slugs)]
+        plans = discover_collectable_plans(env_slugs) if env_slugs else []
+        extras = [plan.slug for plan in plans if plan.slug not in set(env_slugs)]
         if extras:
             log(event='cron_db_candidates', candidates=extras)
         # Sin lista ni --candidate, una sola corrida con los args originales
@@ -156,14 +213,14 @@ def main():
         finished = []
         timed_out = False
         cancelled = False
-        for slug in slugs:
+        for plan in plans:
             remaining = timeout - (time.monotonic() - started)
             if remaining < 30:
                 timed_out = True
-                log(event='cron_timeout', timeout_seconds=timeout, pending_candidate=slug)
+                log(event='cron_timeout', timeout_seconds=timeout, pending_candidate=plan.slug)
                 break
-            child_args = args_for_slug(args, slug)
-            log(event='cron_candidate_started', candidate=slug)
+            child_args = args_for_slug(args, plan.slug)
+            log(event='cron_candidate_started', candidate=plan.slug)
             code = run_command(
                 [sys.executable, '-m', 'pulso.collect_rss', *child_args],
                 remaining,
@@ -171,32 +228,36 @@ def main():
             )
             if code == 124:
                 timed_out = True
-                log(event='cron_candidate_timeout', candidate=slug)
+                log(event='cron_candidate_timeout', candidate=plan.slug)
                 break
             if code == 143:
                 cancelled = True
                 break
-            finished.append((slug, code, child_args))
+            finished.append((plan, code, child_args))
     except Exception as exc:
         log(event='cron_error', error_type=type(exc).__name__)
         return 2
     if not timed_out and not cancelled:
-        for slug, _collect_code, child_args in finished:
+        for plan, _collect_code, child_args in finished:
+            slug = plan.slug
             run_classifier(child_args)
-            # Rivales descubiertos en la DB (no listados en el entorno) solo
-            # media/RSS, clasificador y Wikipedia: sin IA, anuncios ni crisis.
-            if env_slugs and slug not in env_slugs:
-                log(event='cron_post_steps_skipped', reason='db_rival_media_only', candidate=slug)
-                # Las visitas de Wikipedia son un indicador de interés, no un paso de IA/anuncios.
+            mode = effective_collection_mode(plan, env_slugs)
+            # media_only: medios + clasificador + Wikipedia + resumen + contradicciones.
+            # Si la DB no trae modo, se conserva el recorte de rivales solo presentes en la DB.
+            if mode == MEDIA_ONLY:
+                reason = (
+                    "media_only"
+                    if (plan.collection_mode or "").strip().lower() == MEDIA_ONLY
+                    else "db_rival_media_only"
+                )
+                log(event="cron_post_steps_skipped", reason=reason, candidate=slug)
                 run_wikipedia(child_args, remaining=timeout - (time.monotonic() - started))
-                # El resumen diario sí corre para los rivales: solo lee menciones ya clasificadas.
                 run_daily_brief(child_args)
-                # Las contradicciones también: solo lee titulares de medios ya recolectados.
                 run_inconsistency(child_args)
                 continue
             run_suspicious(child_args)
             run_ai_visibility(child_args)
-            if profile_for(slug).show_meta_ads:
+            if profile_for(slug, plan.country).show_meta_ads:
                 run_meta_ads(child_args)
                 run_meta_ads_classify(child_args)
             else:
@@ -214,7 +275,7 @@ def main():
         return 143
     if timed_out:
         return 124
-    if any(code != 0 for _slug, code, _args in finished):
+    if any(code != 0 for _plan, code, _args in finished):
         return 1
     return 0
 

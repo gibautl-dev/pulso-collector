@@ -37,7 +37,7 @@ export async function suggestRivals(_prev: FormActionState, formData: FormData):
     const candidate = candidates.find((c) => c.id === candidateId);
     if (!candidate) return { ok: false, error: "Candidato inválido" };
     if (!llmConfigured()) return { ok: false, error: LLM_NOT_CONFIGURED_MESSAGE };
-    const region = regionFor(candidate.slug);
+    const region = regionFor(candidate.slug, candidate.country);
     const ts = await repo.dataTimestamp();
     const now = ts ? new Date(ts) : new Date();
     const since = new Date(now.getTime() - 14 * 86400000).toISOString();
@@ -61,7 +61,7 @@ export async function suggestRivals(_prev: FormActionState, formData: FormData):
         measuredCandidates: candidates.map((c) => ({
           name: c.name,
           slug: c.slug,
-          countryName: regionFor(c.slug).countryName,
+          countryName: regionFor(c.slug, c.country).countryName,
         })),
       },
       candidates,

@@ -19,7 +19,7 @@ export function CandidateSwitcher({
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonId = useId();
   const listId = useId();
-  const currentRegion = regionFor(current.slug);
+  const currentRegion = regionFor(current.slug, current.country);
 
   useEffect(() => {
     if (!open) return;
@@ -73,7 +73,7 @@ export function CandidateSwitcher({
           className="relative z-20 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
         >
           {candidates.map((c) => {
-            const region = regionFor(c.slug);
+            const region = regionFor(c.slug, c.country);
             const selected = c.slug === current.slug;
             return (
               <li key={c.slug} role="option" aria-selected={selected}>

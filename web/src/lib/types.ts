@@ -9,7 +9,29 @@ export type Target = "candidate" | "other" | "unclear";
 export type Relevance = "alta" | "media" | "baja";
 export type RunStatus = "running" | "ok" | "partial" | "error" | "skipped";
 
+export type CandidateCountry = "AR" | "ES";
+export type CollectionMode = "full" | "media_only";
+
+export function isCandidateCountry(value: string): value is CandidateCountry {
+  return value === "AR" || value === "ES";
+}
+
+export function isCollectionMode(value: string): value is CollectionMode {
+  return value === "full" || value === "media_only";
+}
+
 export interface Candidate {
+  id: string;
+  slug: string;
+  name: string;
+  country?: CandidateCountry | null;
+  collection_paused?: boolean;
+  collection_mode?: CollectionMode | null;
+  office?: string | null;
+  party?: string | null;
+}
+
+export interface CreatedCandidate {
   id: string;
   slug: string;
   name: string;

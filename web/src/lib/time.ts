@@ -19,8 +19,8 @@ export function clockFromRegion(region: RegionProfile): Clock {
   return { timeZone: region.timezone, locale: region.locale, tzLabel: region.tzLabel };
 }
 
-export function clockFor(slug: string | null | undefined): Clock {
-  return clockFromRegion(regionFor(slug));
+export function clockFor(slug: string | null | undefined, country?: string | null): Clock {
+  return clockFromRegion(regionFor(slug, country));
 }
 
 function dateTimeFmt(clock: Clock) {

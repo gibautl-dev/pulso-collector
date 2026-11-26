@@ -106,16 +106,24 @@ export class SupabaseRepo implements PulsoRepo {
   }
 
   async listCandidates() {
-    return check<Candidate[]>(
-      await this.db.from("candidates").select("id,slug,name").order("name"),
-      "candidatos",
-    );
+    const res = await this.db.from("candidates").select("id,slug,name,country").order("name");
+    if (res.error && /country/i.test(res.error.message + (res.error.details ?? ""))) {
+      return check<Candidate[]>(
+        await this.db.from("candidates").select("id,slug,name").order("name"),
+        "candidatos",
+      );
+    }
+    return check<Candidate[]>(res, "candidatos");
   }
   async getCandidate(slug: string) {
-    return check<Candidate | null>(
-      await this.db.from("candidates").select("id,slug,name").eq("slug", slug).maybeSingle(),
-      "candidato",
-    );
+    const res = await this.db.from("candidates").select("id,slug,name,country").eq("slug", slug).maybeSingle();
+    if (res.error && /country/i.test(res.error.message + (res.error.details ?? ""))) {
+      return check<Candidate | null>(
+        await this.db.from("candidates").select("id,slug,name").eq("slug", slug).maybeSingle(),
+        "candidato",
+      );
+    }
+    return check<Candidate | null>(res, "candidato");
   }
   async listTopics(candidateId: string) {
     return check<Topic[]>(
@@ -536,10 +544,80 @@ export class SupabaseRepo implements PulsoRepo {
 
   async listAssignableCandidates() {
     if (!(await this.isStaff())) return this.listCandidates();
-    return check<Candidate[]>(
-      await this.db.from("candidates").select("id,slug,name").order("name"),
-      "directorio de candidatos",
-    );
+    const cols = "id,slug,name,country,collection_paused,collection_mode,office,party";
+    const res = await this.db.from("candidates").select(cols).order("name");
+    if (res.error && /collection_paused|country|collection_mode|office|party/i.test(res.error.message + (res.error.details ?? ""))) {
+      return check<Candidate[]>(
+        await this.db.from("candidates").select("id,slug,name").order("name"),
+        "directorio de candidatos",
+      );
+    }
+    return check<Candidate[]>(res, "directorio de candidatos");
+  }
+
+  async setCandidateCollectionPaused(id: string, paused: boolean) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede pausar o reanudar la recolección");
+    const res = await this.db.rpc("set_candidate_collection_paused", {
+      p_candidate_id: id,
+      p_paused: paused,
+    });
+    if (res.error) {
+      const msg = res.error.message ?? "";
+      if (isMissingRelation(res.error) || /set_candidate_collection_paused|does not exist|no existe/i.test(msg)) {
+        throw new Error("Todavía no se aplicó la migración del panel de candidatos");
+      }
+      throw new Error(`Error actualizando la recolección: ${res.error.message}`);
+    }
+    const payload = res.data as Candidate | null;
+    if (!payload || !payload.id) throw new Error("Error actualizando la recolección: respuesta vacía");
+    return payload;
+  }
+
+  async createCandidate(row: {
+    name: string;
+    slug: string;
+    country: "AR" | "ES";
+    collection_mode: "full" | "media_only";
+    office?: string | null;
+    party?: string | null;
+    keywords: string[];
+    exclude_keywords: string[];
+    x_handle?: string | null;
+    youtube_channel_id?: string | null;
+    wikipedia_article?: string | null;
+    rival_candidate_id?: string | null;
+    rival_level?: string | null;
+    daily_budget_usd: number;
+    enable_ai_visibility?: boolean;
+  }) {
+    if (!(await this.isStaff())) throw new Error("Solo el equipo de Active puede dar de alta un candidato");
+    const res = await this.db.rpc("create_candidate", {
+      p_name: row.name,
+      p_slug: row.slug,
+      p_country: row.country,
+      p_collection_mode: row.collection_mode,
+      p_office: row.office ?? null,
+      p_party: row.party ?? null,
+      p_keywords: row.keywords,
+      p_exclude_keywords: row.exclude_keywords,
+      p_x_handle: row.x_handle ?? null,
+      p_youtube_channel_id: row.youtube_channel_id ?? null,
+      p_wikipedia_article: row.wikipedia_article ?? null,
+      p_rival_candidate_id: row.rival_candidate_id ?? null,
+      p_rival_level: row.rival_level ?? "comparativo",
+      p_daily_budget_usd: row.daily_budget_usd,
+      p_enable_ai_visibility: row.enable_ai_visibility ?? false,
+    });
+    if (res.error) {
+      const msg = res.error.message ?? "";
+      if (isMissingRelation(res.error) || /create_candidate|does not exist|no existe/i.test(msg)) {
+        throw new Error("Todavía no se aplicó la migración del panel de candidatos");
+      }
+      throw new Error(msg);
+    }
+    const payload = res.data as { id?: string; slug?: string; name?: string } | null;
+    if (!payload?.id || !payload.slug || !payload.name) throw new Error("Error creando el candidato: respuesta vacía");
+    return { id: payload.id, slug: payload.slug, name: payload.name };
   }
 
   async listRivals(candidateId: string) {

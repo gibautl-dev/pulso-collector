@@ -30,7 +30,7 @@ class GoogleAdsDB:
     def candidate(self, slug: str) -> dict[str, Any]:
         with psycopg.connect(self.url) as conn:
             row = conn.execute(
-                "select id, slug, name from public.candidates where slug = %s",
+                "select id, slug, name, collection_paused from public.candidates where slug = %s",
                 (slug,),
             ).fetchone()
         if not row:

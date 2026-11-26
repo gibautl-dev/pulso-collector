@@ -21,8 +21,8 @@ function once<T>(fn: () => Promise<T>): () => Promise<T> {
  * cliente de Supabase del usuario logueado, así que RLS decide qué ve.
  */
 export function repoDataSource(repo: PulsoRepo, candidate: Candidate, now: Date): AssistantDataSource {
-  const clock = clockFor(candidate.slug);
-  const region = regionFor(candidate.slug);
+  const clock = clockFor(candidate.slug, candidate.country);
+  const region = regionFor(candidate.slug, candidate.country);
   const since = new Date(now.getTime() - LOOKBACK_DAYS * DAY_MS).toISOString();
   const topics = once(() => repo.listTopics(candidate.id));
   const mentions = once(async (): Promise<MentionsData> => {

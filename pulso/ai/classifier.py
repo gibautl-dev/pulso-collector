@@ -20,6 +20,7 @@ from urllib.parse import urlsplit
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pulso.collection import is_collection_paused
 
 PROMPT_VERSION = "auto-v1-2026-11-03"
 TONES = ("a_favor", "critica", "insulto", "acusacion", "pregunta", "informativo")
@@ -296,7 +297,7 @@ class ClassifierDB:
         self.connection.close()
 
     def candidate(self, slug: str) -> dict:
-        row = self.connection.execute("select id,slug,name from public.candidates where slug=%s",
+        row = self.connection.execute("select id,slug,name,collection_paused from public.candidates where slug=%s",
                                       (slug,)).fetchone()
         if not row:
             raise ValueError("Candidato inexistente")
@@ -354,6 +355,9 @@ def run(db, client: LLMClient, slug: str, settings: ClassifierSettings, log: Cal
         examples: list[dict] | None = None) -> int:
     examples = examples if examples is not None else load_fewshot()
     candidate = db.candidate(slug)
+    if is_collection_paused(candidate):
+        log(event="classifier_skipped", reason="collection_paused")
+        return 0
     if not db.lock(candidate["id"]):
         log(event="classifier_skipped", reason="locked"); return 0
     stats = {"pending": 0, "classified": 0, "saved": 0, "batches_failed": 0,

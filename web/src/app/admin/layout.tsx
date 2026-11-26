@@ -28,6 +28,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           <Link href="/" className="text-sm text-indigo-700 hover:underline">
             ← Volver a Pulso
           </Link>
+          <Link href="/admin/candidatos" className="text-sm font-medium text-slate-700 hover:underline">
+            Candidatos
+          </Link>
           <Link href="/admin/rivales" className="text-sm font-medium text-slate-700 hover:underline">
             Rivales
           </Link>

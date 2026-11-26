@@ -19,10 +19,10 @@ class PostgresStore:
         self.conn = conn
 
     def list_candidates(self, only_slug: str | None = None) -> list[dict[str, Any]]:
-        sql = "select id, slug, name from public.candidates"
+        sql = "select id, slug, name from public.candidates where coalesce(collection_paused, false) = false"
         params: list[Any] = []
         if only_slug:
-            sql += " where slug = %s"
+            sql += " and slug = %s"
             params.append(only_slug)
         sql += " order by slug"
         with self.conn.cursor() as cur:
@@ -122,7 +122,7 @@ class MemoryStore:
         self.alerts: list[dict[str, Any]] = []
 
     def list_candidates(self, only_slug: str | None = None) -> list[dict[str, Any]]:
-        return [c for c in self.candidates if not only_slug or c["slug"] == only_slug]
+        return [c for c in self.candidates if not c.get("collection_paused") and (not only_slug or c["slug"] == only_slug)]
 
     def last_scan(self, candidate_id: str) -> dict[str, Any] | None:
         return self.scans.get(str(candidate_id))

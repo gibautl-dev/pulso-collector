@@ -22,6 +22,11 @@ class Candidate(BaseModel):
     own_accounts: dict = Field(default_factory=dict)
     reference_accounts: dict = Field(default_factory=dict)
     x_daily_cap: int = Field(default=300, ge=0)
+    collection_paused: bool = False
+    country: str | None = None
+    collection_mode: str | None = None
+    office: str | None = None
+    party: str | None = None
 
 class SourceConfig(BaseModel):
     candidate_id: UUID

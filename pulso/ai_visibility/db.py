@@ -44,7 +44,7 @@ class VisibilityDB:
 
     def candidate(self, slug: str) -> dict:
         row = self.connection.execute(
-            "select id, slug, name from public.candidates where slug=%s", (slug,)
+            "select id, slug, name, country, collection_paused from public.candidates where slug=%s", (slug,)
         ).fetchone()
         if not row:
             raise ValueError("Candidato inexistente")

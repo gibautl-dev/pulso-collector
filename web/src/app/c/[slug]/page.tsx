@@ -44,11 +44,11 @@ const PERIODS = [7, 14, 30];
 
 export default async function Dashboard({ params, searchParams }: PageProps<"/c/[slug]">) {
   const { slug } = await params;
-  const clock = clockFor(slug);
-  const region = regionFor(slug);
   const sp = await searchParams;
   const days = PERIODS.includes(Number(sp.dias)) ? Number(sp.dias) : 7;
   const { repo, candidate } = await loadCandidate(slug);
+  const clock = clockFor(slug, candidate.country);
+  const region = regionFor(slug, candidate.country);
 
   const ts = await repo.dataTimestamp();
   const now = ts ? new Date(ts) : new Date();

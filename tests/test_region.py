@@ -29,6 +29,17 @@ class RegionTests(unittest.TestCase):
         self.assertFalse(profile.show_meta_ads)
         self.assertEqual(profile.user_location["city"], "Madrid")
 
+    def test_country_overrides_slug_map(self):
+        from pulso.region import DEFAULT_PROFILE, SPAIN_PROFILE, profile_for
+        self.assertEqual(profile_for("diego-santilli", "AR").country, "AR")
+        self.assertEqual(profile_for("nuevo-candidato", "ES"), SPAIN_PROFILE)
+        self.assertEqual(profile_for("axel-kicillof", "ES"), SPAIN_PROFILE)
+        # Un slug argentino no se vuelve España si no pasa country=ES.
+        self.assertEqual(profile_for("axel-kicillof"), DEFAULT_PROFILE)
+        # Si falta country, pedro-sanchez sigue siendo España por el mapa de slugs.
+        self.assertEqual(profile_for("pedro-sanchez"), SPAIN_PROFILE)
+        self.assertEqual(profile_for("pedro-sanchez", "ES"), SPAIN_PROFILE)
+
 
 class SlugListTests(unittest.TestCase):
     def test_env_list_and_fallback(self):

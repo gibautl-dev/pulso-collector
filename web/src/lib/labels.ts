@@ -229,3 +229,6 @@ export const CUSTOM_TOPIC_SUMMARY_STATUS_LABEL: Record<string, string> = {
 };
 
 export const SIMULATOR_SECTION_LABEL = "Simulador de respuesta";
+
+export const COUNTRY_LABEL = { AR: "Argentina", ES: "España" } as const;
+export const COLLECTION_MODE_LABEL = { full: "Principal", media_only: "Solo medios" } as const;
