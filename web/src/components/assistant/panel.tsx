@@ -17,7 +17,8 @@ export interface PanelProps {
 function Spark({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden>
-      <path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 12l.9 2.6 2.6.9-2.6.9L19 21l-.9-2.6-2.6-.9 2.6-.9L19 14z" />
+      {/* Estrella de 4 puntas, como el ✦ del video demo. */}
+      <path d="M12 2.5 13.85 10.15 21.5 12 13.85 13.85 12 21.5 10.15 13.85 2.5 12 10.15 10.15Z" />
     </svg>
   );
 }
@@ -237,9 +238,9 @@ export function AssistantDrawer(props: PanelProps) {
           type="button"
           onClick={() => setOpen(true)}
           data-testid="assistant-open"
-          className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 py-2.5 pl-3.5 pr-4 text-sm font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:shadow-xl hover:brightness-110"
+          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] py-3 pl-[18px] pr-[22px] text-[15px] font-semibold text-white shadow-[0_12px_30px_rgba(79,70,229,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(79,70,229,0.5)]"
         >
-          <Spark />
+          <Spark className="h-4 w-4 shrink-0" />
           {ASSISTANT_LABEL}
         </button>
       ) : null}
