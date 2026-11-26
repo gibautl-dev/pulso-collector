@@ -21,7 +21,7 @@ Te paso piezas (declaraciones propias, frases que los medios le atribuyen, notas
 Para cada par y cada señalamiento devolvé un veredicto:
 - contradiccion: la pieza nueva dice lo contrario de la anterior sobre el mismo asunto.
 - cambio_de_postura: no es lo contrario literal, pero cambió de posición o dio marcha atrás en una decisión.
-- promesa_incumplida: una nota dice que no cumplió algo que había anunciado o prometido.
+- promesa_incumplida: una nota dice que no cumplió algo que había anunciado o prometido, y una pieza previa (antes_ref, con fecha anterior) muestra esa promesa. Sin esa pieza previa, usá sin_contradiccion.
 - tension: no es contradicción, pero un rival podría presentarlo como incoherente. Explicá por qué no es contradicción.
 - sin_contradiccion: dicen lo mismo, hablan de cosas distintas o no alcanza para afirmarlo. Ante la duda, este.
 Reglas:

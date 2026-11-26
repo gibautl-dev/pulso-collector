@@ -53,3 +53,7 @@ También usa `CLASSIFIER_DATABASE_URL` (rol `pulso_classifier`) y `LLM_API_KEY` 
 1. Aplicar `deploy/inconsistency_alerts.sql` en Supabase.
 2. En el cron de Render: `PULSO_INCONSISTENCY_ENABLED=true`. Para probar primero sin escribir, usar `PULSO_INCONSISTENCY_DRY_RUN=true`.
 3. Correr una vez a mano: `python -m pulso.inconsistency --dry-run --candidate axel-kicillof`.
+
+## Promesas incumplidas: solo con fuente previa (aprobado por Leandro, 25/11/2026)
+- Al generar (prompt `inconsistency-v2`): una "promesa incumplida" solo se guarda si hay una pieza previa, con fecha anterior a la nota nueva, que muestre la promesa. Si no, se descarta con motivo `promesa_sin_fuente_previa` (queda en `inconsistency_scans.stats.dropped`).
+- En la web: las alertas ya guardadas de ese tipo sin pieza previa válida no se muestran (filtro en `normalizeAlerts`). No se borra ni se modifica ninguna fila.

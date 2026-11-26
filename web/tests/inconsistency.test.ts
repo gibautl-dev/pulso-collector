@@ -71,6 +71,19 @@ describe("inconsistency helpers", () => {
     expect(rows[1].earlier).toBeNull();
   });
 
+  it("oculta promesas incumplidas sin una fuente previa fechada (para cualquier candidato)", () => {
+    for (const candidate_id of ["kicillof", "sanchez", "milei"]) {
+      const rows = normalizeAlerts([
+        alert({ id: "promesa-ok", candidate_id, origin: "senalamiento", kind: "promesa_incumplida" }),
+        alert({ id: "promesa-sin-previa", candidate_id, origin: "senalamiento", kind: "promesa_incumplida", earlier: null }),
+        alert({ id: "promesa-previa-rota", candidate_id, kind: "promesa_incumplida", earlier: piece({ url: "nope" }) }),
+        alert({ id: "promesa-previa-posterior", candidate_id, kind: "promesa_incumplida", earlier: piece({ id: "m9", published_at: "2026-11-20T00:00:00Z" }) }),
+        alert({ id: "cambio-sin-previa", candidate_id, origin: "senalamiento", kind: "cambio_de_postura", earlier: null }),
+      ]);
+      expect(rows.map((a) => a.id)).toEqual(["promesa-ok", "cambio-sin-previa"]);
+    }
+  });
+
   it("formatea fechas en la zona del candidato y limpia el medio del título", () => {
     expect(pieceDate(piece(), "America/Argentina/Buenos_Aires")).toBe("11 nov");
     expect(pieceDate(piece({ local_date: "2026-11-25" }), "UTC")).toBe("25 nov");

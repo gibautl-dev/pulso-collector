@@ -7,4 +7,4 @@ El modelo solo juzga pares ya armados, redacta el porqué y cita por referencia
 modelo. Nada se publica ni se responde solo: cada alerta la revisa una persona.
 """
 
-PROMPT_VERSION = "inconsistency-v1"
+PROMPT_VERSION = "inconsistency-v2"

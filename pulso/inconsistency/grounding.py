@@ -38,6 +38,19 @@ def days_between(a: str | None, b: str | None) -> int | None:
         return None
 
 
+def _prior_source(antes: str, despues: str, pieces_by_ref: dict[str, dict[str, Any]]) -> bool:
+    """La promesa original tiene que estar en una pieza con fecha anterior a la nota nueva."""
+    if not antes or antes == despues or antes not in pieces_by_ref or despues not in pieces_by_ref:
+        return False
+    a, b = pieces_by_ref[antes].get("_piece"), pieces_by_ref[despues].get("_piece")
+    if a is not None and b is not None:
+        return a.published_at < b.published_at
+    before, after = pieces_by_ref[antes].get("fecha"), pieces_by_ref[despues].get("fecha")
+    if not before or not after:
+        return False
+    return str(before) < str(after)
+
+
 def ground_findings(
     raw: dict[str, Any] | None,
     *,
@@ -77,6 +90,10 @@ def ground_findings(
                 continue
         else:
             dropped.append({"item": item, "reason": "item_desconocido"})
+            continue
+        if verdict == "promesa_incumplida" and not _prior_source(antes, despues, pieces_by_ref):
+            # Sin una pieza previa fechada que muestre la promesa, no se publica.
+            dropped.append({"item": item, "reason": "promesa_sin_fuente_previa"})
             continue
         refs = [r for r in (f.get("refs") or []) if r in pieces_by_ref]
         for r in (antes, despues):

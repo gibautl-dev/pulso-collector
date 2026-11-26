@@ -214,6 +214,23 @@ class GroundingTest(unittest.TestCase):
         self.assertEqual(len(kept), 1, dropped)
         self.assertIsNone(kept[0]["antes_ref"])
 
+    def test_broken_promise_needs_prior_dated_source(self):
+        promise = dict(verdict="promesa_incumplida", severity="medio", why="La nota dice que no cumplió lo anunciado.")
+        # Señalamiento sin pieza previa: no se publica.
+        kept, dropped, _ = self._ground([self._f(item="s3", antes_ref="", despues_ref="s3", refs=["s3"], **promise)])
+        self.assertEqual(kept, [])
+        self.assertEqual(dropped[0]["reason"], "promesa_sin_fuente_previa")
+        # Pieza previa con fecha posterior a la nota: tampoco.
+        pieces = dict(self.PIECES, s4={"ref": "s4", "fecha": "2026-11-20", "texto": "Kicillof anunció que devolverá el descuento"})
+        kept, dropped, _ = ground_findings(
+            {"findings": [self._f(item="s3", antes_ref="s4", despues_ref="s3", refs=["s4", "s3"], **promise)]},
+            pieces_by_ref=pieces, pairs={}, flags={"s3": ["s4"]})
+        self.assertEqual((kept, dropped[0]["reason"]), ([], "promesa_sin_fuente_previa"))
+        # Con la promesa en una pieza anterior: se publica.
+        kept, dropped, _ = self._ground([self._f(**promise)])
+        self.assertEqual(len(kept), 1, dropped)
+        self.assertEqual((kept[0]["kind"], kept[0]["antes_ref"]), ("promesa_incumplida", "s1"))
+
     def test_schema_is_strict(self):
         schema = build_schema()
         item = schema["properties"]["findings"]["items"]

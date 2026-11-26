@@ -77,7 +77,19 @@ function validPiece(p: unknown): p is InconsistencyPiece {
   return typeof x.text === "string" && x.text.trim().length > 0 && validUrl(x.url) && typeof x.published_at === "string";
 }
 
-/** Descarta filas incompletas (sin pieza nueva o con enlaces inválidos). */
+/**
+ * Una "promesa incumplida" solo se muestra si hay una pieza previa, con fecha
+ * anterior a la nota nueva, que muestre la promesa original. Sin eso, la fila
+ * queda en la base pero no se muestra.
+ */
+export function hasPriorSource(a: Pick<InconsistencyAlert, "earlier" | "later">): boolean {
+  if (!validPiece(a.earlier) || !validPiece(a.later)) return false;
+  const before = Date.parse(a.earlier!.published_at);
+  const after = Date.parse(a.later.published_at);
+  return Number.isFinite(before) && Number.isFinite(after) && before < after;
+}
+
+/** Descarta filas incompletas (sin pieza nueva o con enlaces inválidos) y promesas sin fuente previa. */
 export function normalizeAlerts(rows: InconsistencyAlert[]): InconsistencyAlert[] {
   return rows
     .filter((a) => KINDS.has(a.kind) && validPiece(a.later))
@@ -85,7 +97,8 @@ export function normalizeAlerts(rows: InconsistencyAlert[]): InconsistencyAlert[
       ...a,
       severity: SEVERITIES.has(a.severity) ? a.severity : "bajo",
       earlier: validPiece(a.earlier) ? a.earlier : null,
-    }));
+    }))
+    .filter((a) => a.kind !== "promesa_incumplida" || hasPriorSource(a));
 }
 
 export function summarize(list: InconsistencyAlert[]) {
