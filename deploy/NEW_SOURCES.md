@@ -3,8 +3,8 @@
 Rama de origen `feat/new-sources`. Radio Nacional, GDELT y Wikipedia:
 **aplicados en pulso-demo el 2026-11-25** (hora de Argentina). InfoCielo y
 Qué Digital se sumaron ese día y se volvieron a sacar (403 desde la IP de
-Render; las notas siguen llegando por Google News). Google Alerts **no** se
-activó (sigue apagado, ver `deploy/GOOGLE_ALERTS.md`). Costo de las APIs: 0.
+Render; las notas siguen llegando por Google News). Google Alerts se habilitó el 2026-11-25 (hora de Argentina) con los 6 feeds
+ya creados (ver `deploy/GOOGLE_ALERTS.md`; las URLs no se publican). Costo de las APIs: 0.
 
 Backups de `rss_media` (fuera del repo):
 `backup_candidate_sources_pre_new_rss_2026-11-25.json` (antes de sumar los
@@ -22,19 +22,25 @@ tres feeds) y `backup_candidate_sources_pre_disable_blocked_rss_2026-11-25.json`
    artículos). Después, en el cron, `PULSO_WIKIPEDIA_ENABLED=true`.
 5. Aplicar `deploy/rss_disable_infocielo_quedigital.sql`: saca InfoCielo y
    Qué Digital; Radio Nacional se queda. Sánchez no se toca.
-6. Google Alerts: **pendiente**. Crear las alertas a mano y pegar los feeds,
-   según `deploy/GOOGLE_ALERTS.md`. No hace falta migración.
+6. Aplicar `deploy/gdelt_hourly.sql`: intervalo 3300 s (piso de 55 min).
+   El recolector reparte candidatos en :00 / :20 / :40 UTC. El cron */20
+   no cambia.
+7. Google Alerts: backup de `candidates.alert_feeds`, cargar los 6 feeds
+   (sin publicar las URLs) y `enabled=true` en `google_alerts`, según
+   `deploy/GOOGLE_ALERTS.md`.
 
 El cron necesita `PULSO_WIKIPEDIA_ENABLED=true` y redespliegue (web + pulso-rss).
 
 ## GDELT DOC 2.0
 
-- Adaptador: `pulso/sources/gdelt.py`. Un pedido cada 8 segundos (con sello
-  compartido entre procesos del cron), User-Agent honesto, `sourcecountry:AR`
-  en Argentina y `sourcecountry:ES` en Sánchez. Un 429, un 5xx o un error
-  de red/timeout se registran como falla blanda (warning, `soft_failure`) y
-  no hacen salir al cron con código 1; el próximo tick reintenta. Un error
-  de configuración o de respuesta inválida sigue siendo duro.
+- Adaptador: `pulso/sources/gdelt.py`. Como máximo una vez por hora y por
+  candidato (piso de 55 min), repartido en los ticks :00 / :20 / :40 UTC
+  para no coincidir. Entre pedidos, 15 s de margen y un sello compartido
+  entre procesos. User-Agent honesto, `sourcecountry:AR` en Argentina y
+  `sourcecountry:ES` en Sánchez. Un 429, un 5xx o un error de red/timeout
+  se registran como falla blanda (warning, `soft_failure`) y no hacen
+  salir al cron con código 1; se reintenta en la próxima ventana horaria.
+  Un error de configuración o de respuesta inválida sigue siendo duro.
 - Dedupe por URL canónica entre sí y, al guardar, contra menciones ya
   existentes de cualquier fuente (`save_result`).
 - Atribución en la interfaz: “Proyecto GDELT” con enlace a

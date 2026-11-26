@@ -30,6 +30,14 @@ class Database:
         now = datetime.now(timezone.utc)
         status = result_status(result)
         count = 0
+        if config.source == "gdelt":
+            from .sources.gdelt import next_gdelt_run_at
+            row = self.connection.execute(
+                "select slug from public.candidates where id=%s", (candidate_id,)
+            ).fetchone()
+            next_at = next_gdelt_run_at((row or {}).get("slug") or "", now)
+        else:
+            next_at = now + timedelta(seconds=config.interval_seconds)
         with self.connection.transaction():
             for mention in result.mentions:
                 if mention.candidate_id != candidate_id or mention.source.value != config.source:
@@ -74,7 +82,7 @@ class Database:
                 latest_observed_at=greatest(latest_observed_at,%s),coverage_status='partial',updated_at=%s
                 where candidate_id=%s and source=%s''',
                 (Jsonb(result.cursor),started_at,result.feeds_ok > 0,now,
-                 now+timedelta(seconds=config.interval_seconds),started_at,
+                 next_at,started_at,
                  status == 'ok',started_at,since,low,high,now,candidate_id,config.source))
             self.connection.execute('''insert into public.source_runs
                 (candidate_id,source,run_kind,started_at,finished_at,status,items_found,items_new,error,cursor)

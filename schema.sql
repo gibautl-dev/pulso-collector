@@ -23,7 +23,7 @@ create table public.source_catalog (
 insert into public.source_catalog values
  ('rss_media',true,1200), ('google_news',true,1200),
  ('google_alerts',false,1200), ('youtube',false,3600),
- ('gdelt',false,1200), ('x',false,1200), ('facebook',false,1200),
+ ('gdelt',false,3300), ('x',false,1200), ('facebook',false,1200),
  ('instagram',false,1200), ('serp',false,86400), ('llm',false,1200);
 
 create table public.candidate_sources (

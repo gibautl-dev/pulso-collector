@@ -7,7 +7,7 @@ from uuid import uuid4
 from unittest.mock import patch
 import httpx
 
-from pulso.collect_rss import adapter_for
+from pulso.collect_rss import adapter_for, due_for_run, INTERVAL_SOURCES
 from pulso.config import Settings
 from pulso.models import Candidate, SourceConfig, SourceName
 from tenacity import wait_none
@@ -23,6 +23,11 @@ from pulso.sources.gdelt import (
     is_transient_gdelt_error,
     wait_for_slot,
     Retryable,
+    gdelt_slot_minute,
+    gdelt_slot_matches,
+    next_gdelt_run_at,
+    MIN_INTERVAL,
+    SLOT_MINUTES,
 )
 from pulso.urls import url_hash
 
@@ -290,3 +295,63 @@ class FetchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.feeds_ok, 0)
         self.assertFalse(result.soft_failure)
         self.assertTrue(result.errors)
+
+
+class ScheduleTests(unittest.TestCase):
+    def test_known_slugs_use_distinct_hourly_slots(self):
+        self.assertEqual(gdelt_slot_minute("axel-kicillof"), 0)
+        self.assertEqual(gdelt_slot_minute("pedro-sanchez"), 20)
+        self.assertEqual(gdelt_slot_minute("milei"), 40)
+        self.assertEqual(set(SLOT_MINUTES), {0, 20, 40})
+        self.assertEqual(len({gdelt_slot_minute(s) for s in ("axel-kicillof", "pedro-sanchez", "milei")}), 3)
+
+    def test_unknown_slug_is_stable_and_in_slots(self):
+        self.assertEqual(gdelt_slot_minute("otro-candidato"), gdelt_slot_minute("otro-candidato"))
+        self.assertIn(gdelt_slot_minute("otro-candidato"), SLOT_MINUTES)
+
+    def test_slot_matches_current_tick(self):
+        now = datetime(2026, 11, 26, 2, 0, tzinfo=timezone.utc)
+        self.assertTrue(gdelt_slot_matches("axel-kicillof", now))
+        self.assertFalse(gdelt_slot_matches("pedro-sanchez", now))
+        self.assertFalse(gdelt_slot_matches("milei", now))
+        self.assertTrue(gdelt_slot_matches("pedro-sanchez", datetime(2026, 11, 26, 2, 20, tzinfo=timezone.utc)))
+        self.assertTrue(gdelt_slot_matches("milei", datetime(2026, 11, 26, 2, 40, 12, tzinfo=timezone.utc)))
+
+    def test_next_run_at_is_at_least_55_minutes_and_on_slot(self):
+        now = datetime(2026, 11, 26, 1, 21, tzinfo=timezone.utc)
+        # 01:21 + 55m = 02:16; kicillof slot :00 -> 03:00
+        k = next_gdelt_run_at("axel-kicillof", now)
+        self.assertEqual(k, datetime(2026, 11, 26, 3, 0, tzinfo=timezone.utc))
+        self.assertGreaterEqual(k - now, MIN_INTERVAL)
+        # sanchez slot :20 -> 02:20 (>= 02:16)
+        s = next_gdelt_run_at("pedro-sanchez", now)
+        self.assertEqual(s, datetime(2026, 11, 26, 2, 20, tzinfo=timezone.utc))
+        self.assertGreaterEqual(s - now, MIN_INTERVAL)
+        # milei slot :40 -> 02:40
+        m = next_gdelt_run_at("milei", now)
+        self.assertEqual(m, datetime(2026, 11, 26, 2, 40, tzinfo=timezone.utc))
+
+    def test_due_for_run_skips_wrong_slot_and_honors_next_run_at(self):
+        cid = uuid4()
+        now = datetime(2026, 11, 26, 2, 0, tzinfo=timezone.utc)
+        due = config(cid, interval_seconds=3300, next_run_at=None)
+        self.assertTrue(due_for_run(due, now, slug="axel-kicillof"))
+        self.assertFalse(due_for_run(due, now, slug="milei"))
+        self.assertTrue(due_for_run(due, now, refresh=True, slug="milei"))
+        future = config(cid, interval_seconds=3300, next_run_at=now + timedelta(minutes=30))
+        self.assertFalse(due_for_run(future, now, slug="axel-kicillof"))
+        past = config(cid, interval_seconds=3300, next_run_at=now - timedelta(minutes=1))
+        self.assertTrue(due_for_run(past, now, slug="axel-kicillof"))
+        self.assertFalse(due_for_run(past, now, slug="pedro-sanchez"))
+
+    def test_gdelt_is_interval_source_rss_is_not(self):
+        self.assertIn(SourceName.GDELT, INTERVAL_SOURCES)
+        self.assertNotIn(SourceName.RSS, INTERVAL_SOURCES)
+        self.assertNotIn(SourceName.NEWS, INTERVAL_SOURCES)
+        self.assertNotIn(SourceName.ALERTS, INTERVAL_SOURCES)
+        now = datetime(2026, 11, 26, 2, 0, tzinfo=timezone.utc)
+        rss = SourceConfig(
+            candidate_id=uuid4(), source="rss_media", enabled=True,
+            interval_seconds=1200, next_run_at=now + timedelta(hours=1),
+        )
+        self.assertTrue(due_for_run(rss, now, slug="axel-kicillof"))

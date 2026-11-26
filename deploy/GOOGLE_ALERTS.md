@@ -2,8 +2,11 @@
 
 El adaptador ya existe (`pulso/sources/google_alerts.py`): lee los RSS de
 `candidates.alert_feeds` cuando `candidate_sources` tiene `google_alerts`
-habilitado. **No hace falta código nuevo.** Hay que crear las alertas a mano
-y pegar las URLs. Nadie más que el dueño de la cuenta de Google debe iniciar
+habilitado. **Aplicado en pulso-demo el 2026-11-25** (hora de Argentina):
+los 6 feeds ya creados se cargaron en `alert_feeds` y la fuente quedó
+habilitada. Las URLs de los feeds son privadas y no se publican. Para
+rehacerlo o agregar un candidato, hay que crear las alertas a mano y
+pegar las URLs. Nadie más que el dueño de la cuenta de Google debe iniciar
 sesión. No se inventa ni se pide una contraseña.
 
 ## Cómo crear cada alerta

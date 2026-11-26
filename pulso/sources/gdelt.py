@@ -6,9 +6,10 @@ La propia API pide no más de un pedido cada 5 segundos (mensaje 429).
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -27,9 +28,18 @@ ATTRIBUTION_URL = "https://www.gdeltproject.org/"
 ATTRIBUTION_TEXT = "Proyecto GDELT"
 # La API pide 1 pedido / 5 s; dejamos un margen y un sello compartido entre
 # procesos del cron (cada candidato corre en un collect_rss distinto).
-MIN_REQUEST_SECONDS = 8.0
+MIN_REQUEST_SECONDS = 15.0
 RETRY_WAIT = wait_exponential(multiplier=8, min=8, max=30)
 DEFAULT_THROTTLE_PATH = os.getenv("PULSO_GDELT_THROTTLE_PATH", "/tmp/pulso_gdelt_last_request")
+# Una vez por hora, con piso de 55 min para no perder el tick del cron de 20 min.
+MIN_INTERVAL = timedelta(minutes=55)
+SLOT_MINUTES = (0, 20, 40)
+# Reparte a los tres candidatos actuales en ticks distintos (:00, :20, :40 UTC).
+KNOWN_SLOTS = {
+    "axel-kicillof": 0,
+    "pedro-sanchez": 20,
+    "milei": 40,
+}
 MAX_RECORDS = 250
 # Spain is ES in ISO 3166-1; GDELT DOC also accepts the English name.
 # The operator value is chosen from the candidate region, with a settings override.
@@ -161,6 +171,37 @@ def reset_throttle():
     """Solo para pruebas."""
     global _last_request_at
     _last_request_at = 0.0
+
+
+
+def gdelt_slot_minute(slug: str) -> int:
+    """Minuto UTC del tick (:00, :20 o :40) en el que este candidato consulta GDELT."""
+    if slug in KNOWN_SLOTS:
+        return KNOWN_SLOTS[slug]
+    digest = int(hashlib.sha256((slug or "").encode()).hexdigest(), 16)
+    return SLOT_MINUTES[digest % 3]
+
+
+def gdelt_slot_matches(slug: str, now: datetime) -> bool:
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    else:
+        now = now.astimezone(timezone.utc)
+    return (now.minute // 20) * 20 == gdelt_slot_minute(slug)
+
+
+def next_gdelt_run_at(slug: str, now: datetime, min_interval: timedelta = MIN_INTERVAL) -> datetime:
+    """Próximo tick del slot del candidato que quede al menos `min_interval` después de `now`."""
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    else:
+        now = now.astimezone(timezone.utc)
+    earliest = now + min_interval
+    slot = gdelt_slot_minute(slug)
+    candidate = earliest.replace(minute=slot, second=0, microsecond=0)
+    if candidate < earliest:
+        candidate += timedelta(hours=1)
+    return candidate
 
 
 def parse_articles(payload) -> list[dict]:

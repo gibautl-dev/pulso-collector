@@ -12,7 +12,7 @@ from .sources.rss_media import RSSSource
 from .sources.google_alerts import GoogleAlertsSource
 from .sources.youtube import YouTubeSource
 from .sources.x import XSource
-from .sources.gdelt import GdeltSource
+from .sources.gdelt import GdeltSource, gdelt_slot_matches
 
 def log(**values): print(json.dumps(values,ensure_ascii=False,default=str),flush=True)
 
@@ -22,15 +22,21 @@ def run_exit_code(results):
     failed = [r for r in results if r.errors and r.feeds_ok == 0 and not r.soft_failure]
     return 1 if failed else 0
 
-INTERVAL_SOURCES = {SourceName.YOUTUBE, SourceName.X}
+INTERVAL_SOURCES = {SourceName.YOUTUBE, SourceName.X, SourceName.GDELT}
 
-def due_for_run(config: SourceConfig, now, refresh=False):
-    """YouTube y X respetan interval_seconds / next_run_at aunque el cron sea más frecuente.
-    RSS y Google News no se filtran acá: next_run_at se calcula al cerrar la corrida
-    y un cron cada 20 minutos podría quedar unos segundos corto."""
+def due_for_run(config: SourceConfig, now, refresh=False, slug=None):
+    """YouTube, X y GDELT respetan interval_seconds / next_run_at aunque el cron sea más frecuente.
+    GDELT además corre en un solo tick por hora, repartido entre candidatos
+    (:00, :20 y :40 UTC). RSS y Google News no se filtran acá: next_run_at se
+    calcula al cerrar la corrida y un cron cada 20 minutos podría quedar unos
+    segundos corto."""
     if refresh or config.source not in INTERVAL_SOURCES:
         return True
-    return config.next_run_at is None or now >= config.next_run_at
+    if config.next_run_at is not None and now < config.next_run_at:
+        return False
+    if config.source == SourceName.GDELT:
+        return gdelt_slot_matches(slug or "", now)
+    return True
 
 def adapter_for(source, settings):
     if source == SourceName.ALERTS:
@@ -61,7 +67,7 @@ async def collect(args):
             if not config.enabled:
                 log(source=config.source,status='skipped',reason='disabled'); continue
             started = datetime.now(timezone.utc)
-            if not due_for_run(config, started, args.refresh):
+            if not due_for_run(config, started, args.refresh, slug=candidate.slug):
                 log(source=config.source,status='skipped',reason='interval'); continue
             since = started - timedelta(days=args.days)
             # Siempre se relee la ventana: no avanzar por la última fecha publicada,
