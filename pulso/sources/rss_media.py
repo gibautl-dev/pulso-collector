@@ -1,4 +1,5 @@
 import asyncio
+import time
 import calendar
 import json
 import random
@@ -35,14 +36,74 @@ def matches(text, candidate):
         return bool(term.strip()) and re.search(r"(?<!\w)" + re.escape(fold(term.strip())) + r"(?!\w)", text) is not None
     return any(has(k) for k in candidate.keywords) and not any(has(k) for k in candidate.exclude_keywords)
 
+def _bare_host(host):
+    host = (host or "").lower()
+    return host[4:] if host.startswith("www.") else host
+
+
+def url_matches_prefix(link, prefix):
+    """True si el link es el prefijo o un path debajo (sin marcar otras secciones del mismo host)."""
+    prefix = (prefix or "").strip()
+    if not link or not prefix:
+        return False
+    try:
+        link_parts = urlsplit(normalize_url(link))
+        prefix_parts = urlsplit(normalize_url(prefix))
+    except ValueError:
+        return False
+    if _bare_host(link_parts.hostname) != _bare_host(prefix_parts.hostname):
+        return False
+    path = link_parts.path or "/"
+    base = (prefix_parts.path or "/").rstrip("/") or "/"
+    return path == base or path.startswith(base + "/")
+
+
 def account_relation(link, config):
+    settings = config.settings or {}
+    for prefix in settings.get("own_url_prefixes") or []:
+        if url_matches_prefix(link, prefix):
+            return "own"
     host = (urlsplit(link).hostname or "").lower()
     for key, relation in (("own_domains","own"),("reference_domains","reference")):
-        for domain in config.settings.get(key,[]):
+        for domain in settings.get(key,[]):
             domain = domain.lower().strip().rstrip(".")
             if domain and (host == domain or host.endswith("."+domain)):
                 return relation
     return "third_party"
+
+
+# Crawl-delay de robots.txt verificado (segundos). Se puede ampliar en settings.crawl_delays.
+DEFAULT_CRAWL_DELAYS = {
+    "gba.gob.ar": 10.0,
+    "newtral.es": 2.0,
+}
+
+
+def crawl_delay_seconds(url, config=None):
+    host = _bare_host((urlsplit(url).hostname or ""))
+    overrides = (config.settings if config is not None else None) or {}
+    raw = (overrides.get("crawl_delays") or {}).get(host) if isinstance(overrides.get("crawl_delays"), dict) else None
+    if raw is not None:
+        try:
+            return max(0.0, float(raw))
+        except (TypeError, ValueError):
+            pass
+    return float(DEFAULT_CRAWL_DELAYS.get(host, 0.0))
+
+
+async def wait_crawl_delay(url, config, last_hit, now=None):
+    """Espera el Crawl-delay del host si ya se pidió otro feed del mismo sitio en esta corrida."""
+    delay = crawl_delay_seconds(url, config)
+    host = _bare_host((urlsplit(url).hostname or ""))
+    if not delay or not host:
+        return 0.0
+    clock = time.monotonic if now is None else now
+    previous = last_hit.get(host)
+    wait = 0.0 if previous is None else delay - (clock() - previous)
+    if wait > 0:
+        await asyncio.sleep(wait)
+    last_hit[host] = clock()
+    return max(0.0, wait)
 
 DEFAULT_ACCEPT = (
     "application/rss+xml, application/atom+xml, application/xml;q=0.9, "
@@ -195,9 +256,11 @@ class RSSSource(Source):
             return result
         async with httpx.AsyncClient(timeout=self.settings.timeout_seconds,follow_redirects=False,
                 trust_env=self.settings.http_trust_env,headers=client_headers(self.settings)) as client:
+            last_hit = {}
             for index,url in enumerate(feeds):
                 # Errores sin query ni tokens de Alerts: solo índice, status y host/path.
                 try:
+                    await wait_crawl_delay(url, config, last_hit)
                     old = states.get(url,{})
                     headers = {}
                     if old.get("etag"): headers["If-None-Match"] = old["etag"]

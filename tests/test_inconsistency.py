@@ -18,6 +18,7 @@ from pulso.inconsistency.statements import (
     attributed_statement,
     clean_title,
     extract_pieces,
+    is_fact_check,
     is_flag,
 )
 
@@ -105,6 +106,28 @@ class StatementTest(unittest.TestCase):
         self.assertTrue(is_flag("La campaña finaliza sin el kit del A400M que Sánchez anunció como medida estrella", self.s))
         self.assertFalse(is_flag('Loles León en el mitin de Sánchez: "Ni un paso atrás"', self.s))
         self.assertFalse(is_flag("El peronismo apuesta a que el Papa exponga las contradicciones de Milei", self.k))
+
+    def test_fact_check_outlets_are_flags(self):
+        self.assertTrue(is_fact_check({"url": "https://www.newtral.es/zona-verificacion/foo/20261125/", "outlet": "Newtral"}))
+        self.assertTrue(is_fact_check({"url": "https://maldita.es/desinfo/20261126/bar/", "outlet": "Maldita.es"}))
+        self.assertTrue(is_fact_check({"url": "https://chequeado.com/ultimas-noticias/un-chequeo/", "outlet": "Chequeado"}))
+        self.assertFalse(is_fact_check({"url": "https://www.eldiario.es/espana/nota/", "outlet": "elDiario.es"}))
+        # Titular atribuido de un verificador: es señalamiento, no declaración limpia.
+        ms = [
+            _m(1, 'Pedro Sánchez: "La vivienda será nuestra gran prioridad"', outlet="Newtral",
+               source="rss_media"),
+        ]
+        ms[0]["url"] = "https://www.newtral.es/zona-verificacion/vivienda-sanchez/20261125/"
+        p = extract_pieces(SANCHEZ, ms, TOPICS)
+        self.assertEqual(len(p["flag"]), 1)
+        self.assertEqual(p["flag"][0].quote, "La vivienda será nuestra gran prioridad")
+        self.assertEqual(p["attributed"], [])
+        # Un medio común con el mismo titular sigue siendo declaración atribuida.
+        regular = [_m(2, 'Pedro Sánchez: "La vivienda será nuestra gran prioridad"', outlet="El País")]
+        regular[0]["url"] = "https://elpais.com/espana/nota/"
+        p2 = extract_pieces(SANCHEZ, regular, TOPICS)
+        self.assertEqual(len(p2["attributed"]), 1)
+        self.assertEqual(p2["flag"], [])
 
     def test_clean_title_drops_outlet_suffix(self):
         self.assertEqual(clean_title("Kicillof: “Hola mundo de prueba larga” - Infobae", "Infobae"), "Kicillof: “Hola mundo de prueba larga”")

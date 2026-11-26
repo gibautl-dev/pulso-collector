@@ -70,3 +70,12 @@ URLs oficiales verificadas el 2026-11-25:
 - https://quedigital.com.ar/feed — sacado el 2026-11-25 (403 desde Render).
 
 Sánchez no se tocó. Plan de backup en cada SQL.
+
+## Feeds oficiales y de verificación (pendiente de aplicar)
+
+Ver `deploy/OFFICIAL_AND_FACTCHECK_FEEDS.md` y
+`deploy/rss_official_and_factcheck_feeds.sql`. Saca el feed institucional
+de Chequeado (`/feed/`, bloqueado por robots.txt), suma el RSS de la
+Provincia (Kicillof), los Discursos de Casa Rosada (Milei, solo esa
+sección como propia) y Maldita + Newtral Verificación (Sánchez). No
+aplicado todavía.

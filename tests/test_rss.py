@@ -6,7 +6,8 @@ from pulso.models import Candidate, SourceConfig, SourceName
 from pulso.config import Settings
 from pulso.urls import normalize_url, url_hash, unwrap_alert
 from pulso.sources.rss_media import (RSSSource, matches, account_relation, request_feed,
-    Retryable, format_feed_error, safe_request_target, feed_user_agent, client_headers)
+    Retryable, format_feed_error, safe_request_target, feed_user_agent, client_headers,
+    url_matches_prefix, crawl_delay_seconds, wait_crawl_delay)
 import httpx
 
 XML = b'''<?xml version="1.0"?><rss version="2.0"><channel><title>Medio</title>
@@ -32,6 +33,28 @@ class URLTests(unittest.TestCase):
         self.assertEqual(account_relation('https://www.candidate.example/a',cfg),'own')
         self.assertEqual(account_relation('https://other.example/a',cfg),'reference')
         self.assertEqual(account_relation('https://fakecandidate.example/a',cfg),'third_party')
+
+    def test_own_url_prefixes_do_not_mark_sibling_paths(self):
+        cfg=SourceConfig(candidate_id=uuid4(),source='rss_media',enabled=True,interval_seconds=1200,
+            settings={'own_url_prefixes':['https://www.casarosada.gob.ar/informacion/discursos']})
+        discurso='https://www.casarosada.gob.ar/informacion/discursos/51438-discurso-del-presidente-javier-milei'
+        conferencia='https://www.casarosada.gob.ar/informacion/conferencias/51442-conferencia-de-prensa'
+        self.assertTrue(url_matches_prefix(discurso, 'https://casarosada.gob.ar/informacion/discursos'))
+        self.assertEqual(account_relation(discurso,cfg),'own')
+        self.assertEqual(account_relation(conferencia,cfg),'third_party')
+        self.assertEqual(account_relation('https://www.casarosada.gob.ar/informacion/discursos',cfg),'own')
+        # Un dominio propio amplio no se infiere del prefijo.
+        self.assertEqual(account_relation('https://www.casarosada.gob.ar/slider',cfg),'third_party')
+
+    def test_crawl_delay_defaults(self):
+        cfg=SourceConfig(candidate_id=uuid4(),source='rss_media',enabled=True,interval_seconds=1200)
+        self.assertEqual(crawl_delay_seconds('https://www.gba.gob.ar/rss.xml',cfg),10.0)
+        self.assertEqual(crawl_delay_seconds('https://www.newtral.es/zona-verificacion/feed/',cfg),2.0)
+        self.assertEqual(crawl_delay_seconds('https://maldita.es/feed',cfg),0.0)
+        self.assertEqual(crawl_delay_seconds('https://example.com/rss',cfg),0.0)
+        cfg=SourceConfig(candidate_id=uuid4(),source='rss_media',enabled=True,interval_seconds=1200,
+            settings={'crawl_delays':{'maldita.es':1.5}})
+        self.assertEqual(crawl_delay_seconds('https://www.maldita.es/feed',cfg),1.5)
     def test_filter(self):
         c=Candidate(id=uuid4(),slug='ana',name='Ana',keywords=['Ana Pérez'],exclude_keywords=['actriz'])
         self.assertTrue(matches('ANA PEREZ anuncia',c))
@@ -168,6 +191,20 @@ class RetryTests(unittest.IsolatedAsyncioTestCase):
             await RSSSource(SourceName.RSS, Settings("unused")).fetch(
                 candidate, datetime(2026, 11, 1, tzinfo=timezone.utc), config)
         self.assertEqual(req.call_args.args[3].get("User-Agent"), "CustomUA/1.0")
+
+    async def test_crawl_delay_waits_only_for_same_host(self):
+        cfg=SourceConfig(candidate_id=uuid4(),source='rss_media',enabled=True,interval_seconds=1200)
+        slept=[]
+        async def fake_sleep(value):
+            slept.append(value)
+        times=iter([100.0, 100.2, 111.0])
+        last={}
+        with patch('pulso.sources.rss_media.asyncio.sleep', new=fake_sleep):
+            await wait_crawl_delay('https://www.gba.gob.ar/rss.xml', cfg, last, now=lambda: next(times))
+            await wait_crawl_delay('https://www.gba.gob.ar/habitat/rss.xml', cfg, last, now=lambda: next(times))
+        self.assertEqual(len(slept),1)
+        self.assertAlmostEqual(slept[0], 9.8, places=5)
+
 
 
 if __name__=="__main__":

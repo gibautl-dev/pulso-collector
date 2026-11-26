@@ -35,7 +35,7 @@ class SourceConfig(BaseModel):
     @field_validator("settings")
     @classmethod
     def validate_settings(cls, value):
-        for key in ("feeds", "own_domains", "reference_domains"):
+        for key in ("feeds", "own_domains", "reference_domains", "own_url_prefixes"):
             if key in value and (not isinstance(value[key], list) or
                                   any(not isinstance(v,str) for v in value[key])):
                 raise ValueError(f"{key} debe ser una lista de textos")

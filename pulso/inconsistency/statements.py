@@ -8,7 +8,8 @@ Tres tipos de pieza:
   ("Intendentes a Kicillof: …") o habla otro de su entorno ("un ministro de
   Kicillof dijo…"), no cuenta.
 - flag: nota de terceros que dice que el candidato se contradijo, dio marcha
-  atrás o incumplió algo que había anunciado.
+  atrás o incumplió algo que había anunciado, o una verificación de un medio
+  de fact-checking (Maldita, Newtral, Chequeado) aunque no use esas pistas.
 Las copias del mismo titular en varios medios se agrupan en una sola pieza.
 """
 
@@ -20,6 +21,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Iterable
+from urllib.parse import urlsplit
 
 MEDIA_SOURCES = {"google_news", "rss_media", "google_alerts"}
 
@@ -161,6 +163,26 @@ def attributed_statement(title: str, aliases: list[str]) -> dict[str, str] | Non
     return None
 
 
+# Verificadores: la nota en sí es un señalamiento, aunque el titular no traiga
+# las pistas de FLAG_CUES. Chequeado queda listo para cuando vuelva a entrar.
+FACT_CHECK_HOSTS = frozenset({"maldita.es", "newtral.es", "chequeado.com"})
+FACT_CHECK_OUTLET = re.compile(r"(?<!\w)(?:maldita(?:\.es)?|newtral|chequeado)(?!\w)")
+
+
+def _bare_host(host: str | None) -> str:
+    host = (host or "").lower()
+    return host[4:] if host.startswith("www.") else host
+
+
+def is_fact_check(mention: dict[str, Any] | None) -> bool:
+    """True si la mención viene de un medio de verificación (host o nombre)."""
+    mention = mention or {}
+    host = _bare_host(urlsplit(mention.get("url") or "").hostname)
+    if host in FACT_CHECK_HOSTS:
+        return True
+    return bool(FACT_CHECK_OUTLET.search(fold(mention.get("outlet") or "")))
+
+
 def is_flag(text: str, aliases: list[str]) -> bool:
     folded = fold(text)
     for cue in FLAG_CUES.finditer(folded):
@@ -262,7 +284,9 @@ def extract_pieces(candidate: dict[str, Any], mentions: Iterable[dict[str, Any]]
             quote = text
         elif rel == "third_party" and source in MEDIA_SOURCES:
             st = attributed_statement(title, aliases)
-            if st:
+            if is_fact_check(m):
+                kind, quote = "flag", (st["quote"] if st else "")
+            elif st:
                 kind, quote = "attributed", st["quote"]
             elif is_flag(title + " " + (m.get("content") or "")[:300], aliases):
                 kind = "flag"
