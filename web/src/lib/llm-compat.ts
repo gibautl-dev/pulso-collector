@@ -36,7 +36,7 @@ export function stripSchemaBounds<T>(value: T): T {
 export function compatBody(body: Record<string, unknown>, param: string | null): Record<string, unknown> {
   const next: Record<string, unknown> = { ...body };
   delete next.parallel_tool_calls;
-  if (param === "reasoning_effort") delete next.reasoning_effort;
+  if (param === "reasoning_effort") next.reasoning_effort = "none";
   if (Array.isArray(next.tools)) next.tools = stripSchemaBounds(next.tools);
   if (next.response_format) next.response_format = stripSchemaBounds(next.response_format);
   return next;

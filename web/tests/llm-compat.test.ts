@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createLlmClient } from "@/lib/assistant/llm";
 import { compatBody, postChatCompletion, providerErrorSummary, stripSchemaBounds } from "@/lib/llm-compat";
 import { TOOL_SCHEMAS } from "@/lib/assistant/prompt";
 
@@ -20,7 +21,7 @@ describe("llm-compat", () => {
     expect(body.reasoning_effort).toBe("low");
     expect(JSON.stringify(body.tools)).not.toMatch(/"minimum"|"maximum"|"maxItems"/);
     expect((body.tools as unknown[]).length).toBe(TOOL_SCHEMAS.length);
-    expect(compatBody({ reasoning_effort: "low" }, "reasoning_effort").reasoning_effort).toBeUndefined();
+    expect(compatBody({ reasoning_effort: "low" }, "reasoning_effort").reasoning_effort).toBe("none");
   });
 
   it("resume el error del proveedor sin claves", () => {
@@ -51,5 +52,60 @@ describe("llm-compat", () => {
     const res = await postChatCompletion({ base: "https://x", key: "k", body: {}, timeoutMs: 1000, label: "t" });
     expect(res.status).toBe(500);
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("si el 400 es por reasoning_effort, el reintento lo manda en none", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      bodies.push(JSON.parse(String((init as RequestInit).body)));
+      return bodies.length === 1
+        ? new Response(JSON.stringify({ error: { message: "unsupported", param: "reasoning_effort" } }), { status: 400 })
+        : new Response(JSON.stringify({ choices: [] }), { status: 200 });
+    });
+    const res = await postChatCompletion({
+      base: "https://x",
+      key: "k",
+      body: { model: "m", tools: [{ type: "function" }], reasoning_effort: "low" },
+      timeoutMs: 1000,
+      label: "t",
+    });
+    expect(res.ok).toBe(true);
+    expect(bodies).toHaveLength(2);
+    expect(bodies[0].reasoning_effort).toBe("low");
+    expect(bodies[1].reasoning_effort).toBe("none");
+  });
+
+  it("createLlmClient manda reasoning_effort none cuando hay tools", async () => {
+    const prev = process.env.LLM_API_KEY;
+    process.env.LLM_API_KEY = "test-key";
+    const bodies: Record<string, unknown>[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      bodies.push(JSON.parse(String((init as RequestInit).body)));
+      return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: "ok" } }] }), { status: 200 });
+    });
+    try {
+      const client = createLlmClient();
+      await client.chat({
+        messages: [{ role: "user", content: "hola" }],
+        tools: [{ type: "function", function: { name: "x" } }],
+        tool_choice: "auto",
+        max_completion_tokens: 16,
+      });
+      expect(bodies).toHaveLength(1);
+      expect(bodies[0].reasoning_effort).toBe("none");
+      expect(bodies[0].tools).toHaveLength(1);
+
+      bodies.length = 0;
+      await client.chat({
+        messages: [{ role: "user", content: "hola" }],
+        max_completion_tokens: 16,
+      });
+      expect(bodies).toHaveLength(1);
+      expect(bodies[0].reasoning_effort).toBeUndefined();
+    } finally {
+      if (prev === undefined) delete process.env.LLM_API_KEY;
+      else process.env.LLM_API_KEY = prev;
+    }
   });
 });

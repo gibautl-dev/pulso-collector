@@ -78,6 +78,8 @@ beforeAll(async () => {
   `);
   await db.exec(read("deploy/admin_candidates_pause_create.sql"));
   await db.exec(read("deploy/seed_topics_santilli_espinoza_and_create_default.sql"));
+  await db.exec(read("deploy/meta_ads.sql"));
+  await db.exec(read("deploy/meta_ads_search_terms_santilli_and_create_default.sql"));
 });
 
 async function asStaff(sql: string) {
@@ -198,6 +200,13 @@ describe("admin_candidates_pause_create.sql", () => {
       "seguridad",
     ]);
     expect(topics.rows.some((r) => r.label === "otros")).toBe(true);
+
+    const ads = await db.query<{ enabled: boolean; search_terms: string[] }>(
+      `select enabled, search_terms from meta_ads_settings where candidate_id = '${payload.id}'`,
+    );
+    expect(ads.rows).toHaveLength(1);
+    expect(ads.rows[0].enabled).toBe(true);
+    expect(ads.rows[0].search_terms).toEqual(["Diego Santilli", "Santilli"]);
   });
 
   it("aplica el preset de España y rechaza un slug repetido", async () => {

@@ -26,7 +26,12 @@ export function createLlmClient(): LlmClient {
   return {
     model,
     async chat(req: ChatRequest): Promise<ChatResponse> {
-      const res = await postChatCompletion({ base, key, body: { model, ...req }, timeoutMs: 25000, label: "assistant" });
+      const body: Record<string, unknown> = { model, ...req };
+      // Sin esto el proveedor responde 400 en el primer pedido con tools.
+      if (Array.isArray(req.tools) && req.tools.length > 0) {
+        body.reasoning_effort = "none";
+      }
+      const res = await postChatCompletion({ base, key, body, timeoutMs: 25000, label: "assistant" });
       if (!res.ok) throw new Error(`El modelo devolvió HTTP ${res.status}.`);
       const raw = (await res.json()) as {
         model?: string;
