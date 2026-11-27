@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
   const big = size === "lg";
   return (
@@ -12,10 +14,37 @@ export function Brand({ size = "md" }: { size?: "md" | "lg" }) {
       </span>
       <span className="leading-tight">
         <span className={`block font-bold tracking-tight text-slate-900 ${big ? "text-2xl" : "text-base"}`}>Pulso</span>
-        <span className={`block text-slate-500 ${big ? "text-xs" : "text-[10px]"} uppercase tracking-wider`}>
-          by Active Marketing
+        <span className={`mt-0.5 flex items-center gap-1 text-slate-500 ${big ? "text-xs" : "text-[10px]"} uppercase tracking-wider`}>
+          <img
+            src="/brand/active-mark.png"
+            alt="Active Marketing"
+            className={big ? "h-3.5 w-auto object-contain" : "h-3 w-auto object-contain"}
+          />
+          <span>by Active Marketing</span>
         </span>
       </span>
+    </div>
+  );
+}
+
+export function ActiveMarketingLogo({ variant = "mark" }: { variant?: "mark" | "full" }) {
+  if (variant === "full") {
+    return (
+      <img
+        src="/brand/active-logo.png"
+        alt="Active Marketing · Digital Agency"
+        className="mx-auto h-12 w-auto object-contain opacity-90"
+      />
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 text-slate-500">
+      <img
+        src="/brand/active-mark.png"
+        alt="Active Marketing"
+        className="h-4 w-auto object-contain"
+      />
+      <span className="text-[11px] font-medium tracking-wide text-slate-500">Active Marketing</span>
     </div>
   );
 }

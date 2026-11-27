@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Brand } from "@/components/brand";
+import { ActiveMarketingLogo, Brand } from "@/components/brand";
 import { CandidateHeading, CandidateSwitcher } from "@/components/candidate-switcher";
 import { Nav } from "@/components/nav";
 import { AssistantDrawer } from "@/components/assistant/panel";
@@ -36,6 +36,9 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
           <Nav slug={candidate.slug} showAds={region.showMetaAds || region.showGoogleAds} showAssistant={!!assistant} />
         </div>
         <div className="mt-auto hidden border-t border-slate-100 px-5 py-4 lg:block">
+          <div className="mb-3">
+            <ActiveMarketingLogo variant="mark" />
+          </div>
           <p className="truncate text-xs text-slate-500" title={viewer.email}>{viewer.email}</p>
           {staff ? (
             <p className="mt-2 space-y-1">

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { AuthHashHandler } from "@/components/auth-hash-handler";
-import { Brand } from "@/components/brand";
+import { ActiveMarketingLogo, Brand } from "@/components/brand";
 import { isFixtureMode } from "@/lib/mode";
 import { requestMagicLink } from "./actions";
 
@@ -63,9 +63,12 @@ export default async function LoginPage({
             )}
           </AuthHashHandler>
         </div>
-        <p className="mt-6 text-center text-xs text-slate-400">
-          ¿No tenés acceso? Pedíselo a tu contacto en Active Marketing.
-        </p>
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <ActiveMarketingLogo variant="full" />
+          <p className="text-center text-xs text-slate-400">
+            ¿No tenés acceso? Pedíselo a tu contacto en Active Marketing.
+          </p>
+        </div>
       </div>
     </main>
   );
