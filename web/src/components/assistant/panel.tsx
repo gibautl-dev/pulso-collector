@@ -238,7 +238,7 @@ export function AssistantDrawer(props: PanelProps) {
           type="button"
           onClick={() => setOpen(true)}
           data-testid="assistant-open"
-          className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] py-3 pl-[18px] pr-[22px] text-[15px] font-semibold text-white shadow-[0_12px_30px_rgba(79,70,229,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(79,70,229,0.5)]"
+          className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-40 inline-flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] py-3 pl-[18px] pr-[22px] text-[15px] font-semibold text-white shadow-[0_12px_30px_rgba(79,70,229,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(79,70,229,0.5)] sm:right-[max(1.5rem,env(safe-area-inset-right))]"
         >
           <Spark className="h-4 w-4 shrink-0" />
           {ASSISTANT_LABEL}

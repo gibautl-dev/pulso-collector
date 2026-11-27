@@ -1,5 +1,5 @@
 /**
- * Prueba deploy/admin_candidates_pause_create.sql en PGlite. No toca la base real.
+ * Prueba deploy/admin_candidates_pause_create.sql y el preset de temas en PGlite. No toca la base real.
  */
 import { PGlite } from "@electric-sql/pglite";
 import { readFileSync } from "node:fs";
@@ -77,6 +77,7 @@ beforeAll(async () => {
     update public.candidates set country = null, collection_mode = null;
   `);
   await db.exec(read("deploy/admin_candidates_pause_create.sql"));
+  await db.exec(read("deploy/seed_topics_santilli_espinoza_and_create_default.sql"));
 });
 
 async function asStaff(sql: string) {
@@ -181,6 +182,22 @@ describe("admin_candidates_pause_create.sql", () => {
     );
     expect(rival.rows[0].rival_id).toBe(KICI);
     expect(rival.rows[0].level).toBe("comparativo");
+
+    const topics = await db.query<{ label: string }>(
+      `select label from topics where candidate_id = '${payload.id}' order by label`,
+    );
+    expect(topics.rows.map((r) => r.label)).toEqual([
+      "agenda institucional",
+      "economía",
+      "educación",
+      "elecciones 2027",
+      "justicia",
+      "otros",
+      "relación con provincias",
+      "salud",
+      "seguridad",
+    ]);
+    expect(topics.rows.some((r) => r.label === "otros")).toBe(true);
   });
 
   it("aplica el preset de España y rechaza un slug repetido", async () => {
@@ -211,6 +228,21 @@ describe("admin_candidates_pause_create.sql", () => {
       `select enabled from candidate_sources where candidate_id = '${payload.id}' and source = 'x'`,
     );
     expect(x.rows[0].enabled).toBe(false);
+
+    const topics = await db.query<{ label: string }>(
+      `select label from topics where candidate_id = '${payload.id}' order by label`,
+    );
+    expect(topics.rows.map((r) => r.label)).toEqual([
+      "agenda institucional",
+      "economía",
+      "educación",
+      "justicia",
+      "otros",
+      "sanidad",
+      "vivienda",
+    ]);
+    expect(topics.rows.some((r) => r.label === "otros")).toBe(true);
+    expect(topics.rows.some((r) => r.label === "campaña 29N")).toBe(false);
 
     let denied: { error?: string } = {};
     try {

@@ -20,7 +20,7 @@ export default async function CandidateLayout({ children, params }: LayoutProps<
   const assistant = await loadAssistantPanel(repo, candidate);
 
   return (
-    <div className="min-h-screen bg-slate-50 lg:flex">
+    <div className="min-h-screen overflow-x-clip bg-slate-50 lg:flex">
       <aside className="border-b border-slate-200 bg-white lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between px-5 py-4 lg:block lg:py-6">
           <Brand />
